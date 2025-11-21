@@ -31,7 +31,6 @@ An immersive, interactive web experience featuring an AI-powered video productio
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Canvas API** - 2D graphics and animations
-- **Supabase** - Backend for newsletter subscriptions (optional)
 - **CSS Modules** - Scoped styling
 
 ## 📦 Installation
@@ -50,23 +49,13 @@ npm run build
 npm start
 ```
 
-## 🌐 Environment Variables
-
-If using Supabase for newsletter features, create a `.env.local` file:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-```
-
 ## 🚢 Deployment
 
 This project is optimized for deployment on [Vercel](https://vercel.com):
 
 1. Push your code to GitHub
 2. Import project in Vercel
-3. Add environment variables (if using Supabase)
-4. Deploy!
+3. Deploy!
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/cymstudio)
 
