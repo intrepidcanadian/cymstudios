@@ -59,6 +59,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
   const gunAngleRef = useRef<number>(0)
   const OUTER_BOUNDARY_REF = useRef<number>(350)
   const GUN_RADIUS = 100 // Distance of gun from center
+  const hoveredTVRef = useRef<number | null>(null) // Track which TV is hovered
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -81,7 +82,8 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
-      playerRef.current.x = canvas.width / 2
+      // Position avatar slightly to the left of center (logo position)
+      playerRef.current.x = canvas.width / 2 - 80
       playerRef.current.y = canvas.height / 2
       
       // Responsive player size
@@ -614,31 +616,40 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
       // Draw studio objects
       const player = playerRef.current
       
-      for (let obj of studioObjects) {
+      for (let i = 0; i < studioObjects.length; i++) {
+        const obj = studioObjects[i]
+        const isHovered = hoveredTVRef.current === i
+        
         if (obj.isTV) {
           // Draw curved TV screen integrated into hull
           const angle = Math.atan2(obj.y - centerY, obj.x - centerX)
           const arcAngle = obj.width // This is actually the arc angle
           const hullThickness = obj.height
           
-          // Draw hull section (thicker part)
-          ctx.fillStyle = '#2a2a2a'
+          // Draw hull section (thicker part) - brighter when hovered
+          ctx.fillStyle = isHovered ? '#3a3a4a' : '#2a2a2a'
           ctx.beginPath()
           ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness, angle - arcAngle / 2, angle + arcAngle / 2)
           ctx.arc(centerX, centerY, OUTER_BOUNDARY - 10, angle + arcAngle / 2, angle - arcAngle / 2, true)
           ctx.closePath()
           ctx.fill()
           
-          // Hull border
-          ctx.strokeStyle = '#1a1a1a'
-          ctx.lineWidth = 3
+          // Hull border - highlighted when hovered
+          ctx.strokeStyle = isHovered ? '#667eea' : '#1a1a1a'
+          ctx.lineWidth = isHovered ? 4 : 3
           ctx.stroke()
           
-          // Draw curved screen
+          // Draw curved screen - brighter when hovered
           const gradient = ctx.createRadialGradient(centerX, centerY, OUTER_BOUNDARY, centerX, centerY, OUTER_BOUNDARY + hullThickness - 15)
-          gradient.addColorStop(0, '#667eea')
-          gradient.addColorStop(0.5, '#764ba2')
-          gradient.addColorStop(1, '#4a5fd9')
+          if (isHovered) {
+            gradient.addColorStop(0, '#7788ff')
+            gradient.addColorStop(0.5, '#8855cc')
+            gradient.addColorStop(1, '#5a6fff')
+          } else {
+            gradient.addColorStop(0, '#667eea')
+            gradient.addColorStop(0.5, '#764ba2')
+            gradient.addColorStop(1, '#4a5fd9')
+          }
           
           ctx.fillStyle = gradient
           ctx.beginPath()
@@ -647,42 +658,62 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
           ctx.closePath()
           ctx.fill()
           
-          // Screen highlight
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
-          ctx.lineWidth = 2
+          // Screen highlight - stronger when hovered
+          ctx.strokeStyle = isHovered ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)'
+          ctx.lineWidth = isHovered ? 3 : 2
           ctx.beginPath()
           ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness - 12, angle - arcAngle / 2 + 0.08, angle + arcAngle / 2 - 0.08)
           ctx.stroke()
           
-          // Power indicator lights
-          for (let i = 0; i < 3; i++) {
-            const ledAngle = angle - arcAngle / 2 + (arcAngle / 4) * (i + 0.5)
-            const ledX = centerX + Math.cos(ledAngle) * (OUTER_BOUNDARY + hullThickness - 5)
-            const ledY = centerY + Math.sin(ledAngle) * (OUTER_BOUNDARY + hullThickness - 5)
-            ctx.fillStyle = '#00ff00'
-            ctx.beginPath()
-            ctx.arc(ledX, ledY, 2, 0, Math.PI * 2)
-            ctx.fill()
-          }
-          
-          // Glow effect when player is nearby
-          if (checkNearby(player, obj, 150)) {
-            ctx.shadowColor = '#ffdd57'
-            ctx.shadowBlur = 40
+          // Add outer glow when hovered
+          if (isHovered) {
+            ctx.shadowColor = '#667eea'
+            ctx.shadowBlur = 25
             ctx.strokeStyle = '#ffdd57'
-            ctx.lineWidth = 5
+            ctx.lineWidth = 3
             ctx.beginPath()
             ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness, angle - arcAngle / 2, angle + arcAngle / 2)
             ctx.stroke()
             ctx.shadowBlur = 0
+          }
+          
+          // Power indicator lights - brighter when hovered
+          for (let j = 0; j < 3; j++) {
+            const ledAngle = angle - arcAngle / 2 + (arcAngle / 4) * (j + 0.5)
+            const ledX = centerX + Math.cos(ledAngle) * (OUTER_BOUNDARY + hullThickness - 5)
+            const ledY = centerY + Math.sin(ledAngle) * (OUTER_BOUNDARY + hullThickness - 5)
             
-            // Draw "Approaching..." indicator
+            if (isHovered) {
+              ctx.shadowColor = '#00ff00'
+              ctx.shadowBlur = 8
+            }
+            ctx.fillStyle = isHovered ? '#00ffaa' : '#00ff00'
+            ctx.beginPath()
+            ctx.arc(ledX, ledY, isHovered ? 3 : 2, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.shadowBlur = 0
+          }
+          
+          // Glow effect when player is nearby OR when hovered
+          if (checkNearby(player, obj, 150) || isHovered) {
+            if (!isHovered) {
+              ctx.shadowColor = '#ffdd57'
+              ctx.shadowBlur = 40
+              ctx.strokeStyle = '#ffdd57'
+              ctx.lineWidth = 5
+              ctx.beginPath()
+              ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness, angle - arcAngle / 2, angle + arcAngle / 2)
+              ctx.stroke()
+              ctx.shadowBlur = 0
+            }
+            
+            // Draw "Approaching..." or "Click to Watch" indicator
             const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 40)
             const labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 40)
-            ctx.fillStyle = '#ffdd57'
+            ctx.fillStyle = isHovered ? '#ffdd57' : '#ffdd57'
             ctx.font = isMobile ? 'bold 12px Arial' : 'bold 16px Arial'
             ctx.textAlign = 'center'
-            ctx.fillText('▶ Opening Video...', labelX, labelY)
+            ctx.fillText(isHovered ? '▶ Click to Watch' : '▶ Opening Video...', labelX, labelY)
           }
           
           // Draw tournament label (when not nearby)
@@ -836,6 +867,28 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         mouseRef.current.y - centerY,
         mouseRef.current.x - centerX
       )
+      
+      // Check if mouse is hovering over any TV
+      hoveredTVRef.current = null
+      for (let i = 0; i < studioObjects.length; i++) {
+        const obj = studioObjects[i]
+        if (obj.isTV) {
+          const dist = Math.sqrt(
+            Math.pow(mouseRef.current.x - obj.x, 2) + 
+            Math.pow(mouseRef.current.y - obj.y, 2)
+          )
+          if (dist < 100) {
+            hoveredTVRef.current = i
+            canvas.style.cursor = 'pointer'
+            break
+          }
+        }
+      }
+      
+      // Reset cursor if not hovering over TV
+      if (hoveredTVRef.current === null) {
+        canvas.style.cursor = 'crosshair'
+      }
     }
 
     // Mouse click handler for shooting lasers and TVs
