@@ -60,37 +60,30 @@ export default function VideoModal({ isOpen, videos, currentIndex, onClose, onNa
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
+      <button 
+        className={`${styles.navArrow} ${styles.navArrowLeft}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          handlePrevious()
+        }}
+        aria-label="Previous video"
+      >
+        ‹
+      </button>
+      
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <button className={styles.closeBtn} onClick={onClose}>
           &times;
         </button>
         
-        <div className={styles.videoContainer}>
-          <button 
-            className={styles.navArrow} 
-            onClick={handlePrevious}
-            aria-label="Previous video"
-          >
-            ‹
-          </button>
-          
-          <div className={styles.videoWrapper}>
-            <iframe
-              key={currentVideo.id}
-              src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1`}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-          
-          <button 
-            className={styles.navArrow} 
-            onClick={handleNext}
-            aria-label="Next video"
-          >
-            ›
-          </button>
+        <div className={styles.videoWrapper}>
+          <iframe
+            key={currentVideo.id}
+            src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1`}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         </div>
         
         {currentVideo.description && (
@@ -102,6 +95,17 @@ export default function VideoModal({ isOpen, videos, currentIndex, onClose, onNa
           Press ESC to close • Use ← → arrows to navigate
         </p>
       </div>
+      
+      <button 
+        className={`${styles.navArrow} ${styles.navArrowRight}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          handleNext()
+        }}
+        aria-label="Next video"
+      >
+        ›
+      </button>
     </div>
   )
 }
