@@ -1,0 +1,71 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import StudioCanvas from '@/components/StudioCanvas'
+import Sidebar from '@/components/Sidebar'
+import VideoModal from '@/components/VideoModal'
+import WorldClocks from '@/components/WorldClocks'
+import styles from './page.module.css'
+
+export default function Home() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [videoModalOpen, setVideoModalOpen] = useState(false)
+  const [currentVideoId, setCurrentVideoId] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  const handleVideoTrigger = (videoId: string) => {
+    setCurrentVideoId(videoId)
+    setVideoModalOpen(true)
+  }
+
+  return (
+    <main className={styles.container}>
+      <StudioCanvas onVideoTrigger={handleVideoTrigger} />
+      
+      <WorldClocks />
+      
+      <div className={styles.instructions}>
+        {isMobile ? (
+          <p><strong>Drag</strong>: Move • <strong>Tap</strong>: Shoot Lasers • Tap TV to watch</p>
+        ) : (
+          <p><strong>Arrow Keys</strong>: Move • <strong>Click</strong>: Shoot Lasers • Walk near TV to watch</p>
+        )}
+      </div>
+      
+      <button 
+        className={styles.sidebarToggle}
+        onClick={() => setSidebarOpen(true)}
+      >
+        <span>☰</span> Menu
+      </button>
+      
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+      />
+      
+      <VideoModal 
+        isOpen={videoModalOpen}
+        videoId={currentVideoId}
+        onClose={() => setVideoModalOpen(false)}
+      />
+      
+      <div 
+        className={`${styles.overlay} ${sidebarOpen ? styles.active : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+    </main>
+  )
+}
+
