@@ -716,21 +716,21 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
             ctx.fillText(isHovered ? '▶ Click to Watch' : '▶ Opening Video...', labelX, labelY)
           }
           
-          // Draw tournament label (when not nearby)
-          if (!checkNearby(player, obj, 150)) {
-            const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 30)
-            const labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 30)
+          // Draw tournament label (only when hovered)
+          if (isHovered) {
+            const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 60)
+            const labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 60)
             
-            ctx.fillStyle = '#FFFFFF'
-            ctx.font = isMobile ? 'bold 9px Arial' : 'bold 11px Arial'
+            ctx.fillStyle = '#ffdd57'
+            ctx.font = isMobile ? 'bold 10px Arial' : 'bold 12px Arial'
             ctx.textAlign = 'center'
             
             // Word wrap for long labels
-            const maxWidth = isMobile ? 80 : 120
+            const maxWidth = isMobile ? 100 : 140
             const words = obj.label.split(' ')
             let line = ''
             let lineY = labelY
-            const lineHeight = 14
+            const lineHeight = isMobile ? 12 : 15
             
             for (let i = 0; i < words.length; i++) {
               const testLine = line + words[i] + ' '
