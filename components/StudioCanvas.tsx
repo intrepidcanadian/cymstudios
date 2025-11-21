@@ -42,7 +42,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
     y: 0,
     width: 40,
     height: 60,
-    speed: 3, // Slowed down from 5 to 3
+    speed: 5, // Increased for faster movement
     direction: 'down'
   })
   const keysRef = useRef<{ [key: string]: boolean }>({})
