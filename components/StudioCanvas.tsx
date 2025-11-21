@@ -284,18 +284,19 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         player.y = centerY + Math.sin(angle) * (OUTER_BOUNDARY - player.width / 2)
       }
       
-      // Auto-trigger video when approaching TVs
+      // Auto-trigger video when approaching TVs (skip on mobile)
       let videoTriggered = false
-      for (let obj of studioObjects) {
-        if (obj.isTV && obj.videoId && checkNearby(player, obj, 150)) {
-          if (lastTriggerRef.current !== obj.videoId) {
-            lastTriggerRef.current = obj.videoId
-            if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId, obj.label)
+      if (!isMobile) {
+        for (let obj of studioObjects) {
+          if (obj.isTV && obj.videoId && checkNearby(player, obj, 150)) {
+            if (lastTriggerRef.current !== obj.videoId) {
+              lastTriggerRef.current = obj.videoId
+              if (onVideoTrigger) {
+                onVideoTrigger(obj.videoId, obj.label)
+              }
             }
+            videoTriggered = true
           }
-          videoTriggered = true
-          break
         }
       }
       
@@ -622,6 +623,11 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         const isHovered = hoveredTVRef.current === i
         
         if (obj.isTV) {
+          // Skip drawing TVs on mobile - users can see videos in sidebar
+          if (isMobile) {
+            continue
+          }
+          
           // Draw curved TV screen integrated into hull
           const angle = Math.atan2(obj.y - centerY, obj.x - centerX)
           const arcAngle = obj.width // This is actually the arc angle
@@ -838,34 +844,37 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         mouseRef.current.x - centerX
       )
       
-      // Check if mouse is hovering over any TV
+      // Check if mouse is hovering over any TV (skip on mobile)
       hoveredTVRef.current = null
-      for (let i = 0; i < studioObjects.length; i++) {
-        const obj = studioObjects[i]
-        if (obj.isTV) {
-          const dist = Math.sqrt(
-            Math.pow(mouseRef.current.x - obj.x, 2) + 
-            Math.pow(mouseRef.current.y - obj.y, 2)
-          )
-          if (dist < 100) {
-            hoveredTVRef.current = i
-            canvas.style.cursor = 'pointer'
-            
-            // Trigger modal if hover just started
-            if (previousHoveredTVRef.current !== i && onVideoTrigger && obj.videoId) {
-              onVideoTrigger(obj.videoId, obj.label)
+      const isMobileCheck = Math.min(canvas.width, canvas.height) < 600
+      if (!isMobileCheck) {
+        for (let i = 0; i < studioObjects.length; i++) {
+          const obj = studioObjects[i]
+          if (obj.isTV) {
+            const dist = Math.sqrt(
+              Math.pow(mouseRef.current.x - obj.x, 2) + 
+              Math.pow(mouseRef.current.y - obj.y, 2)
+            )
+            if (dist < 100) {
+              hoveredTVRef.current = i
+              canvas.style.cursor = 'pointer'
+              
+              // Trigger modal if hover just started
+              if (previousHoveredTVRef.current !== i && onVideoTrigger && obj.videoId) {
+                onVideoTrigger(obj.videoId, obj.label)
+              }
+              break
             }
-            break
           }
         }
-      }
-      
-      // Update previous hover state
-      previousHoveredTVRef.current = hoveredTVRef.current
-      
-      // Reset cursor if not hovering over TV
-      if (hoveredTVRef.current === null) {
-        canvas.style.cursor = 'crosshair'
+        
+        // Update previous hover state
+        previousHoveredTVRef.current = hoveredTVRef.current
+        
+        // Reset cursor if not hovering over TV
+        if (hoveredTVRef.current === null) {
+          canvas.style.cursor = 'crosshair'
+        }
       }
     }
 
@@ -877,18 +886,21 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
       const centerX = canvas.width / 2
       const centerY = canvas.height / 2
       
-      // Check if clicked on any TV (updated for curved TVs)
+      // Check if clicked on any TV (skip on mobile)
       let clickedTV = false
-      for (let obj of studioObjects) {
-        if (obj.isTV && obj.videoId) {
-          // Check if click is near the TV position on hull
-          const dist = Math.sqrt(Math.pow(clickX - obj.x, 2) + Math.pow(clickY - obj.y, 2))
-          if (dist < 100) {
-            if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId, obj.label)
+      const isMobileCheck = Math.min(canvas.width, canvas.height) < 600
+      if (!isMobileCheck) {
+        for (let obj of studioObjects) {
+          if (obj.isTV && obj.videoId) {
+            // Check if click is near the TV position on hull
+            const dist = Math.sqrt(Math.pow(clickX - obj.x, 2) + Math.pow(clickY - obj.y, 2))
+            if (dist < 100) {
+              if (onVideoTrigger) {
+                onVideoTrigger(obj.videoId, obj.label)
+              }
+              clickedTV = true
+              break
             }
-            clickedTV = true
-            break
           }
         }
       }
@@ -944,18 +956,8 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         mouseRef.current.x - centerX
       )
 
-      // Check if tapped on TV
-      for (let obj of studioObjects) {
-        if (obj.isTV && obj.videoId) {
-          const dist = Math.sqrt(Math.pow(touchStartX - obj.x, 2) + Math.pow(touchStartY - obj.y, 2))
-          if (dist < 100) {
-            if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId, obj.label)
-            }
-            return
-          }
-        }
-      }
+      // Check if tapped on TV (skip on mobile - TVs not visible)
+      // On mobile, users can access videos through the sidebar
 
       // Shoot laser on tap (outside TVs)
       const dx = mouseRef.current.x - centerX
