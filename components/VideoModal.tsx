@@ -6,10 +6,11 @@ import styles from './VideoModal.module.css'
 interface VideoModalProps {
   isOpen: boolean
   videoId: string
+  description?: string
   onClose: () => void
 }
 
-export default function VideoModal({ isOpen, videoId, onClose }: VideoModalProps) {
+export default function VideoModal({ isOpen, videoId, description, onClose }: VideoModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -45,6 +46,11 @@ export default function VideoModal({ isOpen, videoId, onClose }: VideoModalProps
             allowFullScreen
           />
         </div>
+        {description && (
+          <div className={styles.description}>
+            <h3>{description}</h3>
+          </div>
+        )}
         <p className={styles.hint}>Press ESC or click outside to close</p>
       </div>
     </div>

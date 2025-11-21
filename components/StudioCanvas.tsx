@@ -25,7 +25,7 @@ interface StudioObject {
 }
 
 interface StudioCanvasProps {
-  onVideoTrigger?: (videoId: string) => void
+  onVideoTrigger?: (videoId: string, description: string) => void
 }
 
 export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
@@ -60,6 +60,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
   const OUTER_BOUNDARY_REF = useRef<number>(350)
   const GUN_RADIUS = 100 // Distance of gun from center
   const hoveredTVRef = useRef<number | null>(null) // Track which TV is hovered
+  const previousHoveredTVRef = useRef<number | null>(null) // Track previous hover state
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -290,7 +291,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
           if (lastTriggerRef.current !== obj.videoId) {
             lastTriggerRef.current = obj.videoId
             if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId)
+              onVideoTrigger(obj.videoId, obj.label)
             }
           }
           videoTriggered = true
@@ -886,10 +887,18 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
           if (dist < 100) {
             hoveredTVRef.current = i
             canvas.style.cursor = 'pointer'
+            
+            // Trigger modal if hover just started
+            if (previousHoveredTVRef.current !== i && onVideoTrigger && obj.videoId) {
+              onVideoTrigger(obj.videoId, obj.label)
+            }
             break
           }
         }
       }
+      
+      // Update previous hover state
+      previousHoveredTVRef.current = hoveredTVRef.current
       
       // Reset cursor if not hovering over TV
       if (hoveredTVRef.current === null) {
@@ -913,7 +922,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
           const dist = Math.sqrt(Math.pow(clickX - obj.x, 2) + Math.pow(clickY - obj.y, 2))
           if (dist < 100) {
             if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId)
+              onVideoTrigger(obj.videoId, obj.label)
             }
             clickedTV = true
             break
@@ -978,7 +987,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
           const dist = Math.sqrt(Math.pow(touchStartX - obj.x, 2) + Math.pow(touchStartY - obj.y, 2))
           if (dist < 100) {
             if (onVideoTrigger) {
-              onVideoTrigger(obj.videoId)
+              onVideoTrigger(obj.videoId, obj.label)
             }
             return
           }

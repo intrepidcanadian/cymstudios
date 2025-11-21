@@ -11,6 +11,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [videoModalOpen, setVideoModalOpen] = useState(false)
   const [currentVideoId, setCurrentVideoId] = useState('')
+  const [currentVideoDescription, setCurrentVideoDescription] = useState('')
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -24,8 +25,9 @@ export default function Home() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  const handleVideoTrigger = (videoId: string) => {
+  const handleVideoTrigger = (videoId: string, description: string) => {
     setCurrentVideoId(videoId)
+    setCurrentVideoDescription(description)
     setVideoModalOpen(true)
   }
 
@@ -58,6 +60,7 @@ export default function Home() {
       <VideoModal 
         isOpen={videoModalOpen}
         videoId={currentVideoId}
+        description={currentVideoDescription}
         onClose={() => setVideoModalOpen(false)}
       />
       
