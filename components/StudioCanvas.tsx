@@ -694,34 +694,32 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
             ctx.shadowBlur = 0
           }
           
-          // Glow effect when player is nearby OR when hovered
-          if (checkNearby(player, obj, 150) || isHovered) {
-            if (!isHovered) {
-              ctx.shadowColor = '#ffdd57'
-              ctx.shadowBlur = 40
-              ctx.strokeStyle = '#ffdd57'
-              ctx.lineWidth = 5
-              ctx.beginPath()
-              ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness, angle - arcAngle / 2, angle + arcAngle / 2)
-              ctx.stroke()
-              ctx.shadowBlur = 0
-            }
+          // Glow effect when player is nearby
+          if (checkNearby(player, obj, 150) && !isHovered) {
+            ctx.shadowColor = '#ffdd57'
+            ctx.shadowBlur = 40
+            ctx.strokeStyle = '#ffdd57'
+            ctx.lineWidth = 5
+            ctx.beginPath()
+            ctx.arc(centerX, centerY, OUTER_BOUNDARY + hullThickness, angle - arcAngle / 2, angle + arcAngle / 2)
+            ctx.stroke()
+            ctx.shadowBlur = 0
             
-            // Draw "Approaching..." or "Click to Watch" indicator
+            // Draw "Opening Video..." indicator
             const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 40)
             const labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 40)
-            ctx.fillStyle = isHovered ? '#ffdd57' : '#ffdd57'
+            ctx.fillStyle = '#ffdd57'
             ctx.font = isMobile ? 'bold 12px Arial' : 'bold 16px Arial'
             ctx.textAlign = 'center'
-            ctx.fillText(isHovered ? '▶ Click to Watch' : '▶ Opening Video...', labelX, labelY)
+            ctx.fillText('▶ Opening Video...', labelX, labelY)
           }
           
-          // Draw tournament label (only when hovered)
+          // Draw tournament label and click prompt (only when hovered)
           if (isHovered) {
-            const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 60)
-            const labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 60)
+            const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 50)
+            let labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 50)
             
-            ctx.fillStyle = '#ffdd57'
+            ctx.fillStyle = '#FFFFFF'
             ctx.font = isMobile ? 'bold 10px Arial' : 'bold 12px Arial'
             ctx.textAlign = 'center'
             
@@ -729,22 +727,30 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
             const maxWidth = isMobile ? 100 : 140
             const words = obj.label.split(' ')
             let line = ''
-            let lineY = labelY
-            const lineHeight = isMobile ? 12 : 15
+            const lineHeight = isMobile ? 14 : 16
+            let lineCount = 0
             
             for (let i = 0; i < words.length; i++) {
               const testLine = line + words[i] + ' '
               const metrics = ctx.measureText(testLine)
               
               if (metrics.width > maxWidth && i > 0) {
-                ctx.fillText(line, labelX, lineY)
+                ctx.fillText(line, labelX, labelY)
                 line = words[i] + ' '
-                lineY += lineHeight
+                labelY += lineHeight
+                lineCount++
               } else {
                 line = testLine
               }
             }
-            ctx.fillText(line, labelX, lineY)
+            ctx.fillText(line, labelX, labelY)
+            lineCount++
+            
+            // Draw "Click to Watch" below the description
+            labelY += lineHeight + 5 // Add extra spacing
+            ctx.fillStyle = '#ffdd57'
+            ctx.font = isMobile ? 'bold 12px Arial' : 'bold 14px Arial'
+            ctx.fillText('▶ Click to Watch', labelX, labelY)
           }
         } else {
           // Draw regular objects
