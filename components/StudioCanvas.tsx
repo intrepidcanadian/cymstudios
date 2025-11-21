@@ -126,26 +126,26 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
         case 0: // top
           x = Math.random() * canvas.width
           y = -50
-          vx = (centerX - x) / 200 + (Math.random() - 0.5) * 1
-          vy = (centerY - y) / 200 + Math.random() * 1
+          vx = (centerX - x) / 350 + (Math.random() - 0.5) * 0.5
+          vy = (centerY - y) / 350 + Math.random() * 0.5
           break
         case 1: // right
           x = canvas.width + 50
           y = Math.random() * canvas.height
-          vx = (centerX - x) / 200 - Math.random() * 1
-          vy = (centerY - y) / 200 + (Math.random() - 0.5) * 1
+          vx = (centerX - x) / 350 - Math.random() * 0.5
+          vy = (centerY - y) / 350 + (Math.random() - 0.5) * 0.5
           break
         case 2: // bottom
           x = Math.random() * canvas.width
           y = canvas.height + 50
-          vx = (centerX - x) / 200 + (Math.random() - 0.5) * 1
-          vy = (centerY - y) / 200 - Math.random() * 1
+          vx = (centerX - x) / 350 + (Math.random() - 0.5) * 0.5
+          vy = (centerY - y) / 350 - Math.random() * 0.5
           break
         default: // left
           x = -50
           y = Math.random() * canvas.height
-          vx = (centerX - x) / 200 + Math.random() * 1
-          vy = (centerY - y) / 200 + (Math.random() - 0.5) * 1
+          vx = (centerX - x) / 350 + Math.random() * 0.5
+          vy = (centerY - y) / 350 + (Math.random() - 0.5) * 0.5
       }
       
       asteroidsRef.current.push({
