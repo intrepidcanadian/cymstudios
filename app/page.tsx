@@ -7,11 +7,29 @@ import VideoModal from '@/components/VideoModal'
 import WorldClocks from '@/components/WorldClocks'
 import styles from './page.module.css'
 
+const VIDEOS = [
+  {
+    id: 'NTiKNaKZAF8',
+    description: '2025 2v2 Random Starcraft Brood War Tournament ($500 Prize Pool)'
+  },
+  {
+    id: 'Q82c39DQoJc',
+    description: 'Season 3 Bombastic Starleague 2v2 Tournament ($1,000 Prize Pool)'
+  },
+  {
+    id: '9RJzUTqOm5M',
+    description: 'Bombastic Starleague Qualifications Season 3'
+  },
+  {
+    id: 's-l4dQm7-uc',
+    description: '2023 2v2 Shield Battery Tournament ($500 Prize Pool)'
+  }
+]
+
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [videoModalOpen, setVideoModalOpen] = useState(false)
-  const [currentVideoId, setCurrentVideoId] = useState('')
-  const [currentVideoDescription, setCurrentVideoDescription] = useState('')
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -26,9 +44,16 @@ export default function Home() {
   }, [])
 
   const handleVideoTrigger = (videoId: string, description: string) => {
-    setCurrentVideoId(videoId)
-    setCurrentVideoDescription(description)
-    setVideoModalOpen(true)
+    // Find the index of the triggered video
+    const index = VIDEOS.findIndex(v => v.id === videoId)
+    if (index !== -1) {
+      setCurrentVideoIndex(index)
+      setVideoModalOpen(true)
+    }
+  }
+
+  const handleNavigate = (index: number) => {
+    setCurrentVideoIndex(index)
   }
 
   return (
@@ -59,9 +84,10 @@ export default function Home() {
       
       <VideoModal 
         isOpen={videoModalOpen}
-        videoId={currentVideoId}
-        description={currentVideoDescription}
+        videos={VIDEOS}
+        currentIndex={currentVideoIndex}
         onClose={() => setVideoModalOpen(false)}
+        onNavigate={handleNavigate}
       />
       
       <div 
