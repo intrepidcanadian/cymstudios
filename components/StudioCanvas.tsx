@@ -715,44 +715,7 @@ export default function StudioCanvas({ onVideoTrigger }: StudioCanvasProps) {
             ctx.fillText('▶ Opening Video...', labelX, labelY)
           }
           
-          // Draw tournament label and click prompt (only when hovered)
-          if (isHovered) {
-            const labelX = centerX + Math.cos(angle) * (OUTER_BOUNDARY + hullThickness + 50)
-            let labelY = centerY + Math.sin(angle) * (OUTER_BOUNDARY + hullThickness + 50)
-            
-            ctx.fillStyle = '#FFFFFF'
-            ctx.font = isMobile ? 'bold 10px Arial' : 'bold 12px Arial'
-            ctx.textAlign = 'center'
-            
-            // Word wrap for long labels
-            const maxWidth = isMobile ? 100 : 140
-            const words = obj.label.split(' ')
-            let line = ''
-            const lineHeight = isMobile ? 14 : 16
-            let lineCount = 0
-            
-            for (let i = 0; i < words.length; i++) {
-              const testLine = line + words[i] + ' '
-              const metrics = ctx.measureText(testLine)
-              
-              if (metrics.width > maxWidth && i > 0) {
-                ctx.fillText(line, labelX, labelY)
-                line = words[i] + ' '
-                labelY += lineHeight
-                lineCount++
-              } else {
-                line = testLine
-              }
-            }
-            ctx.fillText(line, labelX, labelY)
-            lineCount++
-            
-            // Draw "Click to Watch" below the description
-            labelY += lineHeight + 5 // Add extra spacing
-            ctx.fillStyle = '#ffdd57'
-            ctx.font = isMobile ? 'bold 12px Arial' : 'bold 14px Arial'
-            ctx.fillText('▶ Click to Watch', labelX, labelY)
-          }
+          // No text on hover - modal shows instead
         } else {
           // Draw regular objects
           ctx.fillStyle = obj.color
