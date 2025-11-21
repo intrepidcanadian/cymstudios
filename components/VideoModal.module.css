@@ -67,8 +67,8 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(102, 126, 234, 0.8);
-  color: white;
+  background: rgba(40, 40, 40, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   border: none;
   width: 60px;
   height: 60px;
@@ -92,9 +92,10 @@
 }
 
 .navArrow:hover {
-  background: rgba(102, 126, 234, 1);
-  transform: translateY(-50%) scale(1.1);
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+  background: rgba(60, 60, 60, 0.8);
+  color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .navArrow:active {
