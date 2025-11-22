@@ -6,7 +6,9 @@ export default function Footer() {
   return (
     <footer className={styles.footer}>
       <div className={styles.footerContent}>
-        <div className={styles.companyName}>CYM Studio</div>
+        <a href="mailto:tony.lau@cymadvisory.com" className={styles.companyName}>
+          CYM Studio
+        </a>
         <div className={styles.scrollingText}>
           <div className={styles.scrollingTextInner}>
             <span>Interested in creating product videos for your small business or marketing videos for social media? Reach out to tony.lau@cymadvisory.com to discuss more. • </span>

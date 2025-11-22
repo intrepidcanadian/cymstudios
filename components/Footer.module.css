@@ -25,6 +25,17 @@
   color: white;
   white-space: nowrap;
   flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.companyName:hover {
+  color: #ffdd57;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
 }
 
 .scrollingText {
