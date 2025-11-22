@@ -73,6 +73,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <li><strong>Marketing Content:</strong> Create social media videos, promotional content, and brand storytelling that drives engagement</li>
               <li><strong>Tournament & Event Coverage:</strong> Professional broadcasts and highlights for esports tournaments and events</li>
               <li><strong>Marketing Campaigns:</strong> We can also help you run marketing campaigns with incentives to drive customer engagement and growth (i.e. contests, raffles, discounts, etc.)</li>
+              <li><strong>Surveys & Newsletters:</strong> Create and manage surveys and newsletters to engage with your audience and gather valuable feedback</li>
             </ul>
             <p>We help businesses grow by creating content that connects with their audience and drives results.</p>
             
