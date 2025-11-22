@@ -116,6 +116,22 @@
   font-size: 16px;
 }
 
+.tabContent ul {
+  color: #555;
+  line-height: 1.8;
+  margin-bottom: 15px;
+  padding-left: 25px;
+}
+
+.tabContent ul li {
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.tabContent ul li strong {
+  color: #667eea;
+}
+
 .clientLogo {
   text-align: center;
   margin-top: 20px;

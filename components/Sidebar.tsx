@@ -65,6 +65,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <p>We use AI to create epic videos for Starcraft tournaments, small businesses, creators, and more.</p>
             <p>At CYM Studio, we blend cutting-edge AI technology with creative storytelling to produce high-quality video content that helps our clients stand out. From tournament broadcasts to promotional content, we make every video epic.</p>
             
+            <h3>Our Services</h3>
+            <p>As a marketing agency, we help small businesses grow by creating compelling video content:</p>
+            <ul>
+              <li><strong>Product Videos:</strong> Showcase your products with professional, engaging videos that highlight features and benefits</li>
+              <li><strong>Testimonial Videos:</strong> Capture authentic customer stories that build trust and credibility</li>
+              <li><strong>Marketing Content:</strong> Create social media videos, promotional content, and brand storytelling that drives engagement</li>
+              <li><strong>Tournament & Event Coverage:</strong> Professional broadcasts and highlights for esports tournaments and events</li>
+            </ul>
+            <p>We help businesses grow by creating content that connects with their audience and drives results.</p>
+            
             <h3>Our Clients</h3>
             <div className={styles.clientLogo}>
               <Image 

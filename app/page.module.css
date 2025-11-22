@@ -7,7 +7,7 @@
 
 .instructions {
   position: absolute;
-  bottom: 20px;
+  bottom: 80px;
   right: 20px;
   background: rgba(0, 0, 0, 0.7);
   color: white;
@@ -74,7 +74,7 @@
   .instructions {
     font-size: 11px;
     padding: 8px 12px;
-    bottom: 10px;
+    bottom: 70px;
     right: 10px;
     max-width: calc(100vw - 120px);
   }
@@ -96,7 +96,7 @@
   .instructions {
     font-size: 10px;
     padding: 6px 10px;
-    bottom: 5px;
+    bottom: 60px;
     right: 5px;
   }
   

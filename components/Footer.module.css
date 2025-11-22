@@ -1,0 +1,102 @@
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 50;
+  padding: 15px 0;
+}
+
+.footerContent {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 0 20px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.companyName {
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.scrollingText {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 24px;
+}
+
+.scrollingTextInner {
+  display: flex;
+  white-space: nowrap;
+  animation: scroll 30s linear infinite;
+  gap: 20px;
+}
+
+.scrollingTextInner span {
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  padding-right: 20px;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 12px 0;
+  }
+  
+  .footerContent {
+    gap: 15px;
+    padding: 0 15px;
+  }
+  
+  .companyName {
+    font-size: 16px;
+  }
+  
+  .scrollingTextInner span {
+    font-size: 12px;
+  }
+  
+  .scrollingText {
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footerContent {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .companyName {
+    font-size: 14px;
+  }
+  
+  .scrollingText {
+    width: 100%;
+  }
+  
+  .scrollingTextInner span {
+    font-size: 11px;
+  }
+}
+

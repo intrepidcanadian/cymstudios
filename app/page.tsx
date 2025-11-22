@@ -5,6 +5,7 @@ import StudioCanvas from '@/components/StudioCanvas'
 import Sidebar from '@/components/Sidebar'
 import VideoModal from '@/components/VideoModal'
 import WorldClocks from '@/components/WorldClocks'
+import Footer from '@/components/Footer'
 import styles from './page.module.css'
 
 const VIDEOS = [
@@ -94,6 +95,8 @@ export default function Home() {
         className={`${styles.overlay} ${sidebarOpen ? styles.active : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
+      
+      <Footer />
     </main>
   )
 }
