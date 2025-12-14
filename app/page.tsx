@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import StudioCanvas from '@/components/StudioCanvas'
+import CSS3DVideoScene from '@/components/CSS3DVideoScene'
 import Sidebar from '@/components/Sidebar'
 import VideoModal from '@/components/VideoModal'
 import WorldClocks from '@/components/WorldClocks'
@@ -59,16 +59,12 @@ export default function Home() {
 
   return (
     <main className={styles.container}>
-      <StudioCanvas onVideoTrigger={handleVideoTrigger} />
+      <CSS3DVideoScene videos={VIDEOS} onVideoClick={handleVideoTrigger} />
       
       <WorldClocks />
       
       <div className={styles.instructions}>
-        {isMobile ? (
-          <p><strong>Drag</strong>: Move • <strong>Tap</strong>: Shoot Lasers • Tap TV to watch</p>
-        ) : (
-          <p><strong>Arrow Keys</strong>: Move • <strong>Click</strong>: Shoot Lasers • Walk near TV to watch</p>
-        )}
+        <p><strong>Drag</strong>: Rotate Camera • <strong>Click Video</strong>: Watch Fullscreen</p>
       </div>
       
       <button 
