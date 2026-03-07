@@ -50,6 +50,25 @@
   transform: rotate(90deg);
 }
 
+.catalogueLink {
+  display: block;
+  text-align: center;
+  padding: 14px 24px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.catalogueLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
 .tabs {
   display: flex;
   gap: 10px;

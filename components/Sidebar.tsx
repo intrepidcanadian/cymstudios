@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import styles from './Sidebar.module.css'
 
 interface SidebarProps {
@@ -38,6 +39,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           />
         </div>
         
+        <Link href="/catalogue" className={styles.catalogueLink}>
+          🎁 Gift Card Catalogue
+        </Link>
+
         <div className={styles.tabs}>
           <button 
             className={`${styles.tabBtn} ${activeTab === 'about' ? styles.active : ''}`}

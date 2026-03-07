@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import Providers from './providers'
 
 export const metadata: Metadata = {
   title: 'CYM Studio - Using AI for Epic Videos',
@@ -18,10 +19,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const privyAppId = process.env.PRIVY_APP_ID;
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers privyAppId={privyAppId}>
+          {children}
+        </Providers>
+      </body>
     </html>
   )
 }
-
