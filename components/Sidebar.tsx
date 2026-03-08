@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
         
         <Link href="/catalogue" className={styles.catalogueLink}>
-          🎁 Gift Card Catalogue
+          🎁 Reward Catalogue
         </Link>
 
         <div className={styles.tabs}>

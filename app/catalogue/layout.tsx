@@ -4,7 +4,7 @@ export default function CatalogueLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+    <div className="dark" style={{ minHeight: '100vh', background: '#0f172a' }}>
       {children}
     </div>
   );

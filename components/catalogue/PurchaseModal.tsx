@@ -250,18 +250,18 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
         });
         data = await response.json();
       } catch (err) {
-        throw new Error(err instanceof Error ? err.message : 'Crypto payment failed');
+        throw new Error(err instanceof Error ? err.message : 'Token redemption failed');
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Purchase failed');
+        throw new Error(data.error || 'Redemption failed');
       }
 
       onPurchaseComplete(data.orderId, email);
 
     } catch (err) {
-      console.error('Purchase error:', err);
-      setError(err instanceof Error ? err.message : 'Purchase failed');
+      console.error('Redemption error:', err);
+      setError(err instanceof Error ? err.message : 'Redemption failed');
     } finally {
       setLoading(false);
     }
@@ -269,27 +269,27 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/20"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/40"
       onClick={onClose}
     >
       <div
-        className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-white/20 overflow-y-auto"
+        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-700 overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         style={{
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2) inset'
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
         }}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20 bg-white/30 backdrop-blur-sm sticky top-0">
+        <div className="flex items-center justify-between p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0">
           <div>
-            <h3 className="text-2xl font-semibold text-gray-900">{product.brand_name}</h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <h3 className="text-2xl font-semibold text-slate-100">{product.brand_name}</h3>
+            <p className="text-sm text-slate-400 mt-1">
               {product.country_name} * {product.currency}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/50 hover:bg-white/70 text-gray-600 hover:text-gray-900 transition-all backdrop-blur-sm"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all backdrop-blur-sm"
           >
             x
           </button>
@@ -305,42 +305,42 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
         )}
 
         {/* Purchase Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-white/30 backdrop-blur-sm">
-          {/* Crypto Payment Info */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+          {/* Redemption Method */}
           <div>
-            <label className="block text-sm font-bold text-black mb-2">
-              Payment Method
+            <label className="block text-sm font-bold text-slate-100 mb-2">
+              Redemption Method
             </label>
             <div className="flex gap-2">
               <div
                 className="flex-1 py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg text-center"
               >
-                Crypto (USDC)
+                Digital USDC Tokens
               </div>
             </div>
             {!walletAvailable && (
-              <p className="text-xs text-red-600 mt-2">
-                No wallet connected. Please sign in with Privy to pay with crypto.
+              <p className="text-xs text-red-400 mt-2">
+                No wallet connected. Please sign in with Privy to redeem with tokens.
               </p>
             )}
             {walletAvailable && (
-              <p className="text-xs text-blue-700 mt-2">
-                Pay with USDC on Ethereum Mainnet. You'll be prompted to sign with your wallet.
+              <p className="text-xs text-purple-300 mt-2">
+                Redeem with digital USDC tokens on Ethereum Mainnet. You&apos;ll be prompted to sign with your wallet.
               </p>
             )}
           </div>
 
           {/* Amount */}
           <div>
-            <label className="block text-sm font-bold text-black mb-2">
+            <label className="block text-sm font-bold text-slate-100 mb-2">
               Amount ({product.currency})
               {amount && usdcAmount && (
-                <span className="ml-2 text-purple-600 font-normal">
-                  = {usdcAmount} USDC
+                <span className="ml-2 text-purple-400 font-normal">
+                  = {usdcAmount} USDC tokens
                 </span>
               )}
               {loadingQuote && (
-                <span className="ml-2 text-gray-500 font-normal">
+                <span className="ml-2 text-slate-400 font-normal">
                   Calculating...
                 </span>
               )}
@@ -349,7 +349,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               <select
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
                 required
               >
@@ -368,44 +368,44 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder={`${product.value_restrictions?.minVal || product.value_restrictions?.min || 1} - ${product.value_restrictions?.maxVal || product.value_restrictions?.max || 1000}`}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
                   required
                   disabled={loading}
                 />
                 {product.value_restrictions && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Range: {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min} - {product.value_restrictions.maxVal || product.value_restrictions.max}
                   </p>
                 )}
               </div>
             )}
 
-            {/* USDC Calculation Breakdown */}
+            {/* Token Calculation Breakdown */}
             {amount && usdcAmount && exchangeRate !== null && (
-              <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs space-y-1">
-                <div className="font-semibold text-purple-800 mb-2">USDC Calculation</div>
-                <div className="flex justify-between text-gray-700">
-                  <span>Gift Card Value:</span>
+              <div className="mt-3 p-3 bg-purple-900/30 border border-purple-700/50 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-purple-300 mb-2">Token Calculation</div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Reward Value:</span>
                   <span className="font-mono">{parseFloat(amount).toFixed(2)} {product.currency}</span>
                 </div>
                 {product.currency !== 'USD' && (
-                  <div className="flex justify-between text-gray-700">
+                  <div className="flex justify-between text-slate-300">
                     <span>Exchange Rate:</span>
                     <span className="font-mono">1 {product.currency} = {exchangeRate.toFixed(4)} USD</span>
                   </div>
                 )}
                 {product.currency !== 'USD' && (
-                  <div className="flex justify-between text-gray-700">
+                  <div className="flex justify-between text-slate-300">
                     <span>USD Value:</span>
                     <span className="font-mono">{(parseFloat(amount) * exchangeRate).toFixed(2)} USD</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-700">
+                <div className="flex justify-between text-slate-300">
                   <span>Fees ({FX_BUFFER_PERCENT}%):</span>
                   <span className="font-mono">+{((parseFloat(amount) * (exchangeRate || 1)) * (FX_BUFFER_PERCENT / 100)).toFixed(2)} USD</span>
                 </div>
-                <div className="flex justify-between text-purple-800 font-semibold pt-1 border-t border-purple-200">
-                  <span>Total USDC:</span>
+                <div className="flex justify-between text-purple-200 font-semibold pt-1 border-t border-purple-700/50">
+                  <span>Total USDC Tokens:</span>
                   <span className="font-mono">{usdcAmount} USDC</span>
                 </div>
               </div>
@@ -414,19 +414,19 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-bold text-black mb-2">
-              Email {userProfile.email && <span className="text-green-600">Saved</span>}
+            <label className="block text-sm font-bold text-slate-100 mb-2">
+              Email {userProfile.email && <span className="text-green-400">Saved</span>}
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+              className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
               required
               disabled={loading}
             />
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Voucher details will be sent to this email
             </p>
           </div>
@@ -434,7 +434,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
           {/* Name (Optional) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-bold text-black mb-2">
+              <label className="block text-sm font-bold text-slate-100 mb-2">
                 First Name
               </label>
               <input
@@ -442,12 +442,12 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-black mb-2">
+              <label className="block text-sm font-bold text-slate-100 mb-2">
                 Last Name
               </label>
               <input
@@ -455,7 +455,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-black placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
@@ -463,7 +463,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
           {/* Error */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/30 text-red-700 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+            <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
               {error}
             </div>
           )}
@@ -475,22 +475,22 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               disabled={loading || !email || !amount || !walletAvailable}
               className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
-              {loading ? 'Processing...' : 'Pay with Crypto'}
+              {loading ? 'Processing...' : 'Redeem with Tokens'}
             </button>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-3 border-2 border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-semibold shadow-sm transition-all disabled:opacity-50"
+              className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
             >
               Cancel
             </button>
           </div>
 
           {/* Info Box */}
-          <div className="mt-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-xl backdrop-blur-sm">
-            <p className="text-xs text-blue-800">
-              Pay exact amount in USDC. Your gift card voucher will be delivered via email within a few minutes after payment confirmation.
+          <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl backdrop-blur-sm">
+            <p className="text-xs text-purple-300">
+              Redeem with the exact amount in digital USDC tokens. Your reward voucher will be delivered via email within a few minutes after confirmation.
             </p>
           </div>
         </form>

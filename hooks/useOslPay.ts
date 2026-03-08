@@ -50,6 +50,22 @@ export function useOslPay() {
         throw new Error('OSL Pay appId is not configured. Please set NEXT_PUBLIC_OSL_APP_ID environment variable.');
       }
 
+      const merchantOrder = params.merchantOrder || generateMerchantOrder();
+
+      // Build success/fail URLs with orderId so the redirect page can look up the order
+      const baseSuccessUrl = params.successUrl || OSL_PAY_CONFIG.callbacks.success;
+      const baseFailUrl = params.failUrl || OSL_PAY_CONFIG.callbacks.fail;
+      const successUrl = `${baseSuccessUrl}${baseSuccessUrl.includes('?') ? '&' : '?'}orderId=${merchantOrder}`;
+      const failUrl = `${baseFailUrl}${baseFailUrl.includes('?') ? '&' : '?'}orderId=${merchantOrder}`;
+
+      // Persist the merchantOrder so the status page can retrieve it after redirect
+      try {
+        localStorage.setItem('osl_last_merchant_order', merchantOrder);
+        localStorage.setItem('osl_last_order_time', Date.now().toString());
+      } catch (e) {
+        // localStorage may be unavailable
+      }
+
       const requestParams: OslPayUrlParams = {
         appId: appId,
         amount: params.amount || OSL_PAY_CONFIG.amountLimits.default,
@@ -60,10 +76,10 @@ export function useOslPay() {
         email: params.email || user?.email?.address || user?.google?.email || '',
         ...(params.accessToken ? { accessToken: params.accessToken } : {}),
         merchantUser: params.merchantUser || user?.id || '',
-        merchantOrder: params.merchantOrder || generateMerchantOrder(),
+        merchantOrder,
         address: params.address,
-        successUrl: params.successUrl || OSL_PAY_CONFIG.callbacks.success,
-        failUrl: params.failUrl || OSL_PAY_CONFIG.callbacks.fail,
+        successUrl,
+        failUrl,
         callbackUrl: params.callbackUrl || OSL_PAY_CONFIG.callbacks.webhook,
         checkType: params.checkType || 'DEFI_BIND',
         useBorder: params.useBorder,
