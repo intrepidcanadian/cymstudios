@@ -42,7 +42,7 @@ function OnrampContent() {
       <div className="w-full max-w-lg mb-4">
         <Link
           href="/catalogue"
-          className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 font-medium text-sm transition-colors"
+          className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium text-sm transition-colors"
         >
           &larr; Back to Catalogue
         </Link>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
 import { sendVoucherEmail } from '@/lib/email';
+import { verifyOrderToken } from '@/lib/auth-token';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,17 +24,25 @@ export async function GET(
       );
     }
 
-    // Get authentication from request headers or query params
-    const userId = request.headers.get('x-user-id') || request.nextUrl.searchParams.get('userId');
-    const userEmail = request.headers.get('x-user-email') || request.nextUrl.searchParams.get('userEmail');
+    // Authentication: require a signed order token
+    // Token is issued by the purchase endpoint and encodes orderId + userId
+    const authHeader = request.headers.get('authorization');
+    const tokenParam = request.nextUrl.searchParams.get('token');
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : tokenParam;
 
-    // Require at least one authentication method
-    if (!userId && !userEmail) {
+    if (!token) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Authentication required. Please provide userId or userEmail.'
-        },
+        { success: false, error: 'Authentication required. Provide a valid order token.' },
+        { status: 401 }
+      );
+    }
+
+    const tokenPayload = verifyOrderToken(token, orderId);
+    if (!tokenPayload) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired order token.' },
         { status: 401 }
       );
     }
@@ -44,27 +54,17 @@ export async function GET(
       }
     });
 
-    // Fetch order with authentication check
-    let query = supabase
+    // Fetch order — token already proves ownership via signed orderId + userId
+    const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('order_id', orderId);
-
-    // Add user verification - must match BOTH order_id AND user identity
-    if (userId) {
-      query = query.eq('user_id', userId);
-    } else if (userEmail) {
-      query = query.eq('user_email', userEmail);
-    }
-
-    const { data, error } = await query.single();
+      .eq('order_id', orderId)
+      .eq('user_id', tokenPayload.userId)
+      .single();
 
     if (error || !data) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Order not found or you do not have permission to view it'
-        },
+        { success: false, error: 'Order not found' },
         { status: 404 }
       );
     }
@@ -75,13 +75,12 @@ export async function GET(
         !data.voucher_code) {
 
       try {
-        console.log(`Order ${orderId} still processing, checking xRemit for updates...`);
+        logger.info(`[Orders] Order ${orderId} still processing, checking xRemit...`);
 
         const xremitData = await fetchXremitTransaction(orderId);
 
-        // If xRemit has the voucher ready, update our database
         if (xremitData.status === 'processed' && xremitData.vouchers?.length > 0) {
-          console.log(`Voucher found for order ${orderId}, updating database...`);
+          logger.info(`[Orders] Voucher found for order ${orderId}, updating...`);
 
           const updateData = processXremitTransaction(xremitData);
 
@@ -93,12 +92,10 @@ export async function GET(
             .single();
 
           if (!updateError && updatedOrder) {
-            console.log(`Order ${orderId} updated successfully from xRemit fallback`);
+            logger.info(`[Orders] Order ${orderId} updated from xRemit fallback`);
 
-            // Send email notification if order is now completed with voucher
             if (updatedOrder.status === 'completed' && updatedOrder.voucher_code && data.user_email) {
               try {
-                // Fetch product image from brands table
                 let productImage: string | null = null;
                 if (data.product_id) {
                   const { data: brandData } = await supabase
@@ -112,13 +109,11 @@ export async function GET(
                   }
                 }
 
-                // Extract redemption URL if voucher code is a URL
                 const voucherCode = updatedOrder.voucher_code;
                 const redemptionUrl = (voucherCode.startsWith('http://') || voucherCode.startsWith('https://'))
                   ? voucherCode
                   : undefined;
 
-                // Send voucher email
                 const emailResult = await sendVoucherEmail({
                   to: data.user_email,
                   orderId: orderId,
@@ -134,13 +129,12 @@ export async function GET(
                 });
 
                 if (emailResult.success) {
-                  console.log(`Voucher email sent successfully to ${data.user_email} (fallback path)`);
+                  logger.info(`[Orders] Voucher email sent for order ${orderId} (fallback)`);
                 } else {
-                  console.warn(`Failed to send voucher email (fallback path):`, emailResult.error);
+                  logger.warn(`[Orders] Failed to send voucher email (fallback)`);
                 }
               } catch (emailError) {
-                console.error(`Error sending voucher email (fallback path):`, emailError);
-                // Don't fail the request if email fails
+                logger.error(`[Orders] Email error (fallback):`, emailError instanceof Error ? emailError.message : 'Unknown');
               }
             }
 
@@ -152,8 +146,7 @@ export async function GET(
           }
         }
       } catch (xremitError) {
-        // Log error but don't fail the request
-        console.error(`xRemit fallback failed for order ${orderId}:`, xremitError);
+        logger.error(`[Orders] xRemit fallback failed for ${orderId}`);
       }
     }
 
@@ -164,12 +157,9 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching order:', error);
+    logger.error('[Orders] Error fetching order:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch order'
-      },
+      { success: false, error: 'Failed to fetch order' },
       { status: 500 }
     );
   }

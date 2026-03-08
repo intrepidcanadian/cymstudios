@@ -313,7 +313,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
             </label>
             <div className="flex gap-2">
               <div
-                className="flex-1 py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg text-center"
+                className="flex-1 py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg text-center"
               >
                 Digital USDC Tokens
               </div>
@@ -324,7 +324,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               </p>
             )}
             {walletAvailable && (
-              <p className="text-xs text-purple-300 mt-2">
+              <p className="text-xs text-indigo-300 mt-2">
                 Redeem with digital USDC tokens on Ethereum Mainnet. You&apos;ll be prompted to sign with your wallet.
               </p>
             )}
@@ -335,7 +335,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
             <label className="block text-sm font-bold text-slate-100 mb-2">
               Amount ({product.currency})
               {amount && usdcAmount && (
-                <span className="ml-2 text-purple-400 font-normal">
+                <span className="ml-2 text-indigo-400 font-normal">
                   = {usdcAmount} USDC tokens
                 </span>
               )}
@@ -349,7 +349,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               <select
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
                 required
               >
@@ -368,7 +368,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder={`${product.value_restrictions?.minVal || product.value_restrictions?.min || 1} - ${product.value_restrictions?.maxVal || product.value_restrictions?.max || 1000}`}
-                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
                   required
                   disabled={loading}
                 />
@@ -382,8 +382,8 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
             {/* Token Calculation Breakdown */}
             {amount && usdcAmount && exchangeRate !== null && (
-              <div className="mt-3 p-3 bg-purple-900/30 border border-purple-700/50 rounded-xl text-xs space-y-1">
-                <div className="font-semibold text-purple-300 mb-2">Token Calculation</div>
+              <div className="mt-3 p-3 bg-indigo-900/30 border border-indigo-700/50 rounded-xl text-xs space-y-1">
+                <div className="font-semibold text-indigo-300 mb-2">Token Calculation</div>
                 <div className="flex justify-between text-slate-300">
                   <span>Reward Value:</span>
                   <span className="font-mono">{parseFloat(amount).toFixed(2)} {product.currency}</span>
@@ -404,7 +404,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                   <span>Fees ({FX_BUFFER_PERCENT}%):</span>
                   <span className="font-mono">+{((parseFloat(amount) * (exchangeRate || 1)) * (FX_BUFFER_PERCENT / 100)).toFixed(2)} USD</span>
                 </div>
-                <div className="flex justify-between text-purple-200 font-semibold pt-1 border-t border-purple-700/50">
+                <div className="flex justify-between text-indigo-200 font-semibold pt-1 border-t border-indigo-700/50">
                   <span>Total USDC Tokens:</span>
                   <span className="font-mono">{usdcAmount} USDC</span>
                 </div>
@@ -422,7 +422,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+              className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
               required
               disabled={loading}
             />
@@ -442,7 +442,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
@@ -455,7 +455,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
@@ -473,7 +473,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
             <button
               type="submit"
               disabled={loading || !email || !amount || !walletAvailable}
-              className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               {loading ? 'Processing...' : 'Redeem with Tokens'}
             </button>
@@ -488,8 +488,8 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
           </div>
 
           {/* Info Box */}
-          <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl backdrop-blur-sm">
-            <p className="text-xs text-purple-300">
+          <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl backdrop-blur-sm">
+            <p className="text-xs text-indigo-300">
               Redeem with the exact amount in digital USDC tokens. Your reward voucher will be delivered via email within a few minutes after confirmation.
             </p>
           </div>

@@ -1,11 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendVoucherEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const WEBHOOK_SECRET = process.env.XREMIT_WEBHOOK_API_KEY;
+
+/**
+ * Verify webhook authenticity using HMAC-SHA256 or constant-time key comparison.
+ *
+ * Preferred: X-Webhook-Signature: sha256=<hex digest of HMAC(body, secret)>
+ * Fallback:  Authorization: <api-key> (constant-time compare)
+ *
+ * Both methods are MANDATORY — if XREMIT_WEBHOOK_API_KEY is not set,
+ * all webhook requests are rejected.
+ */
+function verifyWebhookAuth(rawBody: string, request: NextRequest): boolean {
+  if (!WEBHOOK_SECRET) {
+    return false; // Secret not configured — reject all
+  }
+
+  // Preferred: HMAC signature header
+  const sigHeader = request.headers.get('x-webhook-signature');
+  if (sigHeader) {
+    const expectedSig =
+      'sha256=' +
+      crypto.createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest('hex');
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(sigHeader),
+        Buffer.from(expectedSig)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // Fallback: plain Authorization header (constant-time compare)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) {
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(authHeader),
+        Buffer.from(WEBHOOK_SECRET)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
 
 /**
  * xRemit Webhook Callback Handler
@@ -16,8 +65,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * {
  *   "id": 120389,
  *   "accountId": 12138,
- *   "orderID": "b8018601-c90d-48d4-8d02-bd68ad100110",  // Note: capital ID
- *   "productId": 12000000037,  // number
+ *   "orderID": "b8018601-c90d-48d4-8d02-bd68ad100110",
+ *   "productId": 12000000037,
  *   "productName": "H&M",
  *   "externalUserId": "user_id_001",
  *   "voucherDiscountPercent": 6,
@@ -36,54 +85,41 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  *   "expiryAndValidity": "...",
  *   "created_at": "2020-10-31T18:46:24.869Z",
  *   "updated_at": "2020-10-31T18:46:40.869Z",
- *   "vouchers": [...]  // Array of vouchers
+ *   "vouchers": [...]
  * }
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify webhook API key (if configured)
-    const authHeader = request.headers.get('authorization');
-    const expectedApiKey = process.env.XREMIT_WEBHOOK_API_KEY;
+    // Read raw body first (needed for HMAC verification)
+    const body = await request.text();
 
-    console.log('[Webhook] Received, verifying authorization...');
-
-    if (expectedApiKey) {
-      if (!authHeader || authHeader !== expectedApiKey) {
-        console.error('[Webhook] Invalid authorization');
-        return NextResponse.json(
-          { success: false, error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-      console.log('[Webhook] Authorization verified');
-    } else {
-      console.warn('[Webhook] XREMIT_WEBHOOK_API_KEY not configured, skipping auth check');
+    // Verify webhook authentication — MANDATORY
+    if (!verifyWebhookAuth(body, request)) {
+      logger.error('[Webhook] Authentication failed');
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const body = await request.text();
-    const webhookData = JSON.parse(body);
+    logger.info('[Webhook] Authentication verified');
 
-    console.log('=================================');
-    console.log('XREMIT WEBHOOK RECEIVED');
-    console.log('=================================');
-    console.log('Full webhook payload:', JSON.stringify(webhookData, null, 2));
-    console.log('=================================');
+    const webhookData = JSON.parse(body);
 
     // Handle both orderID (capital) and orderId (camelCase) for compatibility
     const orderId = webhookData.orderID || webhookData.orderId;
 
-    console.log('[Webhook] Summary:', {
-      orderId: orderId,
+    logger.info('[Webhook] Received:', {
+      orderId,
       status: webhookData.status,
-      productId: webhookData.productId,
       productName: webhookData.productName,
       vouchersCount: webhookData.vouchers?.length || 0,
-      hasError: !!webhookData.error
+      hasError: !!webhookData.error,
     });
 
     // Validate webhook data
     if (!orderId) {
-      console.error('[Webhook] Missing orderId/orderID');
+      logger.error('[Webhook] Missing orderId/orderID');
       return NextResponse.json(
         { success: false, error: 'Missing orderId' },
         { status: 400 }
@@ -92,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     // Check Supabase configuration
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('[Webhook] Supabase configuration missing');
+      logger.error('[Webhook] Supabase configuration missing');
       return NextResponse.json(
         { success: false, error: 'Server configuration error' },
         { status: 500 }
@@ -115,14 +151,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (findError || !existingOrder) {
-      console.error('[Webhook] Order not found:', orderId);
+      logger.error('[Webhook] Order not found:', orderId);
       return NextResponse.json(
         { success: false, error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    console.log('[Webhook] Order found in database');
+    logger.info('[Webhook] Order found in database');
 
     // Prepare update data - map all xRemit fields according to documentation
     const updateData: any = {
@@ -159,7 +195,7 @@ export async function POST(request: NextRequest) {
     if (webhookData.faceValueInBaseCurrency !== undefined) {
       updateData.face_value_in_base_currency = webhookData.faceValueInBaseCurrency;
     }
-    if (webhookData.cost !== undefined) updateData.cost = webhookData.cost; // xRemit provides cost directly
+    if (webhookData.cost !== undefined) updateData.cost = webhookData.cost;
     if (webhookData.commission !== undefined) updateData.commission = webhookData.commission;
     if (webhookData.phazeCommission !== undefined) updateData.phaze_commission = webhookData.phazeCommission;
     if (webhookData.voucherCurrency) updateData.voucher_currency = webhookData.voucherCurrency;
@@ -186,7 +222,6 @@ export async function POST(request: NextRequest) {
     // Handle error field - can be null, string, or stringified array
     if (webhookData.error !== null && webhookData.error !== undefined) {
       let errorMessage = webhookData.error;
-      // If error is a stringified array, parse it
       if (typeof errorMessage === 'string' && errorMessage.startsWith('[')) {
         try {
           const errorArray = JSON.parse(errorMessage);
@@ -200,17 +235,14 @@ export async function POST(request: NextRequest) {
 
     // Extract voucher information - xRemit sends array of vouchers
     if (webhookData.vouchers && Array.isArray(webhookData.vouchers) && webhookData.vouchers.length > 0) {
-      // Store complete vouchers array as JSONB
       updateData.vouchers = webhookData.vouchers;
 
-      // Extract first voucher to main fields for easy access
       const firstVoucher = webhookData.vouchers[0];
       if (firstVoucher.code) updateData.voucher_code = firstVoucher.code;
       if (firstVoucher.pin) updateData.voucher_pin = firstVoucher.pin;
       if (firstVoucher.validityDate) updateData.voucher_validity_date = firstVoucher.validityDate;
       if (firstVoucher.voucherCurrency) updateData.voucher_currency = firstVoucher.voucherCurrency || updateData.voucher_currency;
       if (firstVoucher.faceValue !== undefined) {
-        // Use voucher faceValue if provided, otherwise keep webhook faceValue
         if (!updateData.face_value) updateData.face_value = firstVoucher.faceValue;
       }
     }
@@ -222,31 +254,24 @@ export async function POST(request: NextRequest) {
       .eq('order_id', orderId);
 
     if (updateError) {
-      console.error('[Webhook] Failed to update order:', updateError);
+      logger.error('[Webhook] Failed to update order:', updateError);
       return NextResponse.json(
         { success: false, error: 'Failed to update order' },
         { status: 500 }
       );
     }
 
-    console.log('=================================');
-    console.log('ORDER UPDATED SUCCESSFULLY');
-    console.log('=================================');
-    console.log('Order ID:', orderId);
-    console.log('Status:', updateData.status);
-    console.log('Product:', webhookData.productName || 'N/A');
-    console.log('Face Value:', updateData.face_value || 'N/A');
-    console.log('Cost:', updateData.cost || 'N/A');
-    console.log('Commission:', updateData.commission || 'N/A');
-    console.log('Voucher Code:', updateData.voucher_code || 'N/A');
-    console.log('Voucher PIN:', updateData.voucher_pin || 'N/A');
-    console.log('Vouchers Count:', webhookData.vouchers?.length || 0);
-    console.log('=================================');
+    logger.info('[Webhook] Order updated:', {
+      orderId,
+      status: updateData.status,
+      product: webhookData.productName || 'N/A',
+      faceValue: updateData.face_value || 'N/A',
+      vouchersCount: webhookData.vouchers?.length || 0,
+    });
 
     // Send email notification to customer with voucher details
     if (updateData.status === 'completed' && updateData.voucher_code && existingOrder.user_email) {
       try {
-        // Fetch product image from brands table
         let productImage: string | null = null;
         if (existingOrder.product_id) {
           try {
@@ -260,17 +285,15 @@ export async function POST(request: NextRequest) {
               productImage = brandData.product_image;
             }
           } catch (err) {
-            console.warn('Could not fetch product image for email:', err);
+            logger.warn('[Webhook] Could not fetch product image for email');
           }
         }
 
-        // Extract redemption URL from voucher code if it's a URL
         const voucherCode = updateData.voucher_code;
         const redemptionUrl = (voucherCode.startsWith('http://') || voucherCode.startsWith('https://'))
           ? voucherCode
           : undefined;
 
-        // Send email
         const emailResult = await sendVoucherEmail({
           to: existingOrder.user_email,
           orderId: orderId,
@@ -286,12 +309,12 @@ export async function POST(request: NextRequest) {
         });
 
         if (emailResult.success) {
-          console.log('Voucher email sent successfully to:', existingOrder.user_email);
+          logger.info('[Webhook] Voucher email sent for order:', orderId);
         } else {
-          console.warn('Failed to send voucher email:', emailResult.error);
+          logger.warn('[Webhook] Failed to send voucher email:', emailResult.error);
         }
       } catch (emailError) {
-        console.error('Error sending voucher email:', emailError);
+        logger.error('[Webhook] Error sending voucher email');
         // Don't fail the webhook if email fails - order is still updated successfully
       }
     }
@@ -301,16 +324,12 @@ export async function POST(request: NextRequest) {
       message: 'Webhook processed successfully',
       orderId: orderId,
       status: updateData.status,
-      voucherCode: updateData.voucher_code
     });
 
   } catch (error) {
-    console.error('[Webhook] Processing error:', error);
+    logger.error('[Webhook] Processing error:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Webhook processing failed'
-      },
+      { success: false, error: 'Webhook processing failed' },
       { status: 500 }
     );
   }

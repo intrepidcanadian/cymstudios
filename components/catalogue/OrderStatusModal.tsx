@@ -124,7 +124,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
 
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
               <p className="text-slate-400">Loading order details...</p>
             </div>
           ) : error ? (
@@ -164,7 +164,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                           console.error('Failed to copy order ID:', err);
                         }
                       }}
-                      className="flex items-center justify-center w-7 h-7 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-purple-500 transition-colors cursor-pointer"
+                      className="flex items-center justify-center w-7 h-7 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
                       title="Copy full order ID"
                     >
                       {orderIdCopied ? (
@@ -270,7 +270,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                                 rel="noopener noreferrer"
                                 className="block"
                               >
-                                <div className="relative bg-gradient-to-br from-purple-900/40 to-slate-800 rounded-xl p-6 border-2 border-purple-700/50 hover:border-purple-500 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 overflow-hidden group cursor-pointer">
+                                <div className="relative bg-gradient-to-br from-indigo-900/40 to-slate-800 rounded-xl p-6 border-2 border-indigo-700/50 hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 overflow-hidden group cursor-pointer">
                                   {/* Decorative background pattern */}
                                   <div className="absolute inset-0 opacity-5">
                                     <div className="absolute inset-0" style={{
@@ -290,7 +290,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                                           className="w-full h-full object-contain"
                                         />
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-slate-700 rounded">
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/40 to-slate-700 rounded">
                                           <span className="text-5xl">🎁</span>
                                         </div>
                                       )}
@@ -302,7 +302,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                                         {order.product_name || order.brand_name}
                                       </h5>
                                       {order.face_value && (
-                                        <div className="text-2xl font-bold text-purple-400 mb-1">
+                                        <div className="text-2xl font-bold text-indigo-400 mb-1">
                                           {order.voucher_currency || order.currency} {order.face_value}
                                         </div>
                                       )}
@@ -317,7 +317,7 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                                     </div>
 
                                     {/* Arrow icon */}
-                                    <div className="flex-shrink-0 text-purple-400 group-hover:translate-x-1 transition-transform">
+                                    <div className="flex-shrink-0 text-indigo-400 group-hover:translate-x-1 transition-transform">
                                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                       </svg>
@@ -342,10 +342,10 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
                             {/* Copy Button */}
                             <button
                               onClick={handleCopy}
-                              className="w-full p-3 bg-purple-900/30 border-2 border-purple-700/50 rounded-lg hover:bg-purple-900/50 hover:border-purple-600 transition-colors cursor-pointer text-center"
+                              className="w-full p-3 bg-indigo-900/30 border-2 border-indigo-700/50 rounded-lg hover:bg-indigo-900/50 hover:border-indigo-600 transition-colors cursor-pointer text-center"
                             >
-                              <div className="text-sm font-medium text-purple-200">Copy {codeUrl ? 'Redemption URL' : 'Code'}</div>
-                              <div className="text-xs text-purple-400 mt-1">Click to copy to clipboard</div>
+                              <div className="text-sm font-medium text-indigo-200">Copy {codeUrl ? 'Redemption URL' : 'Code'}</div>
+                              <div className="text-xs text-indigo-400 mt-1">Click to copy to clipboard</div>
                             </button>
                           </div>
                         );

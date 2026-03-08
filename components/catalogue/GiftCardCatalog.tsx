@@ -5,13 +5,18 @@ import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
 import OrderStatusModal from './OrderStatusModal';
-import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard } from 'lucide-react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send } from 'lucide-react';
+import { usePrivy, useWallets, useExportWallet } from '@privy-io/react-auth';
+import { useUsdcBalance } from '@/hooks/useUsdcBalance';
+import WalletViewModal from './WalletViewModal';
+import SendUsdcModal from './SendUsdcModal';
 
 export default function GiftCardCatalog() {
   const { ready: privyReady, authenticated, user, login, logout } = usePrivy();
   const { wallets } = useWallets();
+  const { exportWallet } = useExportWallet();
   const embeddedWallet = wallets.find(w => w.walletClientType === 'privy');
+  const { balance: usdcBalance, ethBalance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(embeddedWallet?.address);
 
   const [brands, setBrands] = useState<BrandProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +42,10 @@ export default function GiftCardCatalog() {
 
   // Mobile filter drawer state
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Wallet modals
+  const [showWalletView, setShowWalletView] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
 
   // Purchase modal state
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -129,9 +138,9 @@ export default function GiftCardCatalog() {
   // Get unique brand names
   const allUniqueBrands = Array.from(new Set(brandsArray.map(b => b.brand_name))).sort();
 
-  // Get unique countries and currencies for filters
-  const uniqueCountries = Array.from(new Set(brandsArray.map(b => b.country_name).filter(Boolean))) as string[];
-  const uniqueCurrencies = Array.from(new Set(brandsArray.map(b => b.currency).filter(Boolean))) as string[];
+  // Static filter options so selecting one filter doesn't collapse the other
+  const availableCountries = ['United States of America', 'Canada', 'Hong Kong', 'United Kingdom'];
+  const availableCurrencies = ['USD', 'CAD', 'HKD', 'GBP'];
 
   // Apply all filters — exclude Mastercard products from gift cards tab
   let filteredProducts = brandsArray.filter(b => !b.brand_name.toLowerCase().includes('mastercard'));
@@ -219,7 +228,7 @@ export default function GiftCardCatalog() {
             placeholder="Search for a brand..."
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none hover:border-slate-500 transition-colors"
+            className="w-full pl-11 pr-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
           />
           <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -234,7 +243,7 @@ export default function GiftCardCatalog() {
             type="checkbox"
             checked={showUniqueBrandsOnly}
             onChange={(e) => setShowUniqueBrandsOnly(e.target.checked)}
-            className="w-5 h-5 text-purple-600 border-slate-500 rounded focus:ring-purple-500 bg-slate-700"
+            className="w-5 h-5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700"
           />
           <div className="flex-1">
             <span className="text-sm font-bold text-slate-100 block">Show Unique Brands Only</span>
@@ -249,10 +258,10 @@ export default function GiftCardCatalog() {
         <select
           value={countryFilter}
           onChange={(e) => setCountryFilter(e.target.value)}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none hover:border-slate-500 transition-colors"
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
         >
           <option value="all">All Countries</option>
-          {uniqueCountries.map(country => (
+          {availableCountries.map(country => (
             <option key={country} value={country}>{country}</option>
           ))}
         </select>
@@ -264,10 +273,10 @@ export default function GiftCardCatalog() {
         <select
           value={currencyFilter}
           onChange={(e) => setCurrencyFilter(e.target.value)}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none hover:border-slate-500 transition-colors"
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
         >
           <option value="all">All Currencies</option>
-          {uniqueCurrencies.map(currency => (
+          {availableCurrencies.map(currency => (
             <option key={currency} value={currency}>{currency}</option>
           ))}
         </select>
@@ -283,13 +292,13 @@ export default function GiftCardCatalog() {
                 type="checkbox"
                 checked={selectedBrandFilters.includes(brandName)}
                 onChange={() => toggleBrandFilter(brandName)}
-                className="w-5 h-5 text-purple-600 border-slate-500 rounded focus:ring-purple-500 bg-slate-700"
+                className="w-5 h-5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700"
               />
               <span className="text-sm text-slate-200 font-medium">{brandName}</span>
             </label>
           ))}
           {allUniqueBrands.length > 30 && (
-            <button className="text-sm text-purple-400 hover:text-purple-300 font-bold ml-2">
+            <button className="text-sm text-indigo-400 hover:text-indigo-300 font-bold ml-2">
               View All ({allUniqueBrands.length})
             </button>
           )}
@@ -322,7 +331,7 @@ export default function GiftCardCatalog() {
           {/* LEFT SIDEBAR - Filters (Hidden on mobile, shown on lg+) */}
           <aside className="hidden lg:block w-80 bg-slate-800 border-r border-slate-700 overflow-y-auto flex-shrink-0 shadow-sm">
             <div className="p-8">
-              <Link href="/" className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 font-medium mb-6 text-sm">
+              <Link href="/" className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium mb-6 text-sm">
                 &larr; CYM Studio
               </Link>
 
@@ -336,17 +345,25 @@ export default function GiftCardCatalog() {
                 ) : authenticated && user ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
                         <Wallet className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-slate-200 truncate">
+                        <button
+                          onClick={() => embeddedWallet && setShowWalletView(true)}
+                          className="text-xs font-medium text-slate-200 truncate hover:text-indigo-400 transition-colors cursor-pointer text-left w-full block"
+                          title="View wallet details"
+                        >
                           {user.email?.address || user.google?.email || 'Connected'}
-                        </p>
+                        </button>
                         {embeddedWallet && (
-                          <p className="text-[10px] text-slate-400 font-mono truncate">
+                          <button
+                            onClick={() => setShowWalletView(true)}
+                            className="text-[10px] text-slate-400 hover:text-indigo-400 font-mono truncate transition-colors cursor-pointer text-left w-full block"
+                            title="View wallet details"
+                          >
                             {embeddedWallet.address.slice(0, 6)}...{embeddedWallet.address.slice(-4)}
-                          </p>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -361,7 +378,7 @@ export default function GiftCardCatalog() {
                 ) : (
                   <button
                     onClick={login}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
                     <Wallet className="w-4 h-4" />
                     Sign In
@@ -405,7 +422,7 @@ export default function GiftCardCatalog() {
                 <div className="p-4 border-t border-slate-700 bg-slate-800">
                   <button
                     onClick={() => setShowMobileFilters(false)}
-                    className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition-colors"
+                    className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors"
                   >
                     Show {filteredProducts.length} Results
                   </button>
@@ -420,7 +437,7 @@ export default function GiftCardCatalog() {
               {/* Program Scope Notice */}
               <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700">
                 <div className="flex items-start gap-3">
-                  <Shield className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <Shield className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <h3 className="text-sm font-semibold text-slate-100 mb-1">Loyalty Reward Center</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
@@ -436,7 +453,7 @@ export default function GiftCardCatalog() {
                   onClick={() => setActiveTab('giftcards')}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === 'giftcards'
-                      ? 'border-purple-500 text-purple-400'
+                      ? 'border-indigo-500 text-indigo-400'
                       : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -446,7 +463,7 @@ export default function GiftCardCatalog() {
                   onClick={() => setActiveTab('mastercards')}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                     activeTab === 'mastercards'
-                      ? 'border-purple-500 text-purple-400'
+                      ? 'border-indigo-500 text-indigo-400'
                       : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -458,7 +475,7 @@ export default function GiftCardCatalog() {
               {/* Top Bar */}
               <div className="flex items-center justify-between mb-4 sm:mb-8 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="hidden sm:block h-1 w-1 bg-purple-500 rounded-full flex-shrink-0"></div>
+                  <div className="hidden sm:block h-1 w-1 bg-indigo-500 rounded-full flex-shrink-0"></div>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-100 truncate">
                     {activeTab === 'giftcards' ? (
                       <>All Products <span className="text-slate-400 font-normal text-sm sm:text-lg">({filteredProducts.length})</span></>
@@ -473,17 +490,17 @@ export default function GiftCardCatalog() {
                     {privyReady && !authenticated ? (
                       <button
                         onClick={login}
-                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition-colors"
                       >
                         <Wallet className="w-4 h-4" />
                         Sign In
                       </button>
                     ) : privyReady && authenticated ? (
                       <button
-                        onClick={logout}
+                        onClick={() => embeddedWallet && setShowWalletView(true)}
                         className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition-colors border border-slate-600"
                       >
-                        <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
                           <Wallet className="w-2.5 h-2.5 text-white" />
                         </div>
                       </button>
@@ -493,12 +510,12 @@ export default function GiftCardCatalog() {
                   {activeTab === 'giftcards' && (
                     <button
                       onClick={() => setShowMobileFilters(true)}
-                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-purple-500 hover:bg-purple-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                     >
                       <SlidersHorizontal className="w-4 h-4" />
                       Filters
                       {activeFilterCount > 0 && (
-                        <span className="bg-white text-purple-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="bg-white text-indigo-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
                           {activeFilterCount}
                         </span>
                       )}
@@ -512,7 +529,7 @@ export default function GiftCardCatalog() {
                 loadingMastercards ? (
                   <div className="text-center py-20">
                     <div className="relative inline-flex">
-                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-purple-500"></div>
+                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500"></div>
                     </div>
                     <p className="text-slate-400 mt-6 font-medium">Loading Mastercards...</p>
                   </div>
@@ -527,7 +544,7 @@ export default function GiftCardCatalog() {
                     {mastercards.map((product) => (
                       <div
                         key={product.product_id}
-                        className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-purple-500/10 hover:border-slate-600 transition-all duration-300"
+                        className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
                       >
                         {/* Product Image */}
                         <div className="relative h-40 sm:h-56 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden cursor-pointer flex items-center justify-center" onClick={() => setSelectedProduct(product)}>
@@ -564,7 +581,7 @@ export default function GiftCardCatalog() {
 
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-4 py-2.5 min-h-[40px] bg-purple-500 hover:bg-purple-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                            className="w-full px-4 py-2.5 min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                           >
                             View & Redeem
                           </button>
@@ -576,7 +593,7 @@ export default function GiftCardCatalog() {
               ) : loading ? (
                 <div className="text-center py-20">
                   <div className="relative inline-flex">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-purple-500"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500"></div>
                   </div>
                   <p className="text-slate-400 mt-6 font-medium">Loading rewards...</p>
                 </div>
@@ -592,7 +609,7 @@ export default function GiftCardCatalog() {
                       setSearchQuery('');
                       setSearchInput('');
                     }}
-                    className="px-6 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
+                    className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
                   >
                     Clear All Filters
                   </button>
@@ -602,7 +619,7 @@ export default function GiftCardCatalog() {
                   {filteredProducts.map((product) => (
                     <div
                       key={product.product_id}
-                      className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-purple-500/10 hover:border-slate-600 transition-all duration-300"
+                      className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
                     >
                       {/* Like Button */}
                       <button
@@ -676,7 +693,7 @@ export default function GiftCardCatalog() {
                         {/* View Button */}
                         <button
                           onClick={() => setSelectedProduct(product)}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-purple-500 hover:bg-purple-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
                         >
                           View
                         </button>
@@ -751,7 +768,7 @@ export default function GiftCardCatalog() {
                   onClick={() => {
                     setShowPurchaseModal(true);
                   }}
-                  className="w-full px-6 py-3 min-h-[48px] bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg transition-colors"
+                  className="w-full px-6 py-3 min-h-[48px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg transition-colors"
                 >
                   Redeem with Tokens
                 </button>
@@ -793,18 +810,41 @@ export default function GiftCardCatalog() {
       {/* On-Ramp Footer */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-800/95 backdrop-blur-md border-t border-slate-700">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="hidden sm:flex w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 items-center justify-center flex-shrink-0">
-              <CreditCard className="w-4 h-4 text-white" />
+          {/* Left: USDC Balance (when authenticated) */}
+          {authenticated && embeddedWallet ? (
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-xs">$</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">USDC Balance</p>
+                <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
+                  {balanceLoading ? '...' : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSendModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
+                title="Send USDC"
+              >
+                <Send className="w-3 h-3" />
+                <span className="hidden sm:inline">Send</span>
+              </button>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-100 truncate">Need tokens to redeem?</p>
-              <p className="text-xs text-slate-400 truncate hidden sm:block">Purchase digital USDC tokens with fiat currency</p>
+          ) : (
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="hidden sm:flex w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 items-center justify-center flex-shrink-0">
+                <CreditCard className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-100 truncate">Need tokens to redeem?</p>
+                <p className="text-xs text-slate-400 truncate hidden sm:block">Purchase digital USDC tokens with fiat currency</p>
+              </div>
             </div>
-          </div>
+          )}
           <Link
             href="/onramp"
-            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white text-sm font-semibold rounded-lg transition-all shadow-lg hover:shadow-purple-500/20 flex-shrink-0"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white text-sm font-semibold rounded-lg transition-all shadow-lg hover:shadow-indigo-500/20 flex-shrink-0"
           >
             <Wallet className="w-4 h-4" />
             <span className="hidden sm:inline">On-Ramp with OSL Pay</span>
@@ -812,6 +852,31 @@ export default function GiftCardCatalog() {
           </Link>
         </div>
       </div>
+
+      {/* Wallet View Modal */}
+      {showWalletView && embeddedWallet && (
+        <WalletViewModal
+          onClose={() => setShowWalletView(false)}
+          onOpenSendModal={() => setShowSendModal(true)}
+          walletAddress={embeddedWallet.address}
+          userEmail={user?.email?.address || user?.google?.email || 'Connected'}
+          usdcBalance={usdcBalance}
+          ethBalance={ethBalance}
+          balanceLoading={balanceLoading}
+          onRefreshBalance={refetchBalance}
+          onExportWallet={exportWallet}
+        />
+      )}
+
+      {/* Send USDC Modal */}
+      {showSendModal && embeddedWallet && (
+        <SendUsdcModal
+          onClose={() => setShowSendModal(false)}
+          walletAddress={embeddedWallet.address}
+          currentBalance={usdcBalance}
+          onTransactionComplete={refetchBalance}
+        />
+      )}
     </>
   );
 }

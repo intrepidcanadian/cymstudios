@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
 import { getUsdcAmount } from '@/lib/exchange-rates';
+import { generateOrderToken } from '@/lib/auth-token';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,9 +62,8 @@ export async function POST(request: NextRequest) {
       currency
     } = body;
 
-    // Log productId for debugging
-    console.log('[Purchase] Received productId:', productId, 'type:', typeof productId);
-    console.log('[Purchase] Full request body:', JSON.stringify(body, null, 2));
+    logger.info('[Purchase] Received productId:', productId, 'type:', typeof productId);
+    logger.debug('[Purchase] Full request body:', JSON.stringify(body, null, 2));
 
     // Validate required fields
     if (!productId || !price || !userId || !userEmail) {
@@ -82,25 +83,17 @@ export async function POST(request: NextRequest) {
     } else if (typeof productId === 'number') {
       productIdNumber = Math.floor(productId); // Ensure it's an integer
     } else {
-      console.error('[Purchase] Invalid productId type:', typeof productId, productId);
+      logger.error('[Purchase] Invalid productId type:', typeof productId);
       return NextResponse.json(
         { success: false, error: 'Invalid productId format' },
         { status: 400 }
       );
     }
 
-    console.log('[Purchase] Original productId:', productId, 'type:', typeof productId);
-    console.log('[Purchase] Converted productId:', productIdNumber, 'type:', typeof productIdNumber);
-    console.log('[Purchase] Is valid number?', !isNaN(productIdNumber), 'Is integer?', Number.isInteger(productIdNumber));
+    logger.debug('[Purchase] Converted productId:', productIdNumber);
 
     if (isNaN(productIdNumber) || !Number.isInteger(productIdNumber) || productIdNumber <= 0) {
-      console.error('[Purchase] Invalid productId format:', {
-        original: productId,
-        converted: productIdNumber,
-        isNaN: isNaN(productIdNumber),
-        isInteger: Number.isInteger(productIdNumber),
-        isPositive: productIdNumber > 0
-      });
+      logger.error('[Purchase] Invalid productId format');
       return NextResponse.json(
         { success: false, error: `Invalid productId format: ${productId}. Must be a positive integer.` },
         { status: 400 }
@@ -135,7 +128,7 @@ export async function POST(request: NextRequest) {
     // This prevents charging users for failed purchases
 
     // Verify productId exists in our database BEFORE payment
-    console.log('[Purchase] Verifying productId exists in database (BEFORE payment):', productIdNumber);
+    logger.info('[Purchase] Verifying product:', productIdNumber);
     const { data: productData, error: productError } = await supabase
       .from('brands')
       .select('product_id, brand_name, country_name, currency')
@@ -143,11 +136,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (productError || !productData) {
-      console.error('[Purchase] Product not found in database:', {
-        productId: productIdNumber,
-        error: productError,
-        data: productData
-      });
+      logger.error('[Purchase] Product not found:', productIdNumber);
       return NextResponse.json(
         {
           success: false,
@@ -157,16 +146,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Purchase] Product verified in database:', {
-      product_id: productData.product_id,
-      brand_name: productData.brand_name,
-      country: productData.country_name,
-      currency: productData.currency
-    });
+    logger.info('[Purchase] Product verified:', productData.brand_name);
 
     // Verify productId exists in xRemit's catalog BEFORE payment
     // This prevents payment for products that don't exist in xRemit
-    console.log('[Purchase] Verifying productId exists in xRemit catalog (BEFORE payment):', productIdNumber);
+    logger.info('[Purchase] Verifying xRemit catalog for:', productIdNumber);
     try {
       const verifyEndpoint = `/brands/${productIdNumber}`;
       const verifySignature = generateXremitSignature('GET', verifyEndpoint);
@@ -182,11 +166,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!verifyResponse.ok) {
-        console.error('[Purchase] Product not found in xRemit catalog (BEFORE payment):', {
-          productId: productIdNumber,
-          status: verifyResponse.status,
-          brand: productData.brand_name
-        });
+        logger.error('[Purchase] Product not in xRemit catalog:', productIdNumber);
 
         // Return 402 to request payment, but this will fail validation before payment executes
         // Actually, we should return error immediately to prevent payment attempt
@@ -203,12 +183,9 @@ export async function POST(request: NextRequest) {
       }
 
       const verifyData = await verifyResponse.json();
-      console.log('[Purchase] Product verified in xRemit catalog (BEFORE payment):', {
-        productId: verifyData.productId,
-        productName: verifyData.brandName || verifyData.productName
-      });
+      logger.info('[Purchase] xRemit catalog verified:', verifyData.brandName || verifyData.productName);
     } catch (verifyError) {
-      console.warn('[Purchase] Could not verify product in xRemit catalog (continuing anyway):', verifyError);
+      logger.warn('[Purchase] xRemit catalog check failed, continuing');
       // Continue with purchase attempt - verification is best effort
     }
 
@@ -225,9 +202,9 @@ export async function POST(request: NextRequest) {
     let usdcAmountFloat: number;
     try {
       usdcAmountFloat = await getUsdcAmount(price, currency || productData.currency);
-      console.log(`[Purchase] Currency conversion: ${price} ${currency || productData.currency} = ${usdcAmountFloat.toFixed(2)} USDC`);
+      logger.info(`[Purchase] Conversion: ${price} ${currency || productData.currency} = ${usdcAmountFloat.toFixed(2)} USDC`);
     } catch (conversionError) {
-      console.error('[Purchase] Currency conversion failed:', conversionError);
+      logger.error('[Purchase] Currency conversion failed');
       return NextResponse.json(
         {
           success: false,
@@ -285,7 +262,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const paymentData = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
-      console.log('[x402] Payment data received:', JSON.stringify(paymentData, null, 2));
+      logger.info('[x402] Payment data received');
 
       // Validate payment structure
       if (paymentData.x402Version !== 1 || paymentData.scheme !== 'exact') {
@@ -328,10 +305,10 @@ export async function POST(request: NextRequest) {
       paymentNonce = nonce;
 
       // Payment format validated - will execute BEFORE xRemit to ensure we can collect
-      console.log('[x402] Payment format validated (will execute BEFORE xRemit)');
+      logger.info('[x402] Payment format validated');
 
     } catch (paymentError) {
-      console.error('[x402] Payment validation failed:', paymentError);
+      logger.error('[x402] Payment validation failed');
       return NextResponse.json(
         {
           success: false,
@@ -361,7 +338,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError) {
-      console.error('Failed to create order record:', orderError);
+      logger.error('[Purchase] Failed to create order record');
       return NextResponse.json(
         { success: false, error: 'Failed to create order' },
         { status: 500 }
@@ -371,7 +348,7 @@ export async function POST(request: NextRequest) {
     // Execute payment FIRST to ensure we can collect before ordering gift card
     // If payment fails (insufficient balance), no order is placed
     let paymentTxHash: string | null = null;
-    console.log('[x402] Executing payment on Ethereum Mainnet BEFORE xRemit to ensure we can collect...');
+    logger.info('[x402] Executing payment on Ethereum Mainnet...');
     try {
       const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
       const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
@@ -393,14 +370,14 @@ export async function POST(request: NextRequest) {
         sig.s
       );
 
-      console.log('[x402] Transaction submitted on Ethereum Mainnet:', tx.hash);
+      logger.info('[x402] TX submitted:', tx.hash);
       paymentTxHash = tx.hash;
 
       // Wait for confirmation
       const receipt = await tx.wait();
-      console.log('[x402] Payment confirmed on Ethereum Mainnet in block:', receipt.blockNumber);
+      logger.info('[x402] Payment confirmed, block:', receipt.blockNumber);
     } catch (paymentExecutionError) {
-      console.error('[x402] Payment execution failed on Ethereum Mainnet (BEFORE xRemit):', paymentExecutionError);
+      logger.error('[x402] Payment execution failed:', paymentExecutionError instanceof Error ? paymentExecutionError.message : 'Unknown');
 
       // Update order status to failed
       await supabase
@@ -446,9 +423,7 @@ export async function POST(request: NextRequest) {
     const bodyString = JSON.stringify(purchaseBody);
     const signature = generateXremitSignature('POST', uri, bodyString);
 
-    console.log(`[Purchase] Submitting purchase order ${orderId} to xRemit (AFTER payment collected on Ethereum Mainnet)...`);
-    console.log('[Purchase] xRemit request body:', bodyString);
-    console.log('[Purchase] productId being sent to xRemit:', purchaseBody.productId, 'type:', typeof purchaseBody.productId);
+    logger.info(`[Purchase] Submitting order ${orderId} to xRemit...`);
 
     // Submit purchase to xRemit AFTER payment is collected
     // If xRemit fails, we can refund the payment
@@ -477,20 +452,19 @@ export async function POST(request: NextRequest) {
 
       // Handle timeout or network errors
       const isTimeout = fetchError.name === 'AbortError';
-      console.error(`[Purchase] xRemit ${isTimeout ? 'timeout' : 'network error'} AFTER payment was collected on Ethereum Mainnet:`, fetchError);
-      console.error('[Purchase] Payment TX:', paymentTxHash);
+      logger.error(`[Purchase] xRemit ${isTimeout ? 'timeout' : 'network error'}, payment TX: ${paymentTxHash}`);
 
       // REFUND: xRemit failed but we collected payment - refund the user
-      console.log('[Refund] Initiating refund on Ethereum Mainnet due to xRemit timeout/network error...');
+      logger.info('[Refund] Initiating refund...');
       try {
         const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
         const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
         const usdcContract = new ethers.Contract(USDC_CONTRACT, USDC_ABI, facilitator);
 
         const refundTx = await usdcContract.transfer(paymentFrom, paymentValue);
-        console.log('[Refund] Refund transaction submitted on Ethereum Mainnet:', refundTx.hash);
+        logger.info('[Refund] Refund TX submitted:', refundTx.hash);
         const refundReceipt = await refundTx.wait();
-        console.log('[Refund] Refund confirmed on Ethereum Mainnet in block:', refundReceipt.blockNumber);
+        logger.info('[Refund] Refund confirmed, block:', refundReceipt.blockNumber);
 
         // Update order with refund info
         await supabase
@@ -520,7 +494,7 @@ export async function POST(request: NextRequest) {
           { status: 503 }
         );
       } catch (refundError) {
-        console.error('[Refund] Failed to refund payment on Ethereum Mainnet after timeout:', refundError);
+        logger.error('[Refund] Auto-refund failed, manual refund required');
 
         await supabase
           .from('orders')
@@ -550,14 +524,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[Purchase] xRemit response status:', xremitResponse.status);
-    console.log('[Purchase] xRemit response data:', JSON.stringify(xremitData, null, 2));
+    logger.info('[Purchase] xRemit response status:', xremitResponse.status);
 
     // CRITICAL: If xRemit fails AFTER payment, we need to refund
     if (!xremitResponse.ok) {
-      console.error('[Purchase] xRemit purchase failed AFTER payment was collected on Ethereum Mainnet');
-      console.error('[Purchase] Payment TX:', paymentTxHash);
-      console.error('[Purchase] xRemit error:', JSON.stringify(xremitData, null, 2));
+      logger.error('[Purchase] xRemit failed, payment TX:', paymentTxHash);
 
       // If product not found, provide helpful error message
       let errorMessage = xremitData.error || 'Purchase failed';
@@ -566,7 +537,7 @@ export async function POST(request: NextRequest) {
       }
 
       // REFUND: xRemit failed but we collected payment - refund the user
-      console.log('[Refund] Initiating refund on Ethereum Mainnet due to xRemit failure...');
+      logger.info('[Refund] Initiating refund due to xRemit failure...');
       try {
         const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
         const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
@@ -578,9 +549,9 @@ export async function POST(request: NextRequest) {
           paymentValue
         );
 
-        console.log('[Refund] Refund transaction submitted on Ethereum Mainnet:', refundTx.hash);
+        logger.info('[Refund] Refund TX submitted:', refundTx.hash);
         const refundReceipt = await refundTx.wait();
-        console.log('[Refund] Refund confirmed on Ethereum Mainnet in block:', refundReceipt.blockNumber);
+        logger.info('[Refund] Refund confirmed, block:', refundReceipt.blockNumber);
 
         // Update order with refund info
         await supabase
@@ -610,7 +581,7 @@ export async function POST(request: NextRequest) {
           { status: xremitResponse.status }
         );
       } catch (refundError) {
-        console.error('[Refund] Failed to refund payment on Ethereum Mainnet:', refundError);
+        logger.error('[Refund] Auto-refund failed after xRemit error, manual refund required');
 
         // Update order - manual refund required
         await supabase
@@ -679,7 +650,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('order_id', orderId);
 
-    console.log(`Purchase order ${orderId} submitted successfully with xRemit ID: ${xremitData.id}`);
+    logger.info(`[Purchase] Order ${orderId} submitted, xRemit ID: ${xremitData.id}`);
 
     // Create payment tracking data with transaction hash
     const usdcAmountAtomic = Math.floor(usdcAmountFloat * 1000000).toString();
@@ -704,9 +675,13 @@ export async function POST(request: NextRequest) {
     const trackedPayment = updatePaymentWithTxHash(paymentTracking, paymentTxHash!);
     trackedPayment.paymentStatus = 'executed';
 
+    // Generate signed token for order status lookups
+    const orderToken = generateOrderToken(orderId, userId);
+
     return NextResponse.json({
       success: true,
       orderId: orderId,
+      orderToken: orderToken,
       message: 'Order submitted successfully. Voucher details will be sent to your email.',
       data: {
         orderId: orderId,
@@ -720,7 +695,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Purchase error:', error);
+    logger.error('[Purchase] Error:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
       {
         success: false,

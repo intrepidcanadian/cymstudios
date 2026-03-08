@@ -576,7 +576,7 @@ export function OnRampForm({
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 shadow-lg">
           <div className="relative p-6 space-y-4">
             <div className="text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
                 <User className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-foreground">
@@ -682,7 +682,7 @@ export function OnRampForm({
           {/* Compact Header */}
           <div className="text-center space-y-1">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Wallet className="w-4 h-4 text-white" />
               </div>
             </div>
@@ -1033,7 +1033,7 @@ export function OnRampForm({
                 <SelectContent>
                   <SelectItem value="ANY">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
                         <span className="text-xs text-white font-bold">A</span>
                       </div>
                       Any method

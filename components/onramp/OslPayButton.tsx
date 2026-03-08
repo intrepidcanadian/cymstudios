@@ -72,9 +72,9 @@ export function OslPayButton({
           className={`
             relative overflow-hidden group
             px-6 py-4 rounded-xl
-            bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700
-            hover:from-blue-500 hover:via-purple-500 hover:to-blue-600
-            active:from-blue-700 active:via-purple-700 active:to-blue-800
+            bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700
+            hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600
+            active:from-blue-700 active:via-indigo-700 active:to-blue-800
             disabled:from-gray-400 disabled:via-gray-500 disabled:to-gray-600
             disabled:cursor-not-allowed
             transition-all duration-300 ease-out
@@ -94,7 +94,7 @@ export function OslPayButton({
           }}
         >
           <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-xl" />
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-700/20 animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-blue-700/20 animate-pulse" />
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <Sparkles className="w-4 h-4 text-white/60" />
           </div>
@@ -113,7 +113,7 @@ export function OslPayButton({
               </>
             )}
           </div>
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/0 via-purple-400/0 to-blue-400/0 group-hover:from-blue-400/20 group-hover:via-purple-400/20 group-hover:to-blue-400/20 transition-all duration-500" />
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/0 via-indigo-400/0 to-blue-400/0 group-hover:from-blue-400/20 group-hover:via-indigo-400/20 group-hover:to-blue-400/20 transition-all duration-500" />
         </motion.button>
       </motion.div>
 

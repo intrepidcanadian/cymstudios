@@ -120,16 +120,16 @@ export function CryptoNetworkModal({
           className="relative w-full max-w-5xl max-h-[85vh] flex flex-col rounded-2xl my-4"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-slate-50/90 via-slate-100/80 to-slate-50/90 dark:from-slate-900/90 dark:via-slate-800/80 dark:to-slate-900/90 backdrop-blur-xl border border-white/20 dark:border-slate-700/30 shadow-2xl rounded-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 animate-pulse opacity-50 rounded-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 animate-pulse opacity-50 rounded-2xl" />
 
           <div className="relative z-10 flex flex-col h-full overflow-hidden">
             <div className="relative flex items-center justify-between p-6 border-b border-white/10 dark:border-slate-700/30 backdrop-blur-sm">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/20 dark:border-slate-700/30">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 backdrop-blur-sm border border-white/20 dark:border-slate-700/30">
                   <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     Select Cryptocurrency & Network
                   </h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -184,12 +184,12 @@ export function CryptoNetworkModal({
                       transition={{ delay: index * 0.03 }}
                       className={`group relative cursor-pointer rounded-xl p-4 backdrop-blur-md border transition-all duration-300 ${
                         selectedCryptoInternal === crypto.symbol
-                          ? 'bg-gradient-to-br from-blue-500/30 to-purple-500/30 border-blue-500/50 shadow-lg shadow-blue-500/20'
+                          ? 'bg-gradient-to-br from-blue-500/30 to-indigo-500/30 border-blue-500/50 shadow-lg shadow-blue-500/20'
                           : 'bg-white/10 dark:bg-slate-800/30 border-white/20 dark:border-slate-700/30 hover:bg-white/20 dark:hover:bg-slate-700/40 hover:border-blue-400/30 hover:shadow-lg'
                       }`}
                       onClick={() => handleCryptoSelect(crypto.symbol)}
                     >
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-blue-500/0 group-hover:from-blue-500/10 group-hover:via-purple-500/10 group-hover:to-blue-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100" />
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-indigo-500/0 to-blue-500/0 group-hover:from-blue-500/10 group-hover:via-indigo-500/10 group-hover:to-blue-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100" />
                       <div className="relative flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
                           <div className={`p-2 rounded-xl backdrop-blur-sm ${
@@ -250,12 +250,12 @@ export function CryptoNetworkModal({
                             transition={{ delay: index * 0.03 }}
                             className={`group relative cursor-pointer rounded-xl p-4 backdrop-blur-md border transition-all duration-300 ${
                               selectedNetworkInternal === network
-                                ? 'bg-gradient-to-br from-blue-500/30 to-purple-500/30 border-blue-500/50 shadow-lg shadow-blue-500/20'
+                                ? 'bg-gradient-to-br from-blue-500/30 to-indigo-500/30 border-blue-500/50 shadow-lg shadow-blue-500/20'
                                 : 'bg-white/10 dark:bg-slate-800/30 border-white/20 dark:border-slate-700/30 hover:bg-white/20 dark:hover:bg-slate-700/40 hover:border-blue-400/30 hover:shadow-lg'
                             }`}
                             onClick={() => handleNetworkSelect(network)}
                           >
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-blue-500/0 group-hover:from-blue-500/10 group-hover:via-purple-500/10 group-hover:to-blue-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100" />
+                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-indigo-500/0 to-blue-500/0 group-hover:from-blue-500/10 group-hover:via-indigo-500/10 group-hover:to-blue-500/10 transition-all duration-300 opacity-0 group-hover:opacity-100" />
                             <div className="relative flex items-center justify-between">
                               <div className="flex items-center gap-4 flex-1">
                                 <div className={`p-2 rounded-xl backdrop-blur-sm ${
@@ -320,7 +320,7 @@ export function CryptoNetworkModal({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleConfirm}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all flex items-center gap-2 flex-shrink-0"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all flex items-center gap-2 flex-shrink-0"
                   >
                     <Check className="w-4 h-4" />
                     Confirm Selection

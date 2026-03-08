@@ -8,10 +8,12 @@ import crypto from 'crypto';
  * Fetches the full gift card catalogue from xRemit with HMAC-SHA256 authentication
  * and upserts into the local Supabase `brands` table.
  *
+ * Requires: Authorization: Bearer <CRON_SECRET>
+ *
  * Usage:
- *   GET /api/sync-brands?direct=true              - Sync all countries
- *   GET /api/sync-brands?direct=true&country=USA  - Sync one country
- *   GET /api/sync-brands?direct=true&clear=true   - Clear table first, then sync
+ *   GET /api/sync-brands                          - Sync all countries
+ *   GET /api/sync-brands?country=USA              - Sync one country
+ *   GET /api/sync-brands?clear=true               - Clear table first, then sync
  *   GET /api/sync-brands?diagnostic=true           - Show config without syncing
  */
 
@@ -179,14 +181,20 @@ const ALL_COUNTRIES = [
 
 export async function GET(request: NextRequest) {
   try {
-    // Auth check: require ?direct=true or CRON_SECRET
+    // Auth check: require CRON_SECRET Bearer token (no bypass)
     const authHeader = request.headers.get('authorization');
-    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
-    const isDirect = request.nextUrl.searchParams.get('direct') === 'true';
+    const cronSecret = process.env.CRON_SECRET;
 
-    if (!isDirect && authHeader !== expectedAuth) {
+    if (!cronSecret) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Use ?direct=true for manual sync or provide CRON_SECRET.' },
+        { success: false, error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
