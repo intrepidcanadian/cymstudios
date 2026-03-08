@@ -108,17 +108,21 @@ export default function GiftCardCatalog() {
     }
   };
 
-  // Fetch Mastercards when tab is switched
+  // Fetch Mastercards when tab is switched or filters change
   useEffect(() => {
-    if (activeTab === 'mastercards' && !mastercardsFetched) {
+    if (activeTab === 'mastercards') {
       fetchMastercards();
     }
-  }, [activeTab]);
+  }, [activeTab, countryFilter, currencyFilter]);
 
   const fetchMastercards = async () => {
     try {
       setLoadingMastercards(true);
-      const response = await fetch('/api/mastercards');
+      const params = new URLSearchParams();
+      if (countryFilter !== 'all') params.append('country', countryFilter);
+      if (currencyFilter !== 'all') params.append('currency', currencyFilter);
+
+      const response = await fetch(`/api/mastercards?${params.toString()}`);
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
         setMastercards(result.data);

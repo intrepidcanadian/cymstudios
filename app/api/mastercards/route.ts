@@ -6,6 +6,17 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'GBP'];
 
+const COUNTRY_ALIASES: Record<string, string> = {
+  'usa': 'United States of America',
+  'us': 'United States of America',
+  'united states': 'United States of America',
+  'uk': 'United Kingdom',
+  'gb': 'United Kingdom',
+  'great britain': 'United Kingdom',
+  'hk': 'Hong Kong',
+  'ca': 'Canada',
+};
+
 export async function GET(req: NextRequest) {
   try {
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -21,6 +32,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const currency = searchParams.get('currency');
+    const countryParam = searchParams.get('country');
 
     let query = supabase
       .from('brands')
@@ -39,6 +51,11 @@ export async function GET(req: NextRequest) {
       `)
       .ilike('brand_name', '%Mastercard%')
       .gt('discount', 0);
+
+    if (countryParam && countryParam !== 'all') {
+      const normalized = COUNTRY_ALIASES[countryParam.toLowerCase()] || countryParam;
+      query = query.eq('country_name', normalized);
+    }
 
     if (currency && currency !== 'all') {
       query = query.eq('currency', currency);
