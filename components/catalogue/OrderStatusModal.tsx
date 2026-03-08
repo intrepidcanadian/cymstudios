@@ -46,11 +46,12 @@ interface Order {
 
 interface OrderStatusModalProps {
   orderId: string;
+  orderToken: string;
   userEmail: string;
   onClose: () => void;
 }
 
-export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderStatusModalProps) {
+export default function OrderStatusModal({ orderId, orderToken, userEmail, onClose }: OrderStatusModalProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +72,11 @@ export default function OrderStatusModal({ orderId, userEmail, onClose }: OrderS
 
   const fetchOrderStatus = async () => {
     try {
-      const url = `/api/orders/${orderId}?userEmail=${encodeURIComponent(userEmail)}`;
-      const response = await fetch(url);
+      const response = await fetch(`/api/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${orderToken}`,
+        },
+      });
       const data = await response.json();
 
       if (data.success) {

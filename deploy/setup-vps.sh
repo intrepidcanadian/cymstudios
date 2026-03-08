@@ -24,7 +24,7 @@ set -euo pipefail
 # ============================================
 # CONFIGURATION — Edit these before running
 # ============================================
-DOMAIN="cymstudio.com"
+DOMAIN="cymstudio.app"
 REPO_URL="https://github.com/your-username/cymstudio.git"  # Change this
 APP_DIR="/var/www/cymstudio"
 APP_USER="cymapp"

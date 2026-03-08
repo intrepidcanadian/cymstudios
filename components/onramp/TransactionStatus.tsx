@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Clock, Loader2, ArrowLeft, Mail, Copy, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { usePrivy } from '@privy-io/react-auth';
-
 interface OrderData {
   order_id: string;
   status: string;
@@ -28,11 +26,11 @@ interface OrderData {
 interface TransactionStatusProps {
   status: 'success' | 'fail';
   orderId: string | null;
+  orderToken?: string | null;
   onBack: () => void;
 }
 
-export function TransactionStatus({ status, orderId, onBack }: TransactionStatusProps) {
-  const { user } = usePrivy();
+export function TransactionStatus({ status, orderId, orderToken, onBack }: TransactionStatusProps) {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,20 +45,20 @@ export function TransactionStatus({ status, orderId, onBack }: TransactionStatus
       return;
     }
 
-    const userId = user?.id;
-    const userEmail = user?.email?.address || user?.google?.email;
-
-    if (!userId && !userEmail) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const headers: Record<string, string> = {};
-      if (userId) headers['x-user-id'] = userId;
-      if (userEmail) headers['x-user-email'] = userEmail;
+      // Use orderToken if available (from purchase flow)
+      if (!orderToken) {
+        setError('Order token not available. Please check your email for confirmation.');
+        stopPolling();
+        setLoading(false);
+        return;
+      }
 
-      const response = await fetch(`/api/orders/${orderId}`, { headers });
+      const response = await fetch(`/api/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${orderToken}`,
+        },
+      });
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -106,14 +104,14 @@ export function TransactionStatus({ status, orderId, onBack }: TransactionStatus
   };
 
   useEffect(() => {
-    if (orderId && (user?.id || user?.email?.address || user?.google?.email)) {
+    if (orderId && orderToken) {
       startPolling();
     } else {
       setLoading(false);
     }
 
     return () => stopPolling();
-  }, [orderId, user?.id, user?.email?.address, user?.google?.email]);
+  }, [orderId, orderToken]);
 
   const handleCopy = async (text: string, type: 'code' | 'pin') => {
     try {

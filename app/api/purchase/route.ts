@@ -406,7 +406,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare xRemit purchase request
     // productIdNumber is already validated above
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cymstudio.com';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cymstudio.app';
     const purchaseBody = {
       orderId: orderId,
       price: price,

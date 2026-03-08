@@ -51,8 +51,8 @@ export const OSL_PAY_CONFIG = {
 
   // Callback URLs
   callbacks: {
-    success: process.env.NEXT_PUBLIC_OSL_SUCCESS_URL || 'https://cymstudio.com/onramp?status=success',
-    fail: process.env.NEXT_PUBLIC_OSL_FAIL_URL || 'https://cymstudio.com/onramp?status=fail',
+    success: process.env.NEXT_PUBLIC_OSL_SUCCESS_URL || 'https://cymstudio.app/onramp?status=success',
+    fail: process.env.NEXT_PUBLIC_OSL_FAIL_URL || 'https://cymstudio.app/onramp?status=fail',
     webhook: 'https://gswap-server-04651a4e88ed.herokuapp.com/webhooks/osl-pay',
   },
 };

@@ -52,6 +52,7 @@ export default function GiftCardCatalog() {
   const [showOrderStatusModal, setShowOrderStatusModal] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  const [currentOrderToken, setCurrentOrderToken] = useState<string>('');
 
   // Debounce search input
   const handleSearchChange = useCallback((value: string) => {
@@ -784,10 +785,11 @@ export default function GiftCardCatalog() {
               setShowPurchaseModal(false);
               setSelectedProduct(null);
             }}
-            onPurchaseComplete={(orderId, email) => {
+            onPurchaseComplete={(orderId, email, orderToken) => {
               setShowPurchaseModal(false);
               setCurrentOrderId(orderId);
               setCurrentUserEmail(email);
+              setCurrentOrderToken(orderToken);
               setShowOrderStatusModal(true);
             }}
           />
@@ -796,11 +798,13 @@ export default function GiftCardCatalog() {
         {showOrderStatusModal && currentOrderId && (
           <OrderStatusModal
             orderId={currentOrderId}
+            orderToken={currentOrderToken}
             userEmail={currentUserEmail}
             onClose={() => {
               setShowOrderStatusModal(false);
               setCurrentOrderId(null);
               setCurrentUserEmail('');
+              setCurrentOrderToken('');
               setSelectedProduct(null);
             }}
           />

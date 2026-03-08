@@ -8,7 +8,7 @@ import { useWallets } from '@privy-io/react-auth';
 interface PurchaseModalProps {
   product: BrandProduct;
   onClose: () => void;
-  onPurchaseComplete: (orderId: string, userEmail: string) => void;
+  onPurchaseComplete: (orderId: string, userEmail: string, orderToken: string) => void;
 }
 
 interface UserProfile {
@@ -257,7 +257,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
         throw new Error(data.error || 'Redemption failed');
       }
 
-      onPurchaseComplete(data.orderId, email);
+      onPurchaseComplete(data.orderId, email, data.orderToken);
 
     } catch (err) {
       console.error('Redemption error:', err);
