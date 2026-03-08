@@ -22,7 +22,7 @@ export default function RootLayout({
   const privyAppId = process.env.PRIVY_APP_ID;
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body>
         <Providers privyAppId={privyAppId}>
           {children}
