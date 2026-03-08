@@ -1,6 +1,7 @@
 import { useOslPay } from '@/hooks/useOslPay';
+import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { Wallet, Sparkles } from 'lucide-react';
+import { Wallet, Sparkles, LogIn } from 'lucide-react';
 import { OslPayUrlParams } from '@/config/oslPay';
 
 interface OslPayButtonProps extends OslPayUrlParams {
@@ -30,10 +31,17 @@ export function OslPayButton({
   children
 }: OslPayButtonProps) {
   const { openOslPay, loading, error, isBackendAuthenticated } = useOslPay();
+  const { ready: privyReady, authenticated, login } = usePrivy();
+
+  const needsSignIn = privyReady && !authenticated;
 
   const handleClick = async () => {
+    if (needsSignIn) {
+      login();
+      return;
+    }
+
     if (!isBackendAuthenticated) {
-      alert('Please wait for authentication to complete, or refresh the page.');
       return;
     }
 
@@ -60,6 +68,18 @@ export function OslPayButton({
 
   return (
     <div className="relative">
+      {needsSignIn && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 p-3 bg-amber-500/10 backdrop-blur-sm rounded-lg border border-amber-500/20"
+        >
+          <p className="text-amber-400 text-sm font-medium text-center">
+            Please sign in to use OSL Pay
+          </p>
+        </motion.div>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -72,8 +92,10 @@ export function OslPayButton({
           className={`
             relative overflow-hidden group
             px-6 py-4 rounded-xl
-            bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700
-            hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600
+            ${needsSignIn
+              ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-500 hover:via-orange-500 hover:to-amber-600'
+              : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:via-indigo-500 hover:to-blue-600'
+            }
             active:from-blue-700 active:via-indigo-700 active:to-blue-800
             disabled:from-gray-400 disabled:via-gray-500 disabled:to-gray-600
             disabled:cursor-not-allowed
@@ -104,11 +126,18 @@ export function OslPayButton({
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 <span className="text-sm">Processing...</span>
               </div>
+            ) : needsSignIn ? (
+              <>
+                <LogIn className="w-5 h-5" />
+                <span className="text-base font-medium tracking-wide">
+                  Sign In to Continue
+                </span>
+              </>
             ) : (
               <>
                 <Wallet className="w-5 h-5" />
                 <span className="text-base font-medium tracking-wide">
-                  {children || 'Buy/Sell Crypto with OSL Pay'}
+                  {children || 'On-ramp with OSL Pay'}
                 </span>
               </>
             )}
