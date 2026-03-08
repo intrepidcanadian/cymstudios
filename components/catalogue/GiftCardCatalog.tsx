@@ -854,7 +854,7 @@ export default function GiftCardCatalog() {
             className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white text-sm font-semibold rounded-lg transition-all shadow-lg hover:shadow-indigo-500/20 flex-shrink-0"
           >
             <Wallet className="w-4 h-4" />
-            <span className="hidden sm:inline">On-Ramp with OSL Pay</span>
+            <span className="hidden sm:inline">On-Ramp with Ginseng Swap / OSL Pay</span>
             <span className="sm:hidden">On-Ramp</span>
           </Link>
         </div>
