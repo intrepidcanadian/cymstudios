@@ -1,0 +1,74 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "CYM Rewards",
+  "description": "Redeem USDC tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet. Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and GBP. Features interactive MCP App catalog UI, brand search, country/currency filtering, and instant voucher delivery via email. Pricing: Card value + 1.5% service fee in USDC (applied to all currencies).",
+  "image": "https://cymstudio.app/icons/gift-card.svg",
+  "services": [
+    {
+      "name": "MCP",
+      "endpoint": "https://cymstudio.app/api/mcp/rewards",
+      "version": "2024-11-05",
+      "capabilities": ["tools", "resources"],
+      "skills": [
+        "search_giftcards",
+        "get_brand_details",
+        "list_countries",
+        "list_currencies",
+        "purchase_giftcard",
+        "check_order_status",
+        "search_mastercard",
+        "get_mastercard_details",
+        "list_mastercard_countries",
+        "list_mastercard_currencies",
+        "purchase_mastercard",
+        "check_mastercard_order"
+      ],
+      "ui_resources": [
+        {
+          "uri": "ui://cymstudio/rewards-catalog",
+          "name": "rewards_catalog",
+          "mimeType": "text/html;profile=mcp-app",
+          "description": "Interactive rewards catalog with brand browsing, denomination selection, FX conversion preview, and checkout redirect."
+        }
+      ]
+    },
+    {
+      "name": "A2A",
+      "endpoint": "https://ginsengswap-giftcard-agent.fly.dev:3001/.well-known/agent-card",
+      "version": "0.2.1",
+      "skills": [
+        "gift_card_search",
+        "gift_card_redemption",
+        "brand_catalog",
+        "order_tracking"
+      ]
+    },
+    {
+      "name": "OASF",
+      "endpoint": "https://schema.oasf.outshift.com/0.8.0",
+      "version": "v0.8.0",
+      "skills": [
+        "retrieval_augmented_generation",
+        "tool_interaction",
+        "natural_language_processing"
+      ],
+      "domains": [
+        "retail_and_ecommerce",
+        "finance_and_business"
+      ]
+    },
+    {
+      "name": "email",
+      "endpoint": "info@ginsengswap.com"
+    }
+  ],
+  "registrations": [
+    {
+      "agentId": 22628,
+      "agentRegistry": "eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "supportedTrust": ["reputation"],
+  "active": true,
+  "x402Support": true
+}

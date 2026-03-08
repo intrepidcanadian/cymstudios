@@ -1,0 +1,116 @@
+{
+  "name": "CYM Rewards",
+  "description": "Redeem USDC tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet. Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and GBP. Pricing: Card value + 1.5% service fee in USDC (all currencies).",
+  "url": "https://ginsengswap-giftcard-agent.fly.dev:3001",
+  "version": "0.2.1",
+  "documentationUrl": "https://cymstudio.app/docs/rewards",
+  "provider": {
+    "organization": "CYM Studio",
+    "url": "https://cymstudio.app"
+  },
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "securitySchemes": {},
+  "security": [],
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text", "data"],
+  "supportedInterfaces": [
+    {
+      "url": "https://ginsengswap-giftcard-agent.fly.dev:3001/a2a",
+      "protocolBinding": "jsonrpc/http",
+      "protocolVersion": "0.2.1"
+    }
+  ],
+  "skills": [
+    {
+      "id": "search-giftcards",
+      "name": "Search Gift Cards",
+      "description": "Search available gift cards by brand, country, or currency. Returns matching products with pricing and availability. Supports USD, CAD, HKD, and GBP currencies.",
+      "tags": ["search", "gift-cards", "rewards"],
+      "examples": [
+        "Find Amazon gift cards",
+        "What gift cards are available in Canada?",
+        "Show me HKD gift cards",
+        "Search for Starbucks cards in Hong Kong"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "get-brand-details",
+      "name": "Get Brand Details",
+      "description": "Get detailed information about a specific gift card brand including denominations, restrictions, and terms.",
+      "tags": ["details", "gift-cards", "product-info"],
+      "examples": [
+        "Tell me about Starbucks gift cards",
+        "What denominations are available for iTunes?"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "redeem-giftcard",
+      "name": "Redeem Gift Card",
+      "description": "Redeem USDC tokens for a gift card on Ethereum Mainnet. Voucher is delivered via email. Supports USD, CAD, HKD, and GBP denominations. A 1.5% service fee is applied.",
+      "tags": ["redeem", "payment", "gift-cards", "x402"],
+      "examples": [
+        "Redeem $50 for an Amazon gift card",
+        "Use USDC to get a 100 CAD Tim Hortons gift card",
+        "Redeem tokens for a 500 HKD Apple gift card"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "check-order-status",
+      "name": "Check Order Status",
+      "description": "Check the status of a reward redemption order and retrieve voucher details.",
+      "tags": ["orders", "status", "tracking"],
+      "examples": [
+        "What's the status of my order?",
+        "Check order abc123"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "browse-catalog",
+      "name": "Browse Rewards Catalog",
+      "description": "Interactive MCP App UI for browsing the rewards catalog with images, denomination selection, FX conversion preview, and checkout redirect.",
+      "tags": ["catalog", "browse", "ui", "mcp-app"],
+      "examples": [
+        "Show me the rewards catalog",
+        "Browse available gift cards"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "search-mastercard",
+      "name": "Search Mastercard Prepaid",
+      "description": "Search available Mastercard Prepaid cards. Returns Mastercard Prepaid products in USD and GBP.",
+      "tags": ["search", "mastercard", "prepaid"],
+      "examples": [
+        "Find Mastercard Prepaid cards",
+        "Show me Mastercard gift cards in GBP"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "redeem-mastercard",
+      "name": "Redeem Mastercard Prepaid",
+      "description": "Redeem USDC tokens for a Mastercard Prepaid card on Ethereum Mainnet. Supports USD and GBP. A 1.5% service fee is applied.",
+      "tags": ["redeem", "mastercard", "prepaid", "x402"],
+      "examples": [
+        "Redeem $100 for a Mastercard Prepaid card",
+        "Use USDC for a 50 GBP Mastercard"
+      ],
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ]
+}
