@@ -846,7 +846,6 @@ export default function GiftCardCatalog() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-100 truncate">Need tokens to redeem?</p>
-                <p className="text-xs text-slate-400 truncate hidden sm:block">Purchase digital USDC tokens with fiat currency</p>
               </div>
             </div>
           )}

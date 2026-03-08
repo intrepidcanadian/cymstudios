@@ -117,7 +117,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
   }, [userProfile, embeddedWallet, wallets]);
 
   // Fetch USDC quote when amount changes
-  // Includes 1.5% FX buffer to cover on-ramp/off-ramp costs and volatility
+  // Includes 1.5% market volatility buffer since exchange rates are refreshed twice daily
   const FX_BUFFER_PERCENT = 1.5;
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
         return;
       }
 
-      // Apply 1.5% FX buffer to all currencies (covers on-ramp/off-ramp costs)
+      // Apply 1.5% market volatility buffer (exchange rates refreshed twice daily)
       const bufferMultiplier = 1 + (FX_BUFFER_PERCENT / 100);
 
       // If currency is already USD, apply buffer for USDC conversion
@@ -401,7 +401,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                   </div>
                 )}
                 <div className="flex justify-between text-slate-300">
-                  <span>Fees ({FX_BUFFER_PERCENT}%):</span>
+                  <span>Market Volatility Buffer ({FX_BUFFER_PERCENT}%):</span>
                   <span className="font-mono">+{((parseFloat(amount) * (exchangeRate || 1)) * (FX_BUFFER_PERCENT / 100)).toFixed(2)} USD</span>
                 </div>
                 <div className="flex justify-between text-indigo-200 font-semibold pt-1 border-t border-indigo-700/50">
