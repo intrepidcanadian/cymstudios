@@ -69,6 +69,34 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+.comingSoon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 14px 24px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #e0e0e0 0%, #c0c0c0 100%);
+  color: #666;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: not-allowed;
+}
+
+.comingSoonBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #ff9800;
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .tabs {
   display: flex;
   gap: 10px;
