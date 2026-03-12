@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BrandProduct } from '@/lib/types/catalogue';
 import { payWithX402, setPrivyWalletProvider } from '@/lib/x402-client';
-import { useWallets, usePrivy } from '@privy-io/react-auth';
+import { useWallets, usePrivy, useCreateWallet } from '@privy-io/react-auth';
 
 interface PurchaseModalProps {
   product: BrandProduct;
@@ -20,6 +20,7 @@ interface UserProfile {
 export default function PurchaseModal({ product, onClose, onPurchaseComplete }: PurchaseModalProps) {
   const { wallets } = useWallets();
   const { ready, authenticated, login } = usePrivy();
+  const { createWallet } = useCreateWallet();
   const [amount, setAmount] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
@@ -27,6 +28,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletAvailable, setWalletAvailable] = useState(false);
+  const [walletCreating, setWalletCreating] = useState(false);
   const [usdcAmount, setUsdcAmount] = useState<string | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
@@ -124,6 +126,27 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
     setupWallet();
   }, [userProfile, embeddedWallet, wallets, ready, authenticated]);
+
+  // Fallback: if authenticated but no embedded wallet after 3s, try creating one
+  useEffect(() => {
+    if (!ready || !authenticated || embeddedWallet || walletCreating) return;
+
+    const timeout = setTimeout(async () => {
+      console.log('No embedded wallet found after delay, attempting to create one...');
+      setWalletCreating(true);
+      try {
+        await createWallet();
+        console.log('Wallet created successfully');
+      } catch (err) {
+        // Wallet may already exist, which throws — that's ok
+        console.log('createWallet result:', err);
+      } finally {
+        setWalletCreating(false);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [ready, authenticated, embeddedWallet, walletCreating, createWallet]);
 
   // Fetch USDC quote when amount changes
   // Includes 1.5% market volatility buffer since exchange rates are refreshed twice daily
@@ -347,9 +370,14 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               </div>
             )}
             {!walletAvailable && ready && authenticated && (
-              <p className="text-xs text-yellow-400 mt-2">
-                Setting up your embedded wallet... Please wait.
-              </p>
+              <div className="mt-2">
+                <p className="text-xs text-yellow-400">
+                  {walletCreating ? 'Creating your wallet...' : 'Setting up your embedded wallet...'}
+                </p>
+                <div className="mt-2 h-1 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-400/60 rounded-full animate-pulse" style={{ width: '60%' }} />
+                </div>
+              </div>
             )}
             {walletAvailable && (
               <p className="text-xs text-indigo-300 mt-2">
