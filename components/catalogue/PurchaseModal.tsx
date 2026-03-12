@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BrandProduct } from '@/lib/types/catalogue';
 import { payWithX402, setPrivyWalletProvider } from '@/lib/x402-client';
-import { useWallets } from '@privy-io/react-auth';
+import { useWallets, usePrivy } from '@privy-io/react-auth';
 
 interface PurchaseModalProps {
   product: BrandProduct;
@@ -19,6 +19,7 @@ interface UserProfile {
 
 export default function PurchaseModal({ product, onClose, onPurchaseComplete }: PurchaseModalProps) {
   const { wallets } = useWallets();
+  const { ready, authenticated, login } = usePrivy();
   const [amount, setAmount] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
@@ -54,6 +55,14 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
 
     // Set Privy wallet provider if available
     const setupWallet = async () => {
+      if (!ready) {
+        // Privy SDK still initializing, wait for next render
+        return;
+      }
+      if (!authenticated) {
+        setWalletAvailable(false);
+        return;
+      }
       if (embeddedWallet) {
         try {
           console.log('Setting up Privy embedded wallet...', {
@@ -114,7 +123,7 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
     };
 
     setupWallet();
-  }, [userProfile, embeddedWallet, wallets]);
+  }, [userProfile, embeddedWallet, wallets, ready, authenticated]);
 
   // Fetch USDC quote when amount changes
   // Includes 1.5% market volatility buffer since exchange rates are refreshed twice daily
@@ -318,9 +327,28 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
                 Digital USDC Tokens
               </div>
             </div>
-            {!walletAvailable && (
-              <p className="text-xs text-red-400 mt-2">
-                No wallet connected. Please sign in with Privy to redeem with tokens.
+            {!walletAvailable && !ready && (
+              <p className="text-xs text-yellow-400 mt-2">
+                Initializing wallet...
+              </p>
+            )}
+            {!walletAvailable && ready && !authenticated && (
+              <div className="mt-2">
+                <p className="text-xs text-red-400 mb-2">
+                  No wallet connected. Sign in to redeem with tokens.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => login()}
+                  className="w-full py-2.5 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md"
+                >
+                  Sign in with Privy
+                </button>
+              </div>
+            )}
+            {!walletAvailable && ready && authenticated && (
+              <p className="text-xs text-yellow-400 mt-2">
+                Setting up your embedded wallet... Please wait.
               </p>
             )}
             {walletAvailable && (
