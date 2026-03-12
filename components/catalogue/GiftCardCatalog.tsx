@@ -6,7 +6,7 @@ import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
 import OrderStatusModal from './OrderStatusModal';
 import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send } from 'lucide-react';
-import { usePrivy, useWallets, useExportWallet } from '@privy-io/react-auth';
+import { usePrivy, useWallets, useExportWallet, useCreateWallet } from '@privy-io/react-auth';
 import { useUsdcBalance } from '@/hooks/useUsdcBalance';
 import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
@@ -15,6 +15,7 @@ export default function GiftCardCatalog() {
   const { ready: privyReady, authenticated, user, login, logout } = usePrivy();
   const { wallets } = useWallets();
   const { exportWallet } = useExportWallet();
+  const { createWallet } = useCreateWallet();
   const embeddedWallet = wallets.find(w => w.walletClientType === 'privy');
   const { balance: usdcBalance, ethBalance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(embeddedWallet?.address);
 
@@ -137,6 +138,24 @@ export default function GiftCardCatalog() {
       setLoadingMastercards(false);
     }
   };
+
+  // Fallback: if authenticated but no embedded wallet after 3s, try creating one
+  useEffect(() => {
+    if (!privyReady || !authenticated || embeddedWallet) return;
+
+    const timeout = setTimeout(async () => {
+      console.log('[GiftCardCatalog] No embedded wallet found, attempting to create one...');
+      try {
+        await createWallet();
+        console.log('[GiftCardCatalog] Wallet created successfully');
+      } catch (err) {
+        // Wallet may already exist, which throws — that's ok
+        console.log('[GiftCardCatalog] createWallet result:', err);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [privyReady, authenticated, embeddedWallet, createWallet]);
 
   const brandsArray = Array.isArray(brands) ? brands : [];
 
