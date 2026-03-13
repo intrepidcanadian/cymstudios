@@ -29,7 +29,7 @@ export default function PrivyClientProvider({
   }, []);
 
   if (!mounted) {
-    return <>{children}</>;
+    return null;
   }
 
   return (
