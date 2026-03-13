@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Order {
   order_id: string;
@@ -56,41 +56,67 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderIdCopied, setOrderIdCopied] = useState(false);
+  const pollCountRef = useRef(0);
+  const MAX_POLLS = 40; // Stop polling after ~2 minutes (40 × 3s)
 
   useEffect(() => {
+    let cancelled = false;
+    pollCountRef.current = 0;
+
+    const fetchOrderStatus = async () => {
+      try {
+        const response = await fetch(`/api/orders/${orderId}`, {
+          headers: {
+            'Authorization': `Bearer ${orderToken}`,
+          },
+        });
+        const data = await response.json();
+
+        if (!cancelled) {
+          if (data.success) {
+            setOrder(data.data);
+          } else {
+            setError(data.error || 'Failed to fetch order status');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching order:', err);
+        if (!cancelled) {
+          setError('Failed to fetch order status');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Initial fetch
     fetchOrderStatus();
 
-    // Poll for updates every 3 seconds if order is still processing
+    // Poll for updates every 5 seconds, only while status is pending/processing
+    // and only up to MAX_POLLS times to avoid hammering the server
     const interval = setInterval(() => {
-      if (order?.status === 'processing' || order?.status === 'pending') {
-        fetchOrderStatus();
+      pollCountRef.current += 1;
+      if (pollCountRef.current >= MAX_POLLS) {
+        clearInterval(interval);
+        return;
       }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [orderId, order?.status]);
-
-  const fetchOrderStatus = async () => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${orderToken}`,
-        },
+      // Read the latest order status from the DOM-stable ref pattern:
+      // We use a functional form to check current state without needing it as a dependency
+      setOrder((current) => {
+        if (current?.status === 'processing' || current?.status === 'pending') {
+          fetchOrderStatus();
+        }
+        return current; // don't change state
       });
-      const data = await response.json();
+    }, 5000);
 
-      if (data.success) {
-        setOrder(data.data);
-      } else {
-        setError(data.error || 'Failed to fetch order status');
-      }
-    } catch (err) {
-      console.error('Error fetching order:', err);
-      setError('Failed to fetch order status');
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [orderId, orderToken]);
 
   const getStatusBadge = (status: string) => {
     const badges: { [key: string]: { color: string; icon: string; text: string } } = {

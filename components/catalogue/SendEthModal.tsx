@@ -1,0 +1,366 @@
+'use client';
+
+import { useState } from 'react';
+import { X, Send, AlertTriangle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { useWallets } from '@privy-io/react-auth';
+
+interface SendEthModalProps {
+  onClose: () => void;
+  walletAddress: string;
+  currentBalance: string | null;
+  onTransactionComplete: () => void;
+}
+
+type Step = 'input' | 'confirm' | 'sending' | 'success' | 'error';
+
+export default function SendEthModal({
+  onClose,
+  walletAddress,
+  currentBalance,
+  onTransactionComplete,
+}: SendEthModalProps) {
+  const { wallets } = useWallets();
+  const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
+
+  const [recipientAddress, setRecipientAddress] = useState('');
+  const [amount, setAmount] = useState('');
+  const [step, setStep] = useState<Step>('input');
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  const validateInputs = async (): Promise<boolean> => {
+    const { ethers } = await import('ethers');
+
+    if (!recipientAddress || !ethers.isAddress(recipientAddress)) {
+      setError('Please enter a valid Ethereum address');
+      return false;
+    }
+
+    if (recipientAddress.toLowerCase() === walletAddress.toLowerCase()) {
+      setError('Cannot send to your own address');
+      return false;
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError('Please enter a valid amount');
+      return false;
+    }
+
+    if (currentBalance !== null && parsedAmount > parseFloat(currentBalance)) {
+      setError(`Insufficient balance. You have ${parseFloat(currentBalance).toFixed(4)} ETH`);
+      return false;
+    }
+
+    setError(null);
+    return true;
+  };
+
+  const handleContinue = async () => {
+    if (await validateInputs()) {
+      setStep('confirm');
+    }
+  };
+
+  const handleSend = async () => {
+    if (!embeddedWallet) {
+      setError('No wallet connected');
+      setStep('error');
+      return;
+    }
+
+    setSending(true);
+    setStep('sending');
+
+    try {
+      const { ethers } = await import('ethers');
+
+      // Ensure we're on Ethereum Mainnet
+      if (embeddedWallet.chainId !== 'eip155:1') {
+        await embeddedWallet.switchChain(1);
+      }
+
+      const ethereumProvider = await embeddedWallet.getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const signer = await provider.getSigner();
+
+      const tx = await signer.sendTransaction({
+        to: recipientAddress,
+        value: ethers.parseEther(amount),
+      });
+
+      setTxHash(tx.hash);
+      await tx.wait();
+
+      setStep('success');
+      onTransactionComplete();
+    } catch (err: any) {
+      console.error('[SendEthModal] Transaction error:', err);
+      if (err.code === 'ACTION_REJECTED' || err.message?.includes('rejected')) {
+        setError('Transaction was rejected');
+      } else if (err.message?.includes('insufficient funds')) {
+        setError('Insufficient ETH balance (including gas fees).');
+      } else {
+        setError(err.message || 'Transaction failed');
+      }
+      setStep('error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const truncate = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+          <div className="flex items-center gap-3">
+            {step === 'confirm' && (
+              <button
+                onClick={() => setStep('input')}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center">
+              <Send className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-100">Send ETH</h3>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={sending}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {/* Input Step */}
+          {step === 'input' && (
+            <div className="space-y-4">
+              {/* Balance Display */}
+              <div className="p-3 bg-slate-700/30 rounded-xl border border-slate-700">
+                <p className="text-xs text-slate-400">Available Balance</p>
+                <p className="text-lg font-bold text-slate-100">
+                  {currentBalance !== null
+                    ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ETH`
+                    : '-- ETH'}
+                </p>
+              </div>
+
+              {/* Recipient Address */}
+              <div>
+                <label className="block text-sm font-bold text-slate-100 mb-2">
+                  Recipient Address
+                </label>
+                <input
+                  type="text"
+                  value={recipientAddress}
+                  onChange={(e) => {
+                    setRecipientAddress(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="0x..."
+                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="block text-sm font-bold text-slate-100 mb-2">
+                  Amount (ETH)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder="0.0000"
+                    className="w-full px-4 py-3 pr-16 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold"
+                  />
+                  {currentBalance !== null && parseFloat(currentBalance) > 0 && (
+                    <button
+                      onClick={() => setAmount(parseFloat(currentBalance).toFixed(6))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                    >
+                      MAX
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Gas Warning */}
+              <div className="flex items-start gap-2 p-3 bg-amber-900/20 border border-amber-700/30 rounded-xl">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-300">
+                  A small amount of ETH will be reserved for gas fees. The actual amount sent may be slightly less than your full balance.
+                </p>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* Continue Button */}
+              <button
+                onClick={handleContinue}
+                disabled={!recipientAddress || !amount}
+                className="w-full py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* Confirm Step */}
+          {step === 'confirm' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">From</span>
+                  <span className="font-mono text-slate-200">{truncate(walletAddress)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">To</span>
+                  <span className="font-mono text-slate-200">{truncate(recipientAddress)}</span>
+                </div>
+                <div className="border-t border-slate-600 pt-3 flex justify-between">
+                  <span className="text-slate-400 text-sm">Amount</span>
+                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(6)} ETH</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-amber-900/20 border border-amber-700/30 rounded-xl">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-300">
+                  Please verify the recipient address. Transactions cannot be reversed.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSend}
+                className="w-full py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all shadow-lg"
+              >
+                Confirm & Send
+              </button>
+
+              <button
+                onClick={() => setStep('input')}
+                className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Sending Step */}
+          {step === 'sending' && (
+            <div className="text-center py-8 space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400 mx-auto" />
+              <div>
+                <p className="text-slate-100 font-semibold">Sending ETH...</p>
+                <p className="text-xs text-slate-400 mt-1">Please confirm in your wallet</p>
+              </div>
+              {txHash && (
+                <a
+                  href={`https://etherscan.io/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                >
+                  View on Etherscan <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Success Step */}
+          {step === 'success' && (
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-green-900/30 border border-green-700/50 flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-slate-100">Transaction Sent!</p>
+                <p className="text-sm text-slate-400 mt-1">
+                  {parseFloat(amount).toFixed(6)} ETH sent to {truncate(recipientAddress)}
+                </p>
+              </div>
+              {txHash && (
+                <a
+                  href={`https://etherscan.io/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors"
+                >
+                  View on Etherscan <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+              <button
+                onClick={onClose}
+                className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
+          {/* Error Step */}
+          {step === 'error' && (
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-red-900/30 border border-red-700/50 flex items-center justify-center mx-auto">
+                <X className="w-8 h-8 text-red-400" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-slate-100">Transaction Failed</p>
+                <p className="text-sm text-red-300 mt-1">{error}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setStep('input');
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

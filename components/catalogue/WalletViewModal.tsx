@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import { X, Copy, Check, Send, Download, ExternalLink, Wallet } from 'lucide-react';
-import Link from 'next/link';
 
 interface WalletViewModalProps {
   onClose: () => void;
-  onOpenSendModal: () => void;
+  onOpenSendModal: (token: 'usdc' | 'eth') => void;
   walletAddress: string;
   userEmail: string;
   usdcBalance: string | null;
@@ -152,16 +151,28 @@ export default function WalletViewModal({
 
         {/* Actions */}
         <div className="p-5 space-y-2">
-          <button
-            onClick={() => {
-              onClose();
-              onOpenSendModal();
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg"
-          >
-            <Send className="w-4 h-4" />
-            Send USDC
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                onClose();
+                onOpenSendModal('usdc');
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg"
+            >
+              <Send className="w-4 h-4" />
+              Send USDC
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                onOpenSendModal('eth');
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-semibold rounded-xl transition-all shadow-lg border border-slate-500"
+            >
+              <Send className="w-4 h-4" />
+              Send ETH
+            </button>
+          </div>
 
           <button
             onClick={onExportWallet}
@@ -170,14 +181,6 @@ export default function WalletViewModal({
             <Download className="w-4 h-4" />
             Export Wallet
           </button>
-
-          <Link
-            href="/onramp"
-            className="w-full flex items-center gap-3 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
-          >
-            <Wallet className="w-4 h-4" />
-            Buy Crypto (On-Ramp)
-          </Link>
 
           <button
             onClick={onRefreshBalance}

@@ -10,6 +10,7 @@ import { usePrivy, useWallets, useExportWallet, useCreateWallet } from '@privy-i
 import { useUsdcBalance } from '@/hooks/useUsdcBalance';
 import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
+import SendEthModal from './SendEthModal';
 import OrderHistoryList from './OrderHistoryList';
 
 export default function GiftCardCatalog() {
@@ -48,6 +49,7 @@ export default function GiftCardCatalog() {
   // Wallet modals
   const [showWalletView, setShowWalletView] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [showSendEthModal, setShowSendEthModal] = useState(false);
 
   // Purchase modal state
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -548,7 +550,6 @@ export default function GiftCardCatalog() {
               {/* Tab Content */}
               {activeTab === 'orders' ? (
                 <OrderHistoryList
-                  userEmail={user?.email?.address || user?.google?.email || ''}
                   getAccessToken={getAccessToken}
                   onViewOrder={(orderId, orderToken, email) => {
                     setCurrentOrderId(orderId);
@@ -878,7 +879,13 @@ export default function GiftCardCatalog() {
       {showWalletView && embeddedWallet && (
         <WalletViewModal
           onClose={() => setShowWalletView(false)}
-          onOpenSendModal={() => setShowSendModal(true)}
+          onOpenSendModal={(token: 'usdc' | 'eth') => {
+            if (token === 'eth') {
+              setShowSendEthModal(true);
+            } else {
+              setShowSendModal(true);
+            }
+          }}
           walletAddress={embeddedWallet.address}
           userEmail={user?.email?.address || user?.google?.email || 'Connected'}
           usdcBalance={usdcBalance}
@@ -895,6 +902,16 @@ export default function GiftCardCatalog() {
           onClose={() => setShowSendModal(false)}
           walletAddress={embeddedWallet.address}
           currentBalance={usdcBalance}
+          onTransactionComplete={refetchBalance}
+        />
+      )}
+
+      {/* Send ETH Modal */}
+      {showSendEthModal && embeddedWallet && (
+        <SendEthModal
+          onClose={() => setShowSendEthModal(false)}
+          walletAddress={embeddedWallet.address}
+          currentBalance={ethBalance}
           onTransactionComplete={refetchBalance}
         />
       )}

@@ -21,18 +21,17 @@ interface OrderSummary {
 }
 
 interface OrderHistoryListProps {
-  userEmail: string;
   getAccessToken: () => Promise<string | null>;
   onViewOrder: (orderId: string, orderToken: string, userEmail: string) => void;
 }
 
-export default function OrderHistoryList({ userEmail, getAccessToken, onViewOrder }: OrderHistoryListProps) {
+export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderHistoryListProps) {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [resolvedEmail, setResolvedEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
-    if (!userEmail) return;
     setLoading(true);
     setError(null);
     try {
@@ -42,12 +41,13 @@ export default function OrderHistoryList({ userEmail, getAccessToken, onViewOrde
         setLoading(false);
         return;
       }
-      const response = await fetch(`/api/orders?userEmail=${encodeURIComponent(userEmail)}`, {
+      const response = await fetch('/api/orders', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json();
       if (data.success) {
         setOrders(data.data || []);
+        if (data.userEmail) setResolvedEmail(data.userEmail);
       } else {
         setError(data.error || 'Failed to load orders');
       }
@@ -56,7 +56,7 @@ export default function OrderHistoryList({ userEmail, getAccessToken, onViewOrde
     } finally {
       setLoading(false);
     }
-  }, [userEmail, getAccessToken]);
+  }, [getAccessToken]);
 
   useEffect(() => {
     fetchOrders();
@@ -137,7 +137,7 @@ export default function OrderHistoryList({ userEmail, getAccessToken, onViewOrde
         {orders.map((order) => (
           <button
             key={order.order_id}
-            onClick={() => onViewOrder(order.order_id, order.orderToken, userEmail)}
+            onClick={() => onViewOrder(order.order_id, order.orderToken, resolvedEmail)}
             className="text-left bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-200"
           >
             <div className="flex items-start gap-3">

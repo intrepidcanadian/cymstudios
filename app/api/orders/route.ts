@@ -36,10 +36,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userEmail = request.nextUrl.searchParams.get('userEmail');
+    // Derive email from the authenticated Privy user — never trust the client param
+    const privyUserId = verifiedClaims.user_id;
+    let userEmail: string | null = null;
+
+    try {
+      const privyUser = await privyClient.users()._get(privyUserId);
+      for (const account of privyUser.linked_accounts) {
+        if (account.type === 'email') {
+          userEmail = account.address;
+          break;
+        }
+        if (account.type === 'google_oauth' && account.email) {
+          userEmail = account.email;
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('[Orders] Failed to fetch Privy user:', err);
+      return NextResponse.json(
+        { success: false, error: 'Failed to verify user identity' },
+        { status: 500 }
+      );
+    }
+
     if (!userEmail) {
       return NextResponse.json(
-        { success: false, error: 'Missing userEmail parameter' },
+        { success: false, error: 'No email associated with your account' },
         { status: 400 }
       );
     }
@@ -59,7 +82,7 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select(
         'order_id, brand_name, country_name, currency, price, status, ' +
-        'face_value, voucher_currency, product_name, product_image, ' +
+        'face_value, voucher_currency, product_name, ' +
         'created_at, completed_at, error_message'
       )
       .eq('user_email', userEmail)
@@ -81,7 +104,7 @@ export async function GET(request: NextRequest) {
       orderToken: generateOrderToken(order.order_id, userEmail),
     }));
 
-    return NextResponse.json({ success: true, data: ordersWithTokens });
+    return NextResponse.json({ success: true, data: ordersWithTokens, userEmail });
   } catch (error) {
     console.error('[Orders] Error:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
