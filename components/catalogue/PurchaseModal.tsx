@@ -9,6 +9,7 @@ interface PurchaseModalProps {
   product: BrandProduct;
   onClose: () => void;
   onPurchaseComplete: (orderId: string, userEmail: string, orderToken: string) => void;
+  usdcBalance?: string | null;
 }
 
 interface UserProfile {
@@ -17,7 +18,7 @@ interface UserProfile {
   lastName?: string;
 }
 
-export default function PurchaseModal({ product, onClose, onPurchaseComplete }: PurchaseModalProps) {
+export default function PurchaseModal({ product, onClose, onPurchaseComplete, usdcBalance }: PurchaseModalProps) {
   const { wallets } = useWallets();
   const { ready, authenticated, login } = usePrivy();
   const { createWallet } = useCreateWallet();
@@ -383,6 +384,23 @@ export default function PurchaseModal({ product, onClose, onPurchaseComplete }: 
               <p className="text-xs text-indigo-300 mt-2">
                 Redeem with digital USDC tokens on Ethereum Mainnet. You&apos;ll be prompted to sign with your wallet.
               </p>
+            )}
+            {walletAvailable && usdcBalance !== null && usdcBalance !== undefined && (
+              <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-[10px]">$</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs text-slate-400">Available:</span>
+                  <span className="text-sm font-bold text-slate-100">
+                    {parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-xs text-slate-400">USDC</span>
+                </div>
+                {usdcAmount && parseFloat(usdcBalance) < parseFloat(usdcAmount) && (
+                  <span className="ml-auto text-xs text-red-400 font-medium">Insufficient</span>
+                )}
+              </div>
             )}
           </div>
 

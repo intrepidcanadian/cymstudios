@@ -83,15 +83,8 @@ export default function GiftCardCatalog() {
       if (currencyFilter !== 'all') params.append('currency', currencyFilter);
 
       const url = `/api/brands?${params.toString()}`;
-      console.log('[GiftCardCatalog] Fetching:', url);
       const response = await fetch(url);
       const result = await response.json();
-
-      console.log('[GiftCardCatalog] API Response:', {
-        success: result.success,
-        dataLength: result.data?.length,
-        uniqueBrands: result.data ? Array.from(new Set(result.data.map((b: any) => b.brand_name))).length : 0
-      });
 
       if (result && Array.isArray(result.data)) {
         setBrands(result.data);
@@ -144,13 +137,10 @@ export default function GiftCardCatalog() {
     if (!privyReady || !authenticated || embeddedWallet) return;
 
     const timeout = setTimeout(async () => {
-      console.log('[GiftCardCatalog] No embedded wallet found, attempting to create one...');
       try {
         await createWallet();
-        console.log('[GiftCardCatalog] Wallet created successfully');
       } catch (err) {
         // Wallet may already exist, which throws — that's ok
-        console.log('[GiftCardCatalog] createWallet result:', err);
       }
     }, 3000);
 
@@ -204,15 +194,6 @@ export default function GiftCardCatalog() {
     filteredProducts = Array.from(brandMap.values());
   }
 
-  // Debug logging
-  console.log('[GiftCardCatalog] Filtered:', {
-    brandsArrayLength: brandsArray.length,
-    filteredProductsLength: filteredProducts.length,
-    uniqueBrandNames: Array.from(new Set(filteredProducts.map(p => p.brand_name))),
-    countryFilter,
-    currencyFilter,
-    showUniqueBrandsOnly
-  });
 
   const toggleBrandFilter = (brandName: string) => {
     setSelectedBrandFilters(prev =>
@@ -804,6 +785,7 @@ export default function GiftCardCatalog() {
         {showPurchaseModal && selectedProduct && (
           <PurchaseModal
             product={selectedProduct}
+            usdcBalance={usdcBalance}
             onClose={() => {
               setShowPurchaseModal(false);
               setSelectedProduct(null);
@@ -814,6 +796,7 @@ export default function GiftCardCatalog() {
               setCurrentUserEmail(email);
               setCurrentOrderToken(orderToken);
               setShowOrderStatusModal(true);
+              refetchBalance();
             }}
           />
         )}
@@ -859,23 +842,8 @@ export default function GiftCardCatalog() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="hidden sm:flex w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 items-center justify-center flex-shrink-0">
-                <CreditCard className="w-4 h-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-100 truncate">Need tokens to redeem?</p>
-              </div>
-            </div>
+            <div />
           )}
-          <Link
-            href="/onramp"
-            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white text-sm font-semibold rounded-lg transition-all shadow-lg hover:shadow-indigo-500/20 flex-shrink-0"
-          >
-            <Wallet className="w-4 h-4" />
-            <span className="hidden sm:inline">On-Ramp with Ginseng Swap / OSL Pay</span>
-            <span className="sm:hidden">On-Ramp</span>
-          </Link>
         </div>
       </div>
 
