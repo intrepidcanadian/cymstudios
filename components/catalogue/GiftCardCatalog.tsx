@@ -5,14 +5,15 @@ import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
 import OrderStatusModal from './OrderStatusModal';
-import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send } from 'lucide-react';
+import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock } from 'lucide-react';
 import { usePrivy, useWallets, useExportWallet, useCreateWallet } from '@privy-io/react-auth';
 import { useUsdcBalance } from '@/hooks/useUsdcBalance';
 import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
+import OrderHistoryList from './OrderHistoryList';
 
 export default function GiftCardCatalog() {
-  const { ready: privyReady, authenticated, user, login, logout } = usePrivy();
+  const { ready: privyReady, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const { exportWallet } = useExportWallet();
   const { createWallet } = useCreateWallet();
@@ -24,7 +25,7 @@ export default function GiftCardCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<BrandProduct | null>(null);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'giftcards' | 'mastercards'>('giftcards');
+  const [activeTab, setActiveTab] = useState<'giftcards' | 'mastercards' | 'orders'>('giftcards');
 
   // Mastercard state
   const [mastercards, setMastercards] = useState<BrandProduct[]>([]);
@@ -475,6 +476,19 @@ export default function GiftCardCatalog() {
                   <CreditCard className="w-4 h-4" />
                   Prepaid Mastercards
                 </button>
+                {authenticated && (
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                      activeTab === 'orders'
+                        ? 'border-indigo-500 text-indigo-400'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    My Orders
+                  </button>
+                )}
               </div>
 
               {/* Top Bar */}
@@ -482,7 +496,9 @@ export default function GiftCardCatalog() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="hidden sm:block h-1 w-1 bg-indigo-500 rounded-full flex-shrink-0"></div>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-100 truncate">
-                    {activeTab === 'giftcards' ? (
+                    {activeTab === 'orders' ? (
+                      <>My Orders</>
+                    ) : activeTab === 'giftcards' ? (
                       <>All Products <span className="text-slate-400 font-normal text-sm sm:text-lg">({filteredProducts.length})</span></>
                     ) : (
                       <>Prepaid Mastercards <span className="text-slate-400 font-normal text-sm sm:text-lg">({mastercards.length})</span></>
@@ -529,8 +545,19 @@ export default function GiftCardCatalog() {
                 </div>
               </div>
 
-              {/* Mastercard Tab Content */}
-              {activeTab === 'mastercards' ? (
+              {/* Tab Content */}
+              {activeTab === 'orders' ? (
+                <OrderHistoryList
+                  userEmail={user?.email?.address || user?.google?.email || ''}
+                  getAccessToken={getAccessToken}
+                  onViewOrder={(orderId, orderToken, email) => {
+                    setCurrentOrderId(orderId);
+                    setCurrentOrderToken(orderToken);
+                    setCurrentUserEmail(email);
+                    setShowOrderStatusModal(true);
+                  }}
+                />
+              ) : activeTab === 'mastercards' ? (
                 loadingMastercards ? (
                   <div className="text-center py-20">
                     <div className="relative inline-flex">

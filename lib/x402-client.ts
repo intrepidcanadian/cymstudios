@@ -248,10 +248,8 @@ export async function payWithX402(url: string, options: PaymentOptions): Promise
     const nonce = ethers.hexlify(ethers.randomBytes(32));
     console.log('📝 [x402] Nonce:', nonce);
 
-    const validAfter = Math.floor(Date.now() / 1000);
-    const validBefore = validAfter + 3600; // Valid for 1 hour
-    console.log('📝 [x402] Valid after:', validAfter, new Date(validAfter * 1000).toISOString());
-    console.log('📝 [x402] Valid before:', validBefore, new Date(validBefore * 1000).toISOString());
+    const validAfter = 0; // Immediately valid
+    const validBefore = Math.floor(Date.now() / 1000) + 3600; // Expires in 1 hour
 
     const domain = {
       name: requirement.asset.eip712.name,
@@ -471,8 +469,8 @@ export async function createPaymentHeader(paymentInfo: {
   // Build payment authorization
   const value = BigInt(amount).toString();
   const nonce = ethers.hexlify(ethers.randomBytes(32));
-  const validAfter = Math.floor(Date.now() / 1000);
-  const validBefore = validAfter + 3600; // Valid for 1 hour
+  const validAfter = 0; // Immediately valid
+  const validBefore = Math.floor(Date.now() / 1000) + 3600; // Expires in 1 hour
 
   const domain = {
     name: eip712Name,
