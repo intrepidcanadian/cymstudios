@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const USDC_ABI = ['function balanceOf(address) view returns (uint256)'];
-const RPC_URL = 'https://eth.llamarpc.com';
+const RPC_URL = process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL || 'https://eth.llamarpc.com';
 
 // Module-level cached provider to avoid recreating on every fetch
 let cachedProvider: any = null;
