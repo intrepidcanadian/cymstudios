@@ -78,14 +78,16 @@ export async function GET(request: NextRequest) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Query by both user_email and user_id to catch orders where the email
+    // was stored under either column (user_id stores the email from the purchase form)
     const { data, error } = await supabase
       .from('orders')
       .select(
         'order_id, brand_name, country_name, currency, price, status, ' +
-        'face_value, voucher_currency, product_name, ' +
+        'face_value, voucher_currency, product_name, product_image, ' +
         'created_at, completed_at, error_message'
       )
-      .eq('user_email', userEmail)
+      .or(`user_email.eq.${userEmail},user_id.eq.${userEmail}`)
       .order('created_at', { ascending: false })
       .limit(50);
 

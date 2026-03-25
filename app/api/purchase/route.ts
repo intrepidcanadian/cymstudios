@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     logger.info('[Purchase] Verifying product:', productIdNumber);
     const { data: productData, error: productError } = await supabase
       .from('brands')
-      .select('product_id, brand_name, country_name, currency')
+      .select('product_id, brand_name, country_name, currency, product_image')
       .eq('product_id', productIdNumber)
       .single();
 
@@ -332,6 +332,7 @@ export async function POST(request: NextRequest) {
         user_first_name: userFirstName,
         user_last_name: userLastName,
         user_email: userEmail,
+        product_image: productData.product_image || null,
         status: 'pending'
       })
       .select()

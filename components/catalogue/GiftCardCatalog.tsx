@@ -226,7 +226,7 @@ export default function GiftCardCatalog() {
     (searchQuery ? 1 : 0);
 
   // Filter content component to avoid duplication
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-6 sm:space-y-8">
       {/* Search */}
       <div>
@@ -394,7 +394,7 @@ export default function GiftCardCatalog() {
                 )}
               </div>
 
-              <FilterContent />
+              {filterContent}
             </div>
           </aside>
 
@@ -424,7 +424,7 @@ export default function GiftCardCatalog() {
                 </div>
                 {/* Content */}
                 <div className="p-4 overflow-y-auto max-h-[calc(85vh-120px)]">
-                  <FilterContent />
+                  {filterContent}
                 </div>
                 {/* Footer */}
                 <div className="p-4 border-t border-slate-700 bg-slate-800">
