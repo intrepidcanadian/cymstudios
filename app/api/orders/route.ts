@@ -80,16 +80,35 @@ export async function GET(request: NextRequest) {
 
     // Query by both user_email and user_id to catch orders where the email
     // was stored under either column (user_id stores the email from the purchase form)
-    const { data, error } = await supabase
-      .from('orders')
-      .select(
-        'order_id, brand_name, country_name, currency, price, status, ' +
-        'face_value, voucher_currency, product_name, product_image, ' +
-        'created_at, completed_at, error_message'
-      )
-      .or(`user_email.eq.${userEmail},user_id.eq.${userEmail}`)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    const selectFields =
+      'order_id, brand_name, country_name, currency, price, status, ' +
+      'face_value, voucher_currency, product_name, product_image, ' +
+      'created_at, completed_at, error_message';
+
+    const [byEmail, byUserId] = await Promise.all([
+      supabase
+        .from('orders')
+        .select(selectFields)
+        .eq('user_email', userEmail)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('orders')
+        .select(selectFields)
+        .eq('user_id', userEmail)
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ]);
+
+    const error = byEmail.error || byUserId.error;
+    // Merge and deduplicate by order_id
+    const merged = new Map<string, any>();
+    for (const row of [...(byEmail.data || []), ...(byUserId.data || [])]) {
+      if (!merged.has(row.order_id)) merged.set(row.order_id, row);
+    }
+    const data = Array.from(merged.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ).slice(0, 50);
 
     if (error) {
       console.error('[Orders] Error fetching user orders:', error.message);
