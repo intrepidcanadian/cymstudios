@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "CYM Rewards",
-  "description": "Redeem USDC tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet. Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and GBP. Features interactive MCP App catalog UI, brand search, country/currency filtering, and instant voucher delivery via email. Pricing: Card value + 1.5% service fee in USDC (applied to all currencies).",
+  "description": "Redeem USDC tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet. Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Features interactive MCP App catalog UI, brand search, country/currency filtering, and instant voucher delivery via email. Pricing: Card value + 1.5% service fee in USDC (applied to all currencies).",
   "image": "https://cymstudio.app/icons/gift-card.svg",
   "services": [
     {

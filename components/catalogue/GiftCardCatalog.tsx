@@ -449,7 +449,7 @@ export default function GiftCardCatalog() {
                   <div>
                     <h3 className="text-sm font-semibold text-slate-100 mb-1">Loyalty Reward Center</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Rewards in this catalogue are intended exclusively for use within <span className="text-slate-200 font-medium">Employee Rewards</span>, <span className="text-slate-200 font-medium">Loyalty Programs</span>, and <span className="text-slate-200 font-medium">Sales Incentive Programs</span>. All redemptions must comply with your organization&apos;s program guidelines.
+                      Rewards in this catalogue are intended exclusively for use for CYM Studio&apos;s <span className="text-slate-200 font-medium">Employee Rewards</span>, <span className="text-slate-200 font-medium">Loyalty Programs</span>, and <span className="text-slate-200 font-medium">Sales Incentive Programs</span>. All redemptions must comply with your organization&apos;s program guidelines.
                     </p>
                   </div>
                 </div>
