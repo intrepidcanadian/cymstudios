@@ -81,8 +81,8 @@ export async function GET(request: NextRequest) {
     // Query by both user_email and user_id to catch orders where the email
     // was stored under either column (user_id stores the email from the purchase form)
     const selectFields =
-      'order_id, brand_name, country_name, currency, price, status, ' +
-      'face_value, voucher_currency, product_name, product_image, ' +
+      'order_id, product_id, brand_name, country_name, currency, price, status, ' +
+      'face_value, voucher_currency, product_name, ' +
       'created_at, completed_at, error_message';
 
     const [byEmail, byUserId] = await Promise.all([
@@ -100,23 +100,45 @@ export async function GET(request: NextRequest) {
         .limit(50),
     ]);
 
-    const error = byEmail.error || byUserId.error;
-    // Merge and deduplicate by order_id
-    const merged = new Map<string, any>();
-    for (const row of [...(byEmail.data || []), ...(byUserId.data || [])]) {
-      if (!merged.has(row.order_id)) merged.set(row.order_id, row);
-    }
-    const data = Array.from(merged.values()).sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ).slice(0, 50);
-
-    if (error) {
-      console.error('[Orders] Error fetching user orders:', error.message);
+    if (byEmail.error || byUserId.error) {
+      const error = byEmail.error || byUserId.error;
+      console.error('[Orders] Error fetching user orders:', error!.message);
       return NextResponse.json(
         { success: false, error: 'Failed to fetch orders' },
         { status: 500 }
       );
     }
+
+    // Merge and deduplicate by order_id
+    const emailRows = (byEmail.data as any[]) || [];
+    const userIdRows = (byUserId.data as any[]) || [];
+    const merged = new Map<string, any>();
+    for (const row of [...emailRows, ...userIdRows]) {
+      if (!merged.has(row.order_id)) merged.set(row.order_id, row);
+    }
+    const orders = Array.from(merged.values()).sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ).slice(0, 50);
+
+    // Fetch product images from brands table
+    const productIds = Array.from(new Set(orders.map((o: any) => o.product_id).filter(Boolean)));
+    let imageMap: Record<number, string> = {};
+    if (productIds.length > 0) {
+      const { data: brands } = await supabase
+        .from('brands')
+        .select('product_id, product_image')
+        .in('product_id', productIds);
+      if (brands) {
+        for (const b of brands as any[]) {
+          imageMap[b.product_id] = b.product_image;
+        }
+      }
+    }
+
+    const data = orders.map((order: any) => ({
+      ...order,
+      product_image: imageMap[order.product_id] || null,
+    }));
 
     // Generate fresh orderToken for each order so the client can
     // open OrderStatusModal to view full details (including voucher info)
