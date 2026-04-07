@@ -224,7 +224,8 @@ export default function PurchaseModal({
     }
 
     if (insufficientBalance) {
-      setError(`Insufficient ${networkConfig?.tokenSymbol} balance. You need ${usdcAmount} but only have ${parseFloat(usdcBalance!).toFixed(2)}`);
+      const shortfall = (parseFloat(usdcAmount!) - parseFloat(usdcBalance!)).toFixed(2);
+      setError(`Insufficient ${networkConfig?.tokenSymbol} balance. You need ${usdcAmount} but have ${parseFloat(usdcBalance!).toFixed(2)} (short by ${shortfall} ${networkConfig?.tokenSymbol})`);
       return;
     }
 

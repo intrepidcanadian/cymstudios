@@ -47,8 +47,18 @@ export default function GiftCardCatalog() {
   const [mastercardsFetched, setMastercardsFetched] = useState(false);
 
   // Filters
-  const [countryFilter, setCountryFilter] = useState<string>('all');
-  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('catalogCountryFilter') || 'all';
+    }
+    return 'all';
+  });
+  const [currencyFilter, setCurrencyFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('catalogCurrencyFilter') || 'all';
+    }
+    return 'all';
+  });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -85,6 +95,14 @@ export default function GiftCardCatalog() {
   const [currentOrderToken, setCurrentOrderToken] = useState<string>('');
   const [currentPaymentTxHash, setCurrentPaymentTxHash] = useState<string>('');
   const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
+
+  // Persist filter selections to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('catalogCountryFilter', countryFilter);
+      localStorage.setItem('catalogCurrencyFilter', currencyFilter);
+    }
+  }, [countryFilter, currencyFilter]);
 
   // Debounce search input
   const handleSearchChange = useCallback((value: string) => {
@@ -1064,23 +1082,26 @@ export default function GiftCardCatalog() {
               </button>
               {/* Compact network switcher — visible on all screen sizes */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                {Object.entries(NETWORKS).map(([key, net]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setSelectedNetwork(key);
-                      if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
-                    }}
-                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
-                      selectedNetwork === key
-                        ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
-                        : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
-                    }`}
-                    title={`Switch to ${net.name}`}
-                  >
-                    {net.tokenSymbol}
-                  </button>
-                ))}
+                {Object.entries(NETWORKS).map(([key, net]) => {
+                  const shortLabel = key === 'ethereum' ? 'ETH' : key === 'base' ? 'Base' : 'CFX';
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setSelectedNetwork(key);
+                        if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
+                      }}
+                      className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
+                        selectedNetwork === key
+                          ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
+                          : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
+                      }`}
+                      title={`Switch to ${net.name}`}
+                    >
+                      <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
