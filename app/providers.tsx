@@ -2,25 +2,15 @@
 
 import dynamic from 'next/dynamic';
 
-const PrivyClientProvider = dynamic(
-  () => import('@/components/providers/PrivyClientProvider'),
+const Web3Provider = dynamic(
+  () => import('@/components/providers/Web3Provider'),
   { ssr: false }
 );
 
-export default function Providers({
-  children,
-  privyAppId
-}: {
-  children: React.ReactNode;
-  privyAppId?: string;
-}) {
-  if (!privyAppId) {
-    return <>{children}</>;
-  }
-
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <PrivyClientProvider appId={privyAppId}>
+    <Web3Provider>
       {children}
-    </PrivyClientProvider>
+    </Web3Provider>
   );
 }

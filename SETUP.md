@@ -1,6 +1,6 @@
 # CYM Studio — Gift Card Catalogue Setup
 
-This guide covers how to set up the gift card catalogue feature, which lets users browse 600+ brands and purchase gift cards with USDC on Ethereum Mainnet via the x402 payment protocol.
+This guide covers how to set up the gift card catalogue feature, which lets users browse 600+ brands and purchase gift cards with USDC on Ethereum Mainnet or USDT0 on Conflux eSpace via the x402 payment protocol.
 
 ---
 
@@ -20,7 +20,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | [supabase.com](https://supabase.com) → Project Settings → API | Your Supabase project URL (e.g. `https://abc123.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → `anon` key | Public client key for Supabase (safe for browser) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` key | Server-only admin key. **Never expose to the client.** Used by API routes to bypass RLS. |
-| `FACILITATOR_PRIVATE_KEY` | Your facilitator Ethereum wallet | Private key of the wallet that executes `transferWithAuthorization` on-chain. This wallet needs ETH for gas on Ethereum Mainnet. |
+| `FACILITATOR_PRIVATE_KEY` | Your facilitator wallet | Private key of the wallet that executes `transferWithAuthorization` on-chain. This wallet needs ETH for gas on Ethereum and CFX on Conflux eSpace. |
 | `EXTERNAL_API_KEY` | xRemit partner dashboard | API key for the xRemit gift card provider |
 | `EXTERNAL_CLIENT_SECRET` | xRemit partner dashboard | Client secret for HMAC-SHA256 request signing |
 | `XREMIT_ENV` | Set to `production` or `sandbox` | Controls which xRemit API is used (`rewardsapi.xremit.io` vs `rewardsapi-sandbox.xremit.io`) |
@@ -33,6 +33,7 @@ cp .env.example .env.local
 | Variable | Default | What it does |
 |----------|---------|--------------|
 | `ETHEREUM_MAINNET_RPC_URL` | `https://eth.llamarpc.com` | Ethereum Mainnet RPC endpoint. Use your own Alchemy/Infura URL for better reliability. |
+| `CONFLUX_ESPACE_RPC_URL` | `https://evm.confluxrpc.com` | Conflux eSpace RPC endpoint for USDT0 payments. |
 | `NEXT_PUBLIC_API_URL` | `https://cymstudio.com` | Your production URL. Used for xRemit webhook callback URLs. |
 | `XREMIT_WEBHOOK_API_KEY` | *(none)* | If set, the webhook endpoint validates the `authorization` header from xRemit. |
 | `CRON_SECRET` | *(none)* | Bearer token for the `/api/sync-brands` cron endpoint. If not set, use `?direct=true` for manual syncs. |

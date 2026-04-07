@@ -19,12 +19,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const privyAppId = process.env.PRIVY_APP_ID;
-
   return (
     <html lang="en" className="dark">
       <body>
-        <Providers privyAppId={privyAppId}>
+        <Providers>
           {children}
         </Providers>
       </body>

@@ -5,24 +5,37 @@ import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
 import OrderStatusModal from './OrderStatusModal';
-import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock } from 'lucide-react';
-import { usePrivy, useWallets, useExportWallet, useCreateWallet } from '@privy-io/react-auth';
+import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock, ArrowUp, AlertCircle } from 'lucide-react';
+import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 import { useUsdcBalance } from '@/hooks/useUsdcBalance';
+import { NETWORKS, DEFAULT_NETWORK } from '@/config/networks';
 import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
 import SendEthModal from './SendEthModal';
 import OrderHistoryList from './OrderHistoryList';
 
 export default function GiftCardCatalog() {
-  const { ready: privyReady, authenticated, user, login, logout, getAccessToken } = usePrivy();
-  const { wallets } = useWallets();
-  const { exportWallet } = useExportWallet();
-  const { createWallet } = useCreateWallet();
-  const embeddedWallet = wallets.find(w => w.walletClientType === 'privy');
-  const { balance: usdcBalance, ethBalance, loading: balanceLoading, refetch: refetchBalance } = useUsdcBalance(embeddedWallet?.address);
+  const { address, isConnected, status: accountStatus } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { open } = useAppKit();
+  const { data: walletClient } = useWalletClient();
+  const walletReady = accountStatus !== 'reconnecting';
+  const [selectedNetwork, setSelectedNetwork] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('preferredNetwork');
+      if (saved && NETWORKS[saved]) return saved;
+    }
+    return DEFAULT_NETWORK;
+  });
+  const { balance: usdcBalance, ethBalance, loading: balanceLoading, refetch: refetchBalance, tokenSymbol } = useUsdcBalance(address, selectedNetwork);
+
+  // Get the raw EIP-1193 provider from walletClient for x402 signing
+  const walletProvider = (walletClient as any)?.transport;
 
   const [brands, setBrands] = useState<BrandProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<BrandProduct | null>(null);
 
   // Tabs
@@ -41,10 +54,23 @@ export default function GiftCardCatalog() {
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedBrandFilters, setSelectedBrandFilters] = useState<string[]>([]);
   const [showUniqueBrandsOnly, setShowUniqueBrandsOnly] = useState<boolean>(true);
-  const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+  const [showAllBrands, setShowAllBrands] = useState<boolean>(false);
+  const [likedProducts, setLikedProducts] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('likedProducts');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch { return new Set(); }
+    }
+    return new Set();
+  });
 
   // Mobile filter drawer state
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const productDetailRef = useRef<HTMLDivElement>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   // Wallet modals
   const [showWalletView, setShowWalletView] = useState(false);
@@ -57,6 +83,8 @@ export default function GiftCardCatalog() {
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [currentOrderToken, setCurrentOrderToken] = useState<string>('');
+  const [currentPaymentTxHash, setCurrentPaymentTxHash] = useState<string>('');
+  const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
 
   // Debounce search input
   const handleSearchChange = useCallback((value: string) => {
@@ -73,6 +101,38 @@ export default function GiftCardCatalog() {
     };
   }, []);
 
+  // Focus trap + Escape handler for product detail modal
+  useEffect(() => {
+    if (!selectedProduct || showPurchaseModal) return;
+    const el = productDetailRef.current;
+    if (!el) return;
+    const first = el.querySelector<HTMLElement>('button, input, [tabindex]');
+    first?.focus();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSelectedProduct(null); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const firstEl = focusable[0];
+      const lastEl = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === firstEl) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); firstEl.focus(); }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [selectedProduct, showPurchaseModal]);
+
+  // Back-to-top visibility based on main scroll position
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handleScroll = () => setShowBackToTop(el.scrollTop > 800);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Fetch brands
   useEffect(() => {
     fetchBrands();
@@ -81,6 +141,7 @@ export default function GiftCardCatalog() {
   const fetchBrands = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const params = new URLSearchParams();
       if (countryFilter !== 'all') params.append('country', countryFilter);
       if (currencyFilter !== 'all') params.append('currency', currencyFilter);
@@ -100,6 +161,7 @@ export default function GiftCardCatalog() {
     } catch (error) {
       console.error('Error fetching brands:', error);
       setBrands([]);
+      setFetchError('Failed to load products. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -135,29 +197,16 @@ export default function GiftCardCatalog() {
     }
   };
 
-  // Fallback: if authenticated but no embedded wallet after 3s, try creating one
-  useEffect(() => {
-    if (!privyReady || !authenticated || embeddedWallet) return;
-
-    const timeout = setTimeout(async () => {
-      try {
-        await createWallet();
-      } catch (err) {
-        // Wallet may already exist, which throws — that's ok
-      }
-    }, 3000);
-
-    return () => clearTimeout(timeout);
-  }, [privyReady, authenticated, embeddedWallet, createWallet]);
+  // No embedded wallet creation needed — WalletConnect connects to user's existing wallet
 
   const brandsArray = Array.isArray(brands) ? brands : [];
 
   // Get unique brand names
   const allUniqueBrands = Array.from(new Set(brandsArray.map(b => b.brand_name))).sort();
 
-  // Static filter options so selecting one filter doesn't collapse the other
-  const availableCountries = ['United States of America', 'Canada', 'Hong Kong', 'United Kingdom'];
-  const availableCurrencies = ['USD', 'CAD', 'HKD', 'GBP'];
+  // Derive filter options dynamically from fetched brands data
+  const availableCountries = Array.from(new Set(brandsArray.map(b => b.country_name).filter((c): c is string => !!c))).sort();
+  const availableCurrencies = Array.from(new Set(brandsArray.map(b => b.currency).filter((c): c is string => !!c))).sort();
 
   // Apply all filters — exclude Mastercard products from gift cards tab
   let filteredProducts = brandsArray.filter(b => !b.brand_name.toLowerCase().includes('mastercard'));
@@ -179,6 +228,10 @@ export default function GiftCardCatalog() {
 
   if (selectedBrandFilters.length > 0) {
     filteredProducts = filteredProducts.filter(b => selectedBrandFilters.includes(b.brand_name));
+  }
+
+  if (showFavoritesOnly) {
+    filteredProducts = filteredProducts.filter(b => likedProducts.has(String(b.product_id)));
   }
 
   if (showUniqueBrandsOnly) {
@@ -214,6 +267,9 @@ export default function GiftCardCatalog() {
       } else {
         newSet.add(productId);
       }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('likedProducts', JSON.stringify(Array.from(newSet)));
+      }
       return newSet;
     });
   };
@@ -223,7 +279,8 @@ export default function GiftCardCatalog() {
     (countryFilter !== 'all' ? 1 : 0) +
     (currencyFilter !== 'all' ? 1 : 0) +
     selectedBrandFilters.length +
-    (searchQuery ? 1 : 0);
+    (searchQuery ? 1 : 0) +
+    (showFavoritesOnly ? 1 : 0);
 
   // Filter content component to avoid duplication
   const filterContent = (
@@ -260,6 +317,24 @@ export default function GiftCardCatalog() {
         </label>
       </div>
 
+      {/* Show Favorites Only Toggle */}
+      {likedProducts.size > 0 && (
+        <div>
+          <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-3 rounded-lg transition-colors border-2 border-slate-600">
+            <input
+              type="checkbox"
+              checked={showFavoritesOnly}
+              onChange={(e) => setShowFavoritesOnly(e.target.checked)}
+              className="w-5 h-5 text-red-500 border-slate-500 rounded focus:ring-red-500 bg-slate-700"
+            />
+            <div className="flex-1">
+              <span className="text-sm font-bold text-slate-100 block">Favorites Only</span>
+              <span className="text-xs text-slate-400 block mt-1">Show {likedProducts.size} liked product{likedProducts.size !== 1 ? 's' : ''}</span>
+            </div>
+          </label>
+        </div>
+      )}
+
       {/* Country Filter */}
       <div>
         <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Country</h3>
@@ -294,7 +369,7 @@ export default function GiftCardCatalog() {
       <div>
         <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Brands</h3>
         <div className="space-y-3 max-h-[300px] sm:max-h-[500px] overflow-y-auto pr-2">
-          {allUniqueBrands.slice(0, 30).map((brandName) => (
+          {(showAllBrands ? allUniqueBrands : allUniqueBrands.slice(0, 30)).map((brandName) => (
             <label key={brandName} className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-2 rounded-lg transition-colors">
               <input
                 type="checkbox"
@@ -306,15 +381,18 @@ export default function GiftCardCatalog() {
             </label>
           ))}
           {allUniqueBrands.length > 30 && (
-            <button className="text-sm text-indigo-400 hover:text-indigo-300 font-bold ml-2">
-              View All ({allUniqueBrands.length})
+            <button
+              onClick={() => setShowAllBrands(prev => !prev)}
+              className="text-sm text-indigo-400 hover:text-indigo-300 font-bold ml-2"
+            >
+              {showAllBrands ? 'Show Less' : `View All (${allUniqueBrands.length})`}
             </button>
           )}
         </div>
       </div>
 
       {/* Clear Filters */}
-      {(selectedBrandFilters.length > 0 || countryFilter !== 'all' || currencyFilter !== 'all' || searchQuery || showUniqueBrandsOnly) && (
+      {(selectedBrandFilters.length > 0 || countryFilter !== 'all' || currencyFilter !== 'all' || searchQuery || showUniqueBrandsOnly || showFavoritesOnly) && (
         <button
           onClick={() => {
             setSelectedBrandFilters([]);
@@ -323,6 +401,7 @@ export default function GiftCardCatalog() {
             setSearchQuery('');
             setSearchInput('');
             setShowUniqueBrandsOnly(false);
+            setShowFavoritesOnly(false);
           }}
           className="w-full px-5 py-3 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold rounded-lg transition-colors shadow-sm"
         >
@@ -343,14 +422,14 @@ export default function GiftCardCatalog() {
                 &larr; CYM Studio
               </Link>
 
-              {/* Privy Auth Section */}
+              {/* Wallet Auth Section */}
               <div className="mb-6 p-3 rounded-lg border border-slate-700 bg-slate-800/50">
-                {!privyReady ? (
+                {!walletReady ? (
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <div className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
                     Initializing...
                   </div>
-                ) : authenticated && user ? (
+                ) : isConnected && address ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -358,38 +437,36 @@ export default function GiftCardCatalog() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <button
-                          onClick={() => embeddedWallet && setShowWalletView(true)}
+                          onClick={() => setShowWalletView(true)}
                           className="text-xs font-medium text-slate-200 truncate hover:text-indigo-400 transition-colors cursor-pointer text-left w-full block"
                           title="View wallet details"
                         >
-                          {user.email?.address || user.google?.email || 'Connected'}
+                          Connected
                         </button>
-                        {embeddedWallet && (
-                          <button
-                            onClick={() => setShowWalletView(true)}
-                            className="text-[10px] text-slate-400 hover:text-indigo-400 font-mono truncate transition-colors cursor-pointer text-left w-full block"
-                            title="View wallet details"
-                          >
-                            {embeddedWallet.address.slice(0, 6)}...{embeddedWallet.address.slice(-4)}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setShowWalletView(true)}
+                          className="text-[10px] text-slate-400 hover:text-indigo-400 font-mono truncate transition-colors cursor-pointer text-left w-full block"
+                          title="View wallet details"
+                        >
+                          {address.slice(0, 6)}...{address.slice(-4)}
+                        </button>
                       </div>
                     </div>
                     <button
-                      onClick={logout}
+                      onClick={() => disconnect()}
                       className="w-full flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 py-1.5 rounded hover:bg-slate-700/50 transition-colors"
                     >
                       <LogOut className="w-3 h-3" />
-                      Sign Out
+                      Disconnect
                     </button>
                   </div>
                 ) : (
                   <button
-                    onClick={login}
+                    onClick={() => open()}
                     className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
                   >
                     <Wallet className="w-4 h-4" />
-                    Sign In
+                    Connect Wallet
                   </button>
                 )}
               </div>
@@ -440,7 +517,7 @@ export default function GiftCardCatalog() {
           )}
 
           {/* MAIN CONTENT AREA */}
-          <main className="flex-1 overflow-y-auto bg-slate-900">
+          <main ref={mainRef} className="flex-1 overflow-y-auto bg-slate-900">
             <div className="p-4 sm:p-8 pb-20 sm:pb-24 w-full">
               {/* Program Scope Notice */}
               <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700">
@@ -478,19 +555,17 @@ export default function GiftCardCatalog() {
                   <CreditCard className="w-4 h-4" />
                   Prepaid Mastercards
                 </button>
-                {authenticated && (
-                  <button
-                    onClick={() => setActiveTab('orders')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                      activeTab === 'orders'
-                        ? 'border-indigo-500 text-indigo-400'
-                        : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    My Orders
-                  </button>
-                )}
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === 'orders'
+                      ? 'border-indigo-500 text-indigo-400'
+                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  My Orders
+                </button>
               </div>
 
               {/* Top Bar */}
@@ -508,19 +583,19 @@ export default function GiftCardCatalog() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Mobile Privy Auth */}
+                  {/* Mobile Wallet Auth */}
                   <div className="lg:hidden">
-                    {privyReady && !authenticated ? (
+                    {walletReady && !isConnected ? (
                       <button
-                        onClick={login}
+                        onClick={() => open()}
                         className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition-colors"
                       >
                         <Wallet className="w-4 h-4" />
-                        Sign In
+                        Connect
                       </button>
-                    ) : privyReady && authenticated ? (
+                    ) : walletReady && isConnected ? (
                       <button
-                        onClick={() => embeddedWallet && setShowWalletView(true)}
+                        onClick={() => setShowWalletView(true)}
                         className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition-colors border border-slate-600"
                       >
                         <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
@@ -550,7 +625,7 @@ export default function GiftCardCatalog() {
               {/* Tab Content */}
               {activeTab === 'orders' ? (
                 <OrderHistoryList
-                  getAccessToken={getAccessToken}
+                  walletAddress={address}
                   onViewOrder={(orderId, orderToken, email) => {
                     setCurrentOrderId(orderId);
                     setCurrentOrderToken(orderToken);
@@ -560,11 +635,19 @@ export default function GiftCardCatalog() {
                 />
               ) : activeTab === 'mastercards' ? (
                 loadingMastercards ? (
-                  <div className="text-center py-20">
-                    <div className="relative inline-flex">
-                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500"></div>
-                    </div>
-                    <p className="text-slate-400 mt-6 font-medium">Loading Mastercards...</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
+                        <div className="h-40 sm:h-56 bg-slate-700" />
+                        <div className="p-4 border-t border-slate-700 space-y-3">
+                          <div className="h-4 bg-slate-700 rounded w-3/4" />
+                          <div className="h-3 bg-slate-700 rounded w-1/3" />
+                          <div className="h-12 bg-slate-700 rounded-lg" />
+                          <div className="h-3 bg-slate-700 rounded w-2/3" />
+                          <div className="h-10 bg-slate-700 rounded-lg" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : mastercards.length === 0 ? (
                   <div className="text-center py-20">
@@ -624,11 +707,34 @@ export default function GiftCardCatalog() {
                   </div>
                 )
               ) : loading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
+                      <div className="h-32 sm:h-56 bg-slate-700" />
+                      <div className="p-2.5 sm:p-4 border-t border-slate-700 space-y-2 sm:space-y-3">
+                        <div className="h-4 bg-slate-700 rounded w-3/4" />
+                        <div className="h-3 bg-slate-700 rounded w-1/2 hidden sm:block" />
+                        <div className="flex gap-1.5 hidden sm:flex">
+                          <div className="h-6 bg-slate-700 rounded w-16" />
+                          <div className="h-6 bg-slate-700 rounded w-16" />
+                        </div>
+                        <div className="h-3 bg-slate-700 rounded w-2/3" />
+                        <div className="h-9 sm:h-10 bg-slate-700 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : fetchError ? (
                 <div className="text-center py-20">
-                  <div className="relative inline-flex">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500"></div>
-                  </div>
-                  <p className="text-slate-400 mt-6 font-medium">Loading rewards...</p>
+                  <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
+                  <p className="text-slate-400 mb-6">{fetchError}</p>
+                  <button
+                    onClick={fetchBrands}
+                    className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Try Again
+                  </button>
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-20">
@@ -699,17 +805,30 @@ export default function GiftCardCatalog() {
                           </p>
                         </div>
 
-                        {/* Denominations - Hidden on small mobile */}
+                        {/* Denominations */}
                         {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 && (
-                          <div className="hidden sm:block mb-3">
-                            <div className="flex flex-wrap gap-1.5">
-                              {product.denominations.slice(0, 3).map((denom: number, idx: number) => (
-                                <span key={idx} className="text-xs bg-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-md">
+                          <div className="mb-2 sm:mb-3">
+                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                              {/* Show 2 on mobile, 3 on desktop */}
+                              {product.denominations.slice(0, 2).map((denom: number, idx: number) => (
+                                <span key={idx} className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
                                   {product.currency} {denom}
                                 </span>
                               ))}
+                              <span className="hidden sm:inline">
+                                {product.denominations.length > 2 && product.denominations[2] && (
+                                  <span className="text-xs bg-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-md">
+                                    {product.currency} {product.denominations[2]}
+                                  </span>
+                                )}
+                              </span>
+                              {product.denominations.length > 2 && (
+                                <span className="sm:hidden text-[10px] text-slate-500 px-1 py-0.5 font-medium">
+                                  +{product.denominations.length - 2}
+                                </span>
+                              )}
                               {product.denominations.length > 3 && (
-                                <span className="text-xs text-slate-500 px-2 py-1 font-medium">
+                                <span className="hidden sm:inline text-xs text-slate-500 px-2 py-1 font-medium">
                                   +{product.denominations.length - 3}
                                 </span>
                               )}
@@ -728,7 +847,8 @@ export default function GiftCardCatalog() {
                           onClick={() => setSelectedProduct(product)}
                           className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
                         >
-                          View
+                          <span className="sm:hidden">View</span>
+                          <span className="hidden sm:inline">View & Redeem</span>
                         </button>
                       </div>
                     </div>
@@ -736,18 +856,30 @@ export default function GiftCardCatalog() {
                 </div>
               )}
             </div>
+
+            {/* Back to Top FAB */}
+            {showBackToTop && (
+              <button
+                onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="fixed bottom-20 right-4 sm:right-8 z-30 w-10 h-10 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all"
+                aria-label="Back to top"
+              >
+                <ArrowUp className="w-5 h-5" />
+              </button>
+            )}
           </main>
         </div>
 
         {/* Product Details Modal */}
         {selectedProduct && !showPurchaseModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
-            <div className="bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-700">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedProduct(null)}>
+            <div ref={productDetailRef} role="dialog" aria-modal="true" aria-label={`${selectedProduct.brand_name} details`} className="bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-700" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <h2 className="text-xl sm:text-2xl font-bold text-slate-100">{selectedProduct.brand_name}</h2>
                   <button
                     onClick={() => setSelectedProduct(null)}
+                    aria-label="Close"
                     className="p-2 hover:bg-slate-700 rounded-lg transition-colors -mr-2"
                   >
                     <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" />
@@ -763,6 +895,11 @@ export default function GiftCardCatalog() {
                 )}
 
                 <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+                  {/* Product Description */}
+                  {selectedProduct.product_description && (
+                    <p className="text-sm text-slate-300 leading-relaxed">{selectedProduct.product_description}</p>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Country</h3>
@@ -776,12 +913,19 @@ export default function GiftCardCatalog() {
 
                   {selectedProduct.denominations && Array.isArray(selectedProduct.denominations) && (
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2">Available Denominations</h3>
+                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2">Quick Buy — tap a denomination</h3>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {selectedProduct.denominations.map((denom: number, idx: number) => (
-                          <span key={idx} className="bg-slate-700 text-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium">
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setPurchaseInitialAmount(String(denom));
+                              setShowPurchaseModal(true);
+                            }}
+                            className="bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-slate-600 hover:border-indigo-500"
+                          >
                             {selectedProduct.currency} {denom}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -797,8 +941,35 @@ export default function GiftCardCatalog() {
                   )}
                 </div>
 
+                {/* Inline amount input for variable-amount cards (no denominations) */}
+                {selectedProduct.value_restrictions && (!selectedProduct.denominations || !Array.isArray(selectedProduct.denominations) || selectedProduct.denominations.length === 0) && (
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Amount ({selectedProduct.currency})</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder={`${selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - ${selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}`}
+                        value={purchaseInitialAmount}
+                        onChange={(e) => setPurchaseInitialAmount(e.target.value)}
+                        className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (purchaseInitialAmount) setShowPurchaseModal(true);
+                      }}
+                      disabled={!purchaseInitialAmount}
+                      className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm"
+                    >
+                      Buy Now
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={() => {
+                    if (!purchaseInitialAmount) setPurchaseInitialAmount('');
                     setShowPurchaseModal(true);
                   }}
                   className="w-full px-6 py-3 min-h-[48px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg transition-colors"
@@ -814,15 +985,25 @@ export default function GiftCardCatalog() {
           <PurchaseModal
             product={selectedProduct}
             usdcBalance={usdcBalance}
+            selectedNetwork={selectedNetwork}
+            onNetworkChange={(net: string) => {
+              setSelectedNetwork(net);
+              if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', net);
+            }}
+            walletProvider={walletProvider}
+            onRefreshBalance={refetchBalance}
+            initialAmount={purchaseInitialAmount}
             onClose={() => {
               setShowPurchaseModal(false);
-              setSelectedProduct(null);
+              setPurchaseInitialAmount('');
+              // Keep selectedProduct so user returns to product detail modal
             }}
-            onPurchaseComplete={(orderId, email, orderToken) => {
+            onPurchaseComplete={(orderId, email, orderToken, paymentTxHash) => {
               setShowPurchaseModal(false);
               setCurrentOrderId(orderId);
               setCurrentUserEmail(email);
               setCurrentOrderToken(orderToken);
+              setCurrentPaymentTxHash(paymentTxHash || '');
               setShowOrderStatusModal(true);
               refetchBalance();
             }}
@@ -834,11 +1015,13 @@ export default function GiftCardCatalog() {
             orderId={currentOrderId}
             orderToken={currentOrderToken}
             userEmail={currentUserEmail}
+            paymentTxHash={currentPaymentTxHash || undefined}
             onClose={() => {
               setShowOrderStatusModal(false);
               setCurrentOrderId(null);
               setCurrentUserEmail('');
               setCurrentOrderToken('');
+              setCurrentPaymentTxHash('');
               setSelectedProduct(null);
             }}
           />
@@ -849,25 +1032,56 @@ export default function GiftCardCatalog() {
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-800/95 backdrop-blur-md border-t border-slate-700">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
           {/* Left: USDC Balance (when authenticated) */}
-          {authenticated && embeddedWallet ? (
+          {isConnected && address ? (
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold text-xs">$</span>
+                <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold bg-slate-700 text-slate-300 px-1 rounded border border-slate-600 leading-tight">
+                  {selectedNetwork === 'conflux' ? 'CFX' : selectedNetwork === 'base' ? 'Base' : 'ETH'}
+                </span>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">USDC Balance</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></p>
                 <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
                   {balanceLoading ? '...' : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                 </p>
               </div>
+              {ethBalance !== null && ethBalance !== undefined && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 rounded-lg border border-slate-600 flex-shrink-0">
+                  <span className="text-[10px] text-slate-400">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    {parseFloat(ethBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                  </span>
+                </div>
+              )}
               <button
                 onClick={() => setShowSendModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
                 title="Send USDC"
               >
                 <Send className="w-3 h-3" />
-                <span className="hidden sm:inline">Send</span>
+                <span className="hidden sm:inline">Send {tokenSymbol}</span>
               </button>
+              {/* Compact network switcher — visible on all screen sizes */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {Object.entries(NETWORKS).map(([key, net]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setSelectedNetwork(key);
+                      if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
+                    }}
+                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
+                      selectedNetwork === key
+                        ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
+                        : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
+                    }`}
+                    title={`Switch to ${net.name}`}
+                  >
+                    {net.tokenSymbol}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div />
@@ -876,7 +1090,7 @@ export default function GiftCardCatalog() {
       </div>
 
       {/* Wallet View Modal */}
-      {showWalletView && embeddedWallet && (
+      {showWalletView && address && (
         <WalletViewModal
           onClose={() => setShowWalletView(false)}
           onOpenSendModal={(token: 'usdc' | 'eth') => {
@@ -886,33 +1100,35 @@ export default function GiftCardCatalog() {
               setShowSendModal(true);
             }
           }}
-          walletAddress={embeddedWallet.address}
-          userEmail={user?.email?.address || user?.google?.email || 'Connected'}
+          walletAddress={address}
+          userEmail="Connected"
           usdcBalance={usdcBalance}
           ethBalance={ethBalance}
           balanceLoading={balanceLoading}
           onRefreshBalance={refetchBalance}
-          onExportWallet={exportWallet}
+          onExportWallet={() => open()}
         />
       )}
 
       {/* Send USDC Modal */}
-      {showSendModal && embeddedWallet && (
+      {showSendModal && address && (
         <SendUsdcModal
           onClose={() => setShowSendModal(false)}
-          walletAddress={embeddedWallet.address}
+          walletAddress={address}
           currentBalance={usdcBalance}
           onTransactionComplete={refetchBalance}
+          selectedNetwork={selectedNetwork}
         />
       )}
 
       {/* Send ETH Modal */}
-      {showSendEthModal && embeddedWallet && (
+      {showSendEthModal && address && (
         <SendEthModal
           onClose={() => setShowSendEthModal(false)}
-          walletAddress={embeddedWallet.address}
+          walletAddress={address}
           currentBalance={ethBalance}
           onTransactionComplete={refetchBalance}
+          selectedNetwork={selectedNetwork}
         />
       )}
     </>

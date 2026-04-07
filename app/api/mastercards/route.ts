@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'GBP'];
+const SUPPORTED_CURRENCIES = ['USD', 'CAD'];
 
 const COUNTRY_ALIASES: Record<string, string> = {
   'usa': 'United States of America',

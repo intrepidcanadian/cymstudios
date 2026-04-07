@@ -1,5 +1,6 @@
 import { useOslPay } from '@/hooks/useOslPay';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 import { motion } from 'framer-motion';
 import { Wallet, Sparkles, LogIn } from 'lucide-react';
 import { OslPayUrlParams } from '@/config/oslPay';
@@ -31,13 +32,14 @@ export function OslPayButton({
   children
 }: OslPayButtonProps) {
   const { openOslPay, loading, error, isBackendAuthenticated } = useOslPay();
-  const { ready: privyReady, authenticated, login } = usePrivy();
+  const { isConnected, status } = useAccount();
+  const { open } = useAppKit();
 
-  const needsSignIn = privyReady && !authenticated;
+  const needsSignIn = status !== 'reconnecting' && !isConnected;
 
   const handleClick = async () => {
     if (needsSignIn) {
-      login();
+      open();
       return;
     }
 

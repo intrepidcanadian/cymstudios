@@ -2,16 +2,16 @@
 
 import { useState } from 'react';
 import { X, Send, AlertTriangle, ExternalLink, ArrowLeft } from 'lucide-react';
-import { useWallets } from '@privy-io/react-auth';
+import { useWalletClient, useSwitchChain } from 'wagmi';
+import { NETWORKS } from '@/config/networks';
 
 interface SendUsdcModalProps {
   onClose: () => void;
   walletAddress: string;
   currentBalance: string | null;
   onTransactionComplete: () => void;
+  selectedNetwork: string;
 }
-
-const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 type Step = 'input' | 'confirm' | 'sending' | 'success' | 'error';
 
@@ -20,9 +20,11 @@ export default function SendUsdcModal({
   walletAddress,
   currentBalance,
   onTransactionComplete,
+  selectedNetwork,
 }: SendUsdcModalProps) {
-  const { wallets } = useWallets();
-  const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
+  const { data: walletClient } = useWalletClient();
+  const { switchChain } = useSwitchChain();
+  const networkConfig = NETWORKS[selectedNetwork];
 
   const [recipientAddress, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -35,7 +37,7 @@ export default function SendUsdcModal({
     const { ethers } = await import('ethers');
 
     if (!recipientAddress || !ethers.isAddress(recipientAddress)) {
-      setError('Please enter a valid Ethereum address');
+      setError('Please enter a valid address');
       return false;
     }
 
@@ -51,7 +53,7 @@ export default function SendUsdcModal({
     }
 
     if (currentBalance !== null && parsedAmount > parseFloat(currentBalance)) {
-      setError(`Insufficient balance. You have ${parseFloat(currentBalance).toFixed(2)} USDC`);
+      setError(`Insufficient balance. You have ${parseFloat(currentBalance).toFixed(2)} ${networkConfig?.tokenSymbol}`);
       return false;
     }
 
@@ -66,7 +68,7 @@ export default function SendUsdcModal({
   };
 
   const handleSend = async () => {
-    if (!embeddedWallet) {
+    if (!walletClient || !networkConfig) {
       setError('No wallet connected');
       setStep('error');
       return;
@@ -78,23 +80,22 @@ export default function SendUsdcModal({
     try {
       const { ethers } = await import('ethers');
 
-      // Ensure we're on Ethereum Mainnet
-      if (embeddedWallet.chainId !== 'eip155:1') {
-        await embeddedWallet.switchChain(1);
+      // Switch chain if needed
+      if (walletClient.chain.id !== networkConfig.chainId) {
+        await switchChain({ chainId: networkConfig.chainId });
       }
 
-      const ethereumProvider = await embeddedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const provider = new ethers.BrowserProvider(walletClient.transport);
       const signer = await provider.getSigner();
 
-      const usdcContract = new ethers.Contract(
-        USDC_ADDRESS,
+      const tokenContract = new ethers.Contract(
+        networkConfig.tokenAddress,
         ['function transfer(address to, uint256 amount) returns (bool)'],
         signer
       );
 
-      const atomicAmount = ethers.parseUnits(amount, 6);
-      const tx = await usdcContract.transfer(recipientAddress, atomicAmount);
+      const atomicAmount = ethers.parseUnits(amount, networkConfig.tokenDecimals);
+      const tx = await tokenContract.transfer(recipientAddress, atomicAmount);
       setTxHash(tx.hash);
 
       await tx.wait();
@@ -106,7 +107,7 @@ export default function SendUsdcModal({
       if (err.code === 'ACTION_REJECTED' || err.message?.includes('rejected')) {
         setError('Transaction was rejected');
       } else if (err.message?.includes('insufficient funds for gas')) {
-        setError('Insufficient ETH for gas fees. You need ETH to pay network fees.');
+        setError(`Insufficient ${networkConfig?.nativeSymbol} for gas fees.`);
       } else {
         setError(err.message || 'Transaction failed');
       }
@@ -117,6 +118,8 @@ export default function SendUsdcModal({
   };
 
   const truncate = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const explorerUrl = networkConfig?.explorerUrl || 'https://etherscan.io';
+  const tokenSymbol = networkConfig?.tokenSymbol || 'USDC';
 
   return (
     <div
@@ -127,7 +130,7 @@ export default function SendUsdcModal({
         className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
         }}
       >
         {/* Header */}
@@ -144,7 +147,7 @@ export default function SendUsdcModal({
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
               <Send className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-100">Send USDC</h3>
+            <h3 className="text-lg font-semibold text-slate-100">Send {tokenSymbol}</h3>
           </div>
           <button
             onClick={onClose}
@@ -156,51 +159,37 @@ export default function SendUsdcModal({
         </div>
 
         <div className="p-5">
-          {/* Input Step */}
           {step === 'input' && (
             <div className="space-y-4">
-              {/* Balance Display */}
               <div className="p-3 bg-slate-700/30 rounded-xl border border-slate-700">
                 <p className="text-xs text-slate-400">Available Balance</p>
                 <p className="text-lg font-bold text-slate-100">
                   {currentBalance !== null
-                    ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`
-                    : '-- USDC'}
+                    ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${tokenSymbol}`
+                    : `-- ${tokenSymbol}`}
                 </p>
               </div>
 
-              {/* Recipient Address */}
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">
-                  Recipient Address
-                </label>
+                <label className="block text-sm font-bold text-slate-100 mb-2">Recipient Address</label>
                 <input
                   type="text"
                   value={recipientAddress}
-                  onChange={(e) => {
-                    setRecipientAddress(e.target.value);
-                    setError(null);
-                  }}
+                  onChange={(e) => { setRecipientAddress(e.target.value); setError(null); }}
                   placeholder="0x..."
                   className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"
                 />
               </div>
 
-              {/* Amount */}
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">
-                  Amount (USDC)
-                </label>
+                <label className="block text-sm font-bold text-slate-100 mb-2">Amount ({tokenSymbol})</label>
                 <div className="relative">
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={amount}
-                    onChange={(e) => {
-                      setAmount(e.target.value);
-                      setError(null);
-                    }}
+                    onChange={(e) => { setAmount(e.target.value); setError(null); }}
                     placeholder="0.00"
                     className="w-full px-4 py-3 pr-16 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold"
                   />
@@ -215,22 +204,19 @@ export default function SendUsdcModal({
                 </div>
               </div>
 
-              {/* Gas Warning */}
               <div className="flex items-start gap-2 p-3 bg-amber-900/20 border border-amber-700/30 rounded-xl">
                 <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-amber-300">
-                  Sending USDC requires a small amount of ETH for gas fees.
+                  Sending {tokenSymbol} requires a small amount of {networkConfig?.nativeSymbol} for gas fees.
                 </p>
               </div>
 
-              {/* Error */}
               {error && (
                 <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm">
                   {error}
                 </div>
               )}
 
-              {/* Continue Button */}
               <button
                 onClick={handleContinue}
                 disabled={!recipientAddress || !amount}
@@ -241,7 +227,6 @@ export default function SendUsdcModal({
             </div>
           )}
 
-          {/* Confirm Step */}
           {step === 'confirm' && (
             <div className="space-y-4">
               <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700 space-y-3">
@@ -255,7 +240,7 @@ export default function SendUsdcModal({
                 </div>
                 <div className="border-t border-slate-600 pt-3 flex justify-between">
                   <span className="text-slate-400 text-sm">Amount</span>
-                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(2)} USDC</span>
+                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(2)} {tokenSymbol}</span>
                 </div>
               </div>
 
@@ -282,28 +267,21 @@ export default function SendUsdcModal({
             </div>
           )}
 
-          {/* Sending Step */}
           {step === 'sending' && (
             <div className="text-center py-8 space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto" />
               <div>
-                <p className="text-slate-100 font-semibold">Sending USDC...</p>
+                <p className="text-slate-100 font-semibold">Sending {tokenSymbol}...</p>
                 <p className="text-xs text-slate-400 mt-1">Please confirm in your wallet</p>
               </div>
               {txHash && (
-                <a
-                  href={`https://etherscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  View on Etherscan <ExternalLink className="w-3 h-3" />
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300">
+                  View on Explorer <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
           )}
 
-          {/* Success Step */}
           {step === 'success' && (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 rounded-full bg-green-900/30 border border-green-700/50 flex items-center justify-center mx-auto">
@@ -314,29 +292,20 @@ export default function SendUsdcModal({
               <div>
                 <p className="text-lg font-semibold text-slate-100">Transaction Sent!</p>
                 <p className="text-sm text-slate-400 mt-1">
-                  {parseFloat(amount).toFixed(2)} USDC sent to {truncate(recipientAddress)}
+                  {parseFloat(amount).toFixed(2)} {tokenSymbol} sent to {truncate(recipientAddress)}
                 </p>
               </div>
               {txHash && (
-                <a
-                  href={`https://etherscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors"
-                >
-                  View on Etherscan <ExternalLink className="w-3.5 h-3.5" />
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors">
+                  View on Explorer <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              <button
-                onClick={onClose}
-                className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
-              >
+              <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
                 Done
               </button>
             </div>
           )}
 
-          {/* Error Step */}
           {step === 'error' && (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 rounded-full bg-red-900/30 border border-red-700/50 flex items-center justify-center mx-auto">
@@ -348,18 +317,12 @@ export default function SendUsdcModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    setError(null);
-                    setStep('input');
-                  }}
+                  onClick={() => { setError(null); setStep('input'); }}
                   className="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all"
                 >
                   Try Again
                 </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
-                >
+                <button onClick={onClose} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
                   Close
                 </button>
               </div>

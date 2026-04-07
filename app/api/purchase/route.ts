@@ -3,17 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
-import { getUsdcAmount } from '@/lib/exchange-rates';
+import { getUsdcAmount, getUsdcAmountFresh } from '@/lib/exchange-rates';
 import { generateOrderToken } from '@/lib/auth-token';
 import { logger } from '@/lib/logger';
+import { NETWORKS, FACILITATOR_ADDRESS, getNetwork, type NetworkConfig } from '@/config/networks';
 
 export const dynamic = 'force-dynamic';
+
+// Server-side rate limiting per wallet address (10s window)
+const recentPurchaseAttempts = new Map<string, number>();
+const RATE_LIMIT_WINDOW_MS = 10_000;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // xRemit API configuration
-// Priority: EXTERNAL_BRANDS_API_URL override > XREMIT_ENV selection > sandbox default
 const XREMIT_BASE_URL = process.env.EXTERNAL_BRANDS_API_URL
   ? process.env.EXTERNAL_BRANDS_API_URL.replace(/\/api\/v1\/?$/, '')
   : (process.env.XREMIT_ENV === 'production'
@@ -22,15 +26,10 @@ const XREMIT_BASE_URL = process.env.EXTERNAL_BRANDS_API_URL
 const XREMIT_API_KEY = process.env.EXTERNAL_API_KEY;
 const XREMIT_CLIENT_SECRET = process.env.EXTERNAL_CLIENT_SECRET;
 
-// x402 Payment Configuration
-const USDC_CONTRACT = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-const FACILITATOR_ADDRESS = '0xc10561c1c0d718b3d362df9d510a1b4e4331a4ee';
 const FACILITATOR_PRIVATE_KEY = process.env.FACILITATOR_MAINNET_PRIVATE_KEY || process.env.FACILITATOR_PRIVATE_KEY;
-const ETHEREUM_RPC = process.env.ETHEREUM_MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-const CHAIN_ID = 1; // Ethereum Mainnet
 
-// USDC ABI (transferWithAuthorization function + transfer for refunds)
-const USDC_ABI = [
+// EIP-3009 ABI (shared across all supported tokens)
+const TOKEN_ABI = [
   'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external',
   'function transfer(address to, uint256 value) external returns (bool)',
   'function balanceOf(address account) view returns (uint256)',
@@ -69,6 +68,15 @@ export async function POST(request: NextRequest) {
     if (!productId || !price || !userId || !userEmail) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format to prevent voucher loss from malformed addresses
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email address format. Please provide a valid email to receive your voucher.' },
         { status: 400 }
       );
     }
@@ -195,46 +203,42 @@ export async function POST(request: NextRequest) {
     // NOW that we've validated the purchase will succeed, check for payment
     // Check for x402 payment header
     const paymentHeader = request.headers.get('x-payment');
+    const effectiveCurrency = currency || productData.currency;
 
-    // Calculate USDC amount from price based on currency
-    // For USD: 1:1 with USDC
-    // For CAD/HKD: convert using exchange rate
-    let usdcAmountFloat: number;
-    try {
-      usdcAmountFloat = await getUsdcAmount(price, currency || productData.currency);
-      logger.info(`[Purchase] Conversion: ${price} ${currency || productData.currency} = ${usdcAmountFloat.toFixed(2)} USDC`);
-    } catch (conversionError) {
-      logger.error('[Purchase] Currency conversion failed');
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Unable to convert ${currency || productData.currency} to USDC. Exchange rate service unavailable.`
-        },
-        { status: 503 }
-      );
-    }
-
-    // If no payment header, return 402 Payment Required
+    // If no payment header, return 402 with estimated USDC amount (24h cache OK)
     if (!paymentHeader) {
-      // Calculate USDC amount in atomic units (6 decimals)
+      let usdcAmountFloat: number;
+      try {
+        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency);
+        logger.info(`[Purchase] Estimate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC (cached rate)`);
+      } catch (conversionError) {
+        logger.error('[Purchase] Currency conversion failed');
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Unable to convert ${effectiveCurrency} to USDC. Exchange rate service unavailable.`
+          },
+          { status: 503 }
+        );
+      }
       const usdcAmount = Math.floor(usdcAmountFloat * 1000000).toString();
 
-      const paymentRequirement = {
-        asset: USDC_CONTRACT,
-        network: 'ethereum',
+      const accepts = Object.entries(NETWORKS).map(([key, net]) => ({
+        asset: net.tokenAddress,
+        network: net.x402Network,
+        chainId: net.chainId,
         payTo: FACILITATOR_ADDRESS,
         maxAmountRequired: usdcAmount,
         extra: {
-          name: 'USD Coin',
-          version: '2',
+          name: net.eip712Name,
+          version: net.eip712Version,
           originalPrice: price.toString(),
-          originalCurrency: currency || productData.currency
+          originalCurrency: effectiveCurrency
         }
-      };
+      }));
 
-      // Extract payment tracking data for client
       const paymentTracking = extractPaymentTrackingData(
-        paymentRequirement,
+        accepts[0],
         'purchase_giftcard',
         '/api/purchase'
       );
@@ -242,29 +246,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Payment Required',
-          message: 'Please pay with USDC to complete this purchase',
-          accepts: [paymentRequirement],
+          message: 'Please pay to complete this purchase',
+          accepts,
           x402Payment: paymentTracking
         },
         { status: 402 }
       );
     }
 
+    // Settlement path: use fresh exchange rate (max 30 min old) for accurate pricing
+    let usdcAmountFloat: number;
+    try {
+      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency);
+      logger.info(`[Purchase] Fresh rate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC`);
+    } catch (conversionError) {
+      logger.error('[Purchase] Currency conversion failed at settlement');
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Unable to convert ${effectiveCurrency} to USDC. Exchange rate service unavailable.`
+        },
+        { status: 503 }
+      );
+    }
+
     // Decode and validate x402 payment format (but don't execute yet)
-    // Store payment data to execute AFTER xRemit confirms purchase will succeed
-    let paymentSignature: string;
+    let paymentData: any;
+    let paymentStrategy: string;
     let paymentFrom: string;
     let paymentTo: string;
     let paymentValue: string;
-    let paymentValidAfter: string;
-    let paymentValidBefore: string;
-    let paymentNonce: string;
+    let paymentNetworkConfig: NetworkConfig;
+    // EIP-3009 specific
+    let paymentSignature: string | undefined;
+    let paymentValidAfter: string | undefined;
+    let paymentValidBefore: string | undefined;
+    let paymentNonce: string | undefined;
+    // Direct specific
+    let paymentApprovalTxHash: string | undefined;
 
     try {
-      const paymentData = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
+      paymentData = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
       logger.info('[x402] Payment data received');
 
-      // Validate payment structure
       if (paymentData.x402Version !== 1 || paymentData.scheme !== 'exact') {
         return NextResponse.json(
           { success: false, error: 'Invalid payment format' },
@@ -272,49 +296,120 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { signature, authorization } = paymentData.payload;
-      const { from, to, value, validAfter, validBefore, nonce } = authorization;
+      const networkKey = paymentData.network || 'ethereum';
+      paymentNetworkConfig = getNetwork(networkKey);
+      paymentStrategy = paymentData.strategy || paymentNetworkConfig.paymentStrategy;
+      logger.info(`[x402] Payment network: ${paymentNetworkConfig.name} (${paymentNetworkConfig.tokenSymbol}), strategy: ${paymentStrategy}`);
 
-      // Validate payment amount matches USDC amount (converted from currency)
-      const expectedAmount = Math.floor(usdcAmountFloat * 1000000).toString();
-      if (value !== expectedAmount) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Payment amount mismatch. Expected ${expectedAmount} atomic units (${usdcAmountFloat.toFixed(2)} USDC for ${price} ${currency || productData.currency}), got ${value} atomic units`
-          },
-          { status: 400 }
-        );
+      const { payload } = paymentData;
+      // Settlement amount = fresh rate + 1.5% merchant fee.
+      // User signed based on the 402 estimate (24h cache + fee), so their
+      // signed amount will typically be >= the fresh settlement amount.
+      const settlementAmount = Math.floor(usdcAmountFloat * 1000000).toString();
+
+      if (paymentStrategy === 'direct') {
+        // Direct: user already approved, we call transferFrom for the settlement amount
+        const { from, to, value, approvalTxHash } = payload;
+        if (!from || !to || !value || !approvalTxHash) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid direct payment payload' },
+            { status: 400 }
+          );
+        }
+        if (BigInt(value) < BigInt(settlementAmount)) {
+          return NextResponse.json(
+            { success: false, error: `Payment amount insufficient. Required ${settlementAmount}, got ${value}. The exchange rate may have changed — please try again.` },
+            { status: 400 }
+          );
+        }
+        if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid payment recipient' },
+            { status: 400 }
+          );
+        }
+        paymentFrom = from;
+        paymentTo = to;
+        // Transfer exactly the settlement amount (fresh rate + fee), not the full approval
+        paymentValue = settlementAmount;
+        paymentApprovalTxHash = approvalTxHash;
+      } else {
+        // EIP-3009: signature-based authorization
+        // Amount is baked into the signature — we must transfer the signed value
+        const { signature, authorization } = payload;
+        const { from, to, value, validAfter, validBefore, nonce } = authorization;
+
+        if (BigInt(value) < BigInt(settlementAmount)) {
+          return NextResponse.json(
+            { success: false, error: `Payment amount insufficient. Required ${settlementAmount}, got ${value}. The exchange rate may have changed — please try again.` },
+            { status: 400 }
+          );
+        }
+        if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid payment recipient' },
+            { status: 400 }
+          );
+        }
+        paymentSignature = signature;
+        paymentFrom = from;
+        paymentTo = to;
+        paymentValue = value; // Must match signed authorization
+        paymentValidAfter = validAfter;
+        paymentValidBefore = validBefore;
+        paymentNonce = nonce;
       }
 
-      // Validate recipient
-      if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid payment recipient' },
-          { status: 400 }
-        );
-      }
-
-      // Store payment data for execution
-      paymentSignature = signature;
-      paymentFrom = from;
-      paymentTo = to;
-      paymentValue = value;
-      paymentValidAfter = validAfter;
-      paymentValidBefore = validBefore;
-      paymentNonce = nonce;
-
-      // Payment format validated - will execute BEFORE xRemit to ensure we can collect
       logger.info('[x402] Payment format validated');
+
+      // Server-side rate limit per wallet address
+      const walletKey = paymentFrom.toLowerCase();
+      const lastAttempt = recentPurchaseAttempts.get(walletKey);
+      if (lastAttempt && Date.now() - lastAttempt < RATE_LIMIT_WINDOW_MS) {
+        logger.warn(`[Purchase] Rate limited wallet: ${walletKey}`);
+        return NextResponse.json(
+          { success: false, error: 'Too many purchase attempts. Please wait a few seconds.' },
+          { status: 429 }
+        );
+      }
+      recentPurchaseAttempts.set(walletKey, Date.now());
+      // Cleanup old entries periodically
+      if (recentPurchaseAttempts.size > 1000) {
+        const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+        recentPurchaseAttempts.forEach((v, k) => {
+          if (v < cutoff) recentPurchaseAttempts.delete(k);
+        });
+      }
 
     } catch (paymentError) {
       logger.error('[x402] Payment validation failed');
       return NextResponse.json(
+        { success: false, error: paymentError instanceof Error ? paymentError.message : 'Payment validation failed' },
+        { status: 400 }
+      );
+    }
+
+    // Idempotency guard: check for duplicate pending order from same wallet with same amount in last 60s
+    const { data: recentDuplicates } = await supabase
+      .from('orders')
+      .select('order_id, status, created_at')
+      .eq('payment_from', paymentFrom.toLowerCase())
+      .eq('payment_value', paymentValue)
+      .eq('product_id', productIdNumber)
+      .in('status', ['pending', 'processing'])
+      .gte('created_at', new Date(Date.now() - 300_000).toISOString())
+      .limit(1);
+
+    if (recentDuplicates && recentDuplicates.length > 0) {
+      const existingOrder = recentDuplicates[0];
+      logger.warn(`[Purchase] Duplicate submission blocked. Existing order: ${existingOrder.order_id}`);
+      return NextResponse.json(
         {
           success: false,
-          error: paymentError instanceof Error ? paymentError.message : 'Payment validation failed'
+          error: 'A purchase for this product is already being processed. Please wait for it to complete.',
+          existingOrderId: existingOrder.order_id,
         },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
@@ -333,7 +428,10 @@ export async function POST(request: NextRequest) {
         user_last_name: userLastName,
         user_email: userEmail,
         product_image: productData.product_image || null,
-        status: 'pending'
+        status: 'pending',
+        payment_from: paymentFrom.toLowerCase(),
+        payment_network: paymentNetworkConfig.x402Network,
+        payment_value: paymentValue
       })
       .select()
       .single();
@@ -349,32 +447,69 @@ export async function POST(request: NextRequest) {
     // Execute payment FIRST to ensure we can collect before ordering gift card
     // If payment fails (insufficient balance), no order is placed
     let paymentTxHash: string | null = null;
-    logger.info('[x402] Executing payment on Ethereum Mainnet...');
+    logger.info(`[x402] Executing ${paymentStrategy} payment on ${paymentNetworkConfig.name}...`);
     try {
-      const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
+      const provider = new ethers.JsonRpcProvider(paymentNetworkConfig.rpcUrl);
       const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
-      const usdcContract = new ethers.Contract(USDC_CONTRACT, USDC_ABI, facilitator);
+      const tokenContract = new ethers.Contract(paymentNetworkConfig.tokenAddress, TOKEN_ABI, facilitator);
 
-      // Split signature into v, r, s
-      const sig = ethers.Signature.from(paymentSignature);
+      // M6: Pre-check facilitator has enough native token for gas before settlement
+      const facilitatorGasBalance = await provider.getBalance(facilitator.address);
+      const minGasBalance = ethers.parseEther('0.001'); // ~enough for one tx on most networks
+      if (facilitatorGasBalance < minGasBalance) {
+        logger.error(`[x402] Facilitator ${paymentNetworkConfig.nativeSymbol} balance too low: ${ethers.formatEther(facilitatorGasBalance)}`);
+        // Update order to failed before returning
+        await supabase
+          .from('orders')
+          .update({
+            status: 'failed',
+            error_message: JSON.stringify({
+              error: 'Settlement infrastructure temporarily unavailable',
+              reason: 'Facilitator gas balance insufficient',
+            })
+          })
+          .eq('order_id', orderId);
 
-      // Execute transferWithAuthorization
-      const tx = await usdcContract.transferWithAuthorization(
-        paymentFrom,
-        paymentTo,
-        paymentValue,
-        paymentValidAfter,
-        paymentValidBefore,
-        paymentNonce,
-        sig.v,
-        sig.r,
-        sig.s
-      );
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Payment settlement is temporarily unavailable. Please try again later or contact support.',
+            orderId: orderId,
+          },
+          { status: 503 }
+        );
+      }
+
+      let tx: any;
+
+      if (paymentStrategy === 'direct') {
+        // Verify the user's approve tx was confirmed
+        const approvalReceipt = await provider.getTransactionReceipt(paymentApprovalTxHash!);
+        if (!approvalReceipt || approvalReceipt.status !== 1) {
+          throw new Error('Approval transaction not confirmed');
+        }
+
+        // Verify allowance
+        const allowance = await tokenContract.allowance(paymentFrom, facilitator.address);
+        if (allowance < BigInt(paymentValue)) {
+          throw new Error(`Insufficient allowance. Required: ${paymentValue}, Approved: ${allowance}`);
+        }
+
+        // Execute transferFrom
+        tx = await tokenContract.transferFrom(paymentFrom, paymentTo, paymentValue);
+      } else {
+        // EIP-3009: transferWithAuthorization
+        const sig = ethers.Signature.from(paymentSignature!);
+        tx = await tokenContract.transferWithAuthorization(
+          paymentFrom, paymentTo, paymentValue,
+          paymentValidAfter, paymentValidBefore, paymentNonce,
+          sig.v, sig.r, sig.s
+        );
+      }
 
       logger.info('[x402] TX submitted:', tx.hash);
       paymentTxHash = tx.hash;
 
-      // Wait for confirmation
       const receipt = await tx.wait();
       logger.info('[x402] Payment confirmed, block:', receipt.blockNumber);
     } catch (paymentExecutionError) {
@@ -398,7 +533,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: paymentExecutionError instanceof Error
             ? paymentExecutionError.message
-            : 'Payment failed. Please ensure you have sufficient USDC balance.',
+            : `Payment failed. Please ensure you have sufficient ${paymentNetworkConfig.tokenSymbol} balance.`,
           orderId: orderId
         },
         { status: 400 }
@@ -455,74 +590,36 @@ export async function POST(request: NextRequest) {
       const isTimeout = fetchError.name === 'AbortError';
       logger.error(`[Purchase] xRemit ${isTimeout ? 'timeout' : 'network error'}, payment TX: ${paymentTxHash}`);
 
-      // REFUND: xRemit failed but we collected payment - refund the user
-      logger.info('[Refund] Initiating refund...');
-      try {
-        const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
-        const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
-        const usdcContract = new ethers.Contract(USDC_CONTRACT, USDC_ABI, facilitator);
-
-        const refundTx = await usdcContract.transfer(paymentFrom, paymentValue);
-        logger.info('[Refund] Refund TX submitted:', refundTx.hash);
-        const refundReceipt = await refundTx.wait();
-        logger.info('[Refund] Refund confirmed, block:', refundReceipt.blockNumber);
-
-        // Update order with refund info
-        await supabase
-          .from('orders')
-          .update({
-            status: 'failed',
-            error_message: JSON.stringify({
-              error: isTimeout ? 'xRemit API timeout' : 'xRemit network error',
-              message: 'Purchase request timed out - payment refunded',
-              payment_tx: paymentTxHash,
-              refund_tx: refundTx.hash
-            })
+      // Do NOT auto-refund on timeout — xRemit may still be processing the order.
+      // Mark as pending_review so a manual/cron process can check xRemit order status
+      // before deciding whether to refund.
+      await supabase
+        .from('orders')
+        .update({
+          status: 'pending_review',
+          error_message: JSON.stringify({
+            error: isTimeout ? 'xRemit API timeout' : 'xRemit network error',
+            message: 'Purchase request timed out - awaiting manual review before refund',
+            payment_tx: paymentTxHash,
+            payment_network: paymentNetworkConfig.x402Network,
+            payment_from: paymentFrom,
+            payment_value: paymentValue,
           })
-          .eq('order_id', orderId);
+        })
+        .eq('order_id', orderId);
 
-        return NextResponse.json(
-          {
-            success: false,
-            error: isTimeout
-              ? 'The gift card provider is taking too long to respond. Your payment has been automatically refunded. Please try again later.'
-              : 'Unable to reach gift card provider. Your payment has been automatically refunded. Please try again later.',
-            orderId: orderId,
-            refunded: true,
-            refundTxHash: refundTx.hash,
-            paymentTxHash: paymentTxHash
-          },
-          { status: 503 }
-        );
-      } catch (refundError) {
-        logger.error('[Refund] Auto-refund failed, manual refund required');
-
-        await supabase
-          .from('orders')
-          .update({
-            status: 'failed',
-            error_message: JSON.stringify({
-              error: isTimeout ? 'xRemit API timeout' : 'xRemit network error',
-              message: 'Purchase request timed out - REFUND REQUIRED',
-              payment_tx: paymentTxHash,
-              refund_error: refundError instanceof Error ? refundError.message : 'Unknown refund error',
-              requires_manual_refund: true
-            })
-          })
-          .eq('order_id', orderId);
-
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Gift card provider timed out. Payment was collected but automatic refund failed. Please contact support for manual refund.',
-            orderId: orderId,
-            refunded: false,
-            paymentTxHash: paymentTxHash,
-            requiresManualRefund: true
-          },
-          { status: 500 }
-        );
-      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: isTimeout
+            ? 'The gift card provider is taking longer than expected. Your payment has been received and your order is being reviewed. Please contact info@ginsengswap.com if you need assistance.'
+            : 'Unable to reach gift card provider. Your payment has been received and your order is being reviewed. Please contact info@ginsengswap.com if you need assistance.',
+          orderId: orderId,
+          status: 'pending_review',
+          paymentTxHash: paymentTxHash
+        },
+        { status: 202 }
+      );
     }
 
     logger.info('[Purchase] xRemit response status:', xremitResponse.status);
@@ -540,12 +637,12 @@ export async function POST(request: NextRequest) {
       // REFUND: xRemit failed but we collected payment - refund the user
       logger.info('[Refund] Initiating refund due to xRemit failure...');
       try {
-        const provider = new ethers.JsonRpcProvider(ETHEREUM_RPC);
+        const provider = new ethers.JsonRpcProvider(paymentNetworkConfig.rpcUrl);
         const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
-        const usdcContract = new ethers.Contract(USDC_CONTRACT, USDC_ABI, facilitator);
+        const tokenContract = new ethers.Contract(paymentNetworkConfig.tokenAddress, TOKEN_ABI, facilitator);
 
         // Refund: Transfer back from facilitator to user
-        const refundTx = await usdcContract.transfer(
+        const refundTx = await tokenContract.transfer(
           paymentFrom,
           paymentValue
         );
@@ -657,15 +754,15 @@ export async function POST(request: NextRequest) {
     const usdcAmountAtomic = Math.floor(usdcAmountFloat * 1000000).toString();
     const paymentTracking = extractPaymentTrackingData(
       {
-        asset: USDC_CONTRACT,
-        network: 'ethereum',
+        asset: paymentNetworkConfig.tokenAddress,
+        network: paymentNetworkConfig.x402Network,
         payTo: FACILITATOR_ADDRESS,
         maxAmountRequired: usdcAmountAtomic,
         extra: {
-          name: 'USD Coin',
-          version: '2',
+          name: paymentNetworkConfig.eip712Name,
+          version: paymentNetworkConfig.eip712Version,
           originalPrice: price.toString(),
-          originalCurrency: currency || productData.currency
+          originalCurrency: effectiveCurrency
         }
       },
       'purchase_giftcard',

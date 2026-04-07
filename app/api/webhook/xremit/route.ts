@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendVoucherEmail } from '@/lib/email';
+import { sendVoucherEmail, sendOrderFailureAlert } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -268,6 +268,38 @@ export async function POST(request: NextRequest) {
       faceValue: updateData.face_value || 'N/A',
       vouchersCount: webhookData.vouchers?.length || 0,
     });
+
+    // Send failure alert to ops team if order failed and payment was collected
+    if (updateData.status === 'failed' && existingOrder.status === 'pending_review') {
+      // This order had payment collected but xRemit timed out, and now xRemit
+      // confirms it failed — manual refund is needed.
+      let paymentMeta: any = {};
+      try {
+        paymentMeta = typeof existingOrder.error_message === 'string'
+          ? JSON.parse(existingOrder.error_message)
+          : existingOrder.error_message || {};
+      } catch { /* use empty */ }
+
+      try {
+        await sendOrderFailureAlert({
+          orderId: orderId,
+          productName: webhookData.productName || existingOrder.brand_name,
+          productId: existingOrder.product_id,
+          price: existingOrder.price,
+          currency: existingOrder.currency,
+          userEmail: existingOrder.user_email,
+          errorMessage: typeof updateData.error_message === 'string' ? updateData.error_message : webhookData.error,
+          paymentTxHash: paymentMeta.payment_tx,
+          paymentNetwork: paymentMeta.payment_network,
+          paymentFrom: paymentMeta.payment_from,
+          paymentValue: paymentMeta.payment_value,
+          requiresRefund: true,
+        });
+        logger.info('[Webhook] Failure alert sent for pending_review order:', orderId);
+      } catch (alertError) {
+        logger.error('[Webhook] Failed to send failure alert:', alertError);
+      }
+    }
 
     // Send email notification to customer with voucher details
     if (updateData.status === 'completed' && updateData.voucher_code && existingOrder.user_email) {

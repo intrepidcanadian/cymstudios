@@ -195,3 +195,106 @@ export async function sendVoucherEmail(data: VoucherEmailData): Promise<{ succes
     };
   }
 }
+
+// ============================================
+// Order Failure Alert (internal)
+// ============================================
+
+interface OrderFailureAlertData {
+  orderId: string;
+  productName?: string;
+  productId?: number;
+  price?: number;
+  currency?: string;
+  userEmail?: string;
+  errorMessage?: string;
+  paymentTxHash?: string;
+  paymentNetwork?: string;
+  paymentFrom?: string;
+  paymentValue?: string;
+  requiresRefund: boolean;
+}
+
+/**
+ * Send internal alert to info@ginsengswap.com when an order fails
+ * and may require manual refund.
+ */
+export async function sendOrderFailureAlert(data: OrderFailureAlertData): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !resend) {
+    console.warn('⚠️ RESEND_API_KEY not configured - skipping failure alert');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Order Failure Alert</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #dc2626; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 22px;">Order Failed${data.requiresRefund ? ' — Refund Required' : ''}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 25px;">
+              <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 14px; color: #333;">
+                <tr>
+                  <td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee; width: 140px;">Order ID</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace;">${data.orderId}</td>
+                </tr>
+                ${data.productName ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Product</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.productName} (${data.productId})</td></tr>` : ''}
+                ${data.price ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Amount</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.currency} ${data.price}</td></tr>` : ''}
+                ${data.userEmail ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Customer</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.userEmail}</td></tr>` : ''}
+                ${data.errorMessage ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Error</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #dc2626;">${data.errorMessage}</td></tr>` : ''}
+                ${data.paymentTxHash ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Payment TX</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace; font-size: 12px; word-break: break-all;">${data.paymentTxHash}</td></tr>` : ''}
+                ${data.paymentNetwork ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Network</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.paymentNetwork}</td></tr>` : ''}
+                ${data.paymentFrom ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Refund To</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace; font-size: 12px; word-break: break-all;">${data.paymentFrom}</td></tr>` : ''}
+                ${data.paymentValue ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Refund Amount</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace;">${data.paymentValue} atomic units (${(parseInt(data.paymentValue) / 1e6).toFixed(2)} tokens)</td></tr>` : ''}
+              </table>
+
+              ${data.requiresRefund ? `
+              <div style="margin-top: 20px; padding: 15px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                <p style="margin: 0; color: #dc2626; font-weight: bold;">Action required: Manual refund needed for this order.</p>
+              </div>
+              ` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f5f5f5; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999; font-size: 11px;">CYM Studio — Automated Order Alert</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to: 'info@ginsengswap.com',
+      subject: `${data.requiresRefund ? '[REFUND REQUIRED]' : '[FAILED]'} Order ${data.orderId.substring(0, 8)} — ${data.productName || 'Unknown Product'}`,
+      html: emailHtml,
+    });
+
+    console.log('✅ Failure alert sent:', result);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to send failure alert:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}

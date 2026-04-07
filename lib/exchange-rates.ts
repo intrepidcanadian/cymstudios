@@ -2,9 +2,9 @@
  * Exchange Rate Service
  *
  * Uses API Layer currency_data API for exchange rates.
- * Rates are cached for 12 hours (refreshes twice daily, ~60 API calls/month).
+ * Two-tier caching: 24h for display estimates, 30min freshness for settlement.
  *
- * A 1.5% FX buffer is added to cover volatility between rate fetch and settlement.
+ * A 1.5% merchant fee is applied on top of the exchange rate.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -13,11 +13,16 @@ import { createClient } from '@supabase/supabase-js';
 const API_LAYER_KEY = process.env.API_LAYER_KEY;
 const API_LAYER_URL = 'https://api.apilayer.com/currency_data/live';
 
-// FX Buffer to cover volatility (1.5%)
-const FX_BUFFER_PERCENT = 1.5;
+// Merchant fee applied on top of the exchange rate
+const FX_FEE_PERCENT = 1.5;
+const FX_FEE_PERCENT_USD = 0.5;
 
-// Cache duration: 12 hours (refreshes twice daily, ~60 API calls/month)
-const CACHE_DURATION_MS = 12 * 60 * 60 * 1000;
+// Cache duration: 24 hours for display/estimation (~30 API calls/month)
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+// Fresh cache threshold: 30 minutes — used at settlement time
+// If cache is older than this, force-refresh before processing payment
+const FRESH_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 
 // Common currencies we support for gift cards
 const SUPPORTED_CURRENCIES = [
@@ -196,22 +201,25 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
 
 /**
  * Get exchange rates with caching strategy:
- * 1. Check in-memory cache (valid for 12 hours)
- * 2. Check database cache (valid for 12 hours)
- * 3. Fetch from API Layer (once per day max)
+ * 1. Check in-memory cache (valid for maxAge, default 24h)
+ * 2. Check database cache (valid for maxAge)
+ * 3. Fetch from API Layer
  * 4. Fall back to hardcoded rates if all else fails
+ *
+ * @param maxAge - Maximum cache age in ms (default: CACHE_DURATION_MS = 24h).
+ *                 Pass FRESH_CACHE_MAX_AGE_MS (30 min) at settlement time.
  */
-async function getExchangeRates(): Promise<ExchangeRateCache> {
+async function getExchangeRates(maxAge: number = CACHE_DURATION_MS): Promise<ExchangeRateCache> {
   const now = Date.now();
 
   // 1. Check memory cache
-  if (memoryCache && (now - memoryCache.timestamp) < CACHE_DURATION_MS) {
+  if (memoryCache && (now - memoryCache.timestamp) < maxAge) {
     return memoryCache;
   }
 
   // 2. Check database cache
   const dbCache = await loadRatesFromDatabase();
-  if (dbCache && (now - dbCache.timestamp) < CACHE_DURATION_MS) {
+  if (dbCache && (now - dbCache.timestamp) < maxAge) {
     memoryCache = dbCache;
     return dbCache;
   }
@@ -296,22 +304,58 @@ export async function convertToUsd(amount: number, currency: string): Promise<nu
 }
 
 /**
- * Get USDC amount for a given currency amount
- * Includes 1.5% FX buffer to cover volatility
+ * Get the fee percentage for a given currency.
+ * USD: 0.4% (no FX risk). Non-USD: 1.5%.
+ */
+function getFeePercent(currency: string): number {
+  return (currency === 'USD' || currency === 'USDC') ? FX_FEE_PERCENT_USD : FX_FEE_PERCENT;
+}
+
+/**
+ * Get USDC amount for a given currency amount (display/estimate).
+ * Uses cached rate (up to 24h old) + merchant fee (0.4% USD, 1.5% non-USD).
  *
  * @param amount - Amount in source currency (gift card value)
  * @param currency - Source currency code (e.g., 'USD', 'HKD', 'EUR')
- * @returns USDC amount with FX buffer applied
+ * @returns Estimated USDC amount with merchant fee applied
  */
 export async function getUsdcAmount(amount: number, currency: string): Promise<number> {
-  // Convert to USD first
   const usdAmount = await convertToUsd(amount, currency);
+  const feePct = getFeePercent(currency);
+  const usdcAmount = usdAmount * (1 + feePct / 100);
 
-  // Apply 1.5% FX buffer (multiply by 1.015)
-  const bufferMultiplier = 1 + (FX_BUFFER_PERCENT / 100);
-  const usdcAmount = usdAmount * bufferMultiplier;
+  console.log(`[ExchangeRates] ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (${feePct}% fee, cached rate)`);
 
-  console.log(`[ExchangeRates] ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (with ${FX_BUFFER_PERCENT}% buffer)`);
+  return usdcAmount;
+}
+
+/**
+ * Get USDC amount using a fresh exchange rate (max 30 min old).
+ * Used at settlement time — the merchant fee is charged on the current rate.
+ *
+ * @param amount - Amount in source currency (gift card value)
+ * @param currency - Source currency code
+ * @returns USDC amount with merchant fee applied on fresh rate
+ */
+export async function getUsdcAmountFresh(amount: number, currency: string): Promise<number> {
+  const feePct = getFeePercent(currency);
+  const feeMultiplier = 1 + (feePct / 100);
+
+  if (currency === 'USD' || currency === 'USDC') {
+    return amount * feeMultiplier;
+  }
+
+  const { rates } = await getExchangeRates(FRESH_CACHE_MAX_AGE_MS);
+  const rate = rates[currency] || FALLBACK_RATES[currency];
+
+  if (!rate) {
+    throw new Error(`Unsupported currency: ${currency}`);
+  }
+
+  const usdAmount = amount / rate;
+  const usdcAmount = usdAmount * feeMultiplier;
+
+  console.log(`[ExchangeRates] FRESH: ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (${feePct}% fee, fresh rate)`);
 
   return usdcAmount;
 }
@@ -323,14 +367,14 @@ export async function getExchangeRateInfo(): Promise<{
   rates: Record<string, number>;
   lastUpdated: string;
   source: string;
-  fxBuffer: number;
+  fxFee: number;
 }> {
   const cache = await getExchangeRates();
   return {
     rates: cache.rates,
     lastUpdated: new Date(cache.timestamp).toISOString(),
     source: cache.source,
-    fxBuffer: FX_BUFFER_PERCENT
+    fxFee: FX_FEE_PERCENT
   };
 }
 

@@ -2,9 +2,15 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { OnRampForm } from '@/components/onramp/OnRampForm';
 import { TransactionStatus } from '@/components/onramp/TransactionStatus';
+
+// Dynamic import to avoid SSR localStorage issues from dependencies
+const OnRampForm = dynamic(() => import('@/components/onramp/OnRampForm').then(m => ({ default: m.OnRampForm })), {
+  ssr: false,
+  loading: () => <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto" />,
+});
 
 function OnrampContent() {
   const searchParams = useSearchParams();
@@ -13,6 +19,7 @@ function OnrampContent() {
   const status = searchParams.get('status') as 'success' | 'fail' | null;
   const orderId = searchParams.get('orderId') || (() => {
     // Fallback: try to get orderId from localStorage if not in URL
+    if (typeof window === 'undefined') return null;
     try {
       return localStorage.getItem('osl_last_merchant_order');
     } catch {

@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { X, Send, AlertTriangle, ExternalLink, ArrowLeft } from 'lucide-react';
-import { useWallets } from '@privy-io/react-auth';
+import { useWalletClient, useSwitchChain } from 'wagmi';
+import { NETWORKS } from '@/config/networks';
 
 interface SendEthModalProps {
   onClose: () => void;
   walletAddress: string;
   currentBalance: string | null;
   onTransactionComplete: () => void;
+  selectedNetwork: string;
 }
 
 type Step = 'input' | 'confirm' | 'sending' | 'success' | 'error';
@@ -18,9 +20,12 @@ export default function SendEthModal({
   walletAddress,
   currentBalance,
   onTransactionComplete,
+  selectedNetwork,
 }: SendEthModalProps) {
-  const { wallets } = useWallets();
-  const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
+  const { data: walletClient } = useWalletClient();
+  const { switchChain } = useSwitchChain();
+  const networkConfig = NETWORKS[selectedNetwork];
+  const nativeSymbol = networkConfig?.nativeSymbol || 'ETH';
 
   const [recipientAddress, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -33,7 +38,7 @@ export default function SendEthModal({
     const { ethers } = await import('ethers');
 
     if (!recipientAddress || !ethers.isAddress(recipientAddress)) {
-      setError('Please enter a valid Ethereum address');
+      setError('Please enter a valid address');
       return false;
     }
 
@@ -49,7 +54,7 @@ export default function SendEthModal({
     }
 
     if (currentBalance !== null && parsedAmount > parseFloat(currentBalance)) {
-      setError(`Insufficient balance. You have ${parseFloat(currentBalance).toFixed(4)} ETH`);
+      setError(`Insufficient balance. You have ${parseFloat(currentBalance).toFixed(4)} ${nativeSymbol}`);
       return false;
     }
 
@@ -64,7 +69,7 @@ export default function SendEthModal({
   };
 
   const handleSend = async () => {
-    if (!embeddedWallet) {
+    if (!walletClient || !networkConfig) {
       setError('No wallet connected');
       setStep('error');
       return;
@@ -76,13 +81,11 @@ export default function SendEthModal({
     try {
       const { ethers } = await import('ethers');
 
-      // Ensure we're on Ethereum Mainnet
-      if (embeddedWallet.chainId !== 'eip155:1') {
-        await embeddedWallet.switchChain(1);
+      if (walletClient.chain.id !== networkConfig.chainId) {
+        await switchChain({ chainId: networkConfig.chainId });
       }
 
-      const ethereumProvider = await embeddedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const provider = new ethers.BrowserProvider(walletClient.transport);
       const signer = await provider.getSigner();
 
       const tx = await signer.sendTransaction({
@@ -100,7 +103,7 @@ export default function SendEthModal({
       if (err.code === 'ACTION_REJECTED' || err.message?.includes('rejected')) {
         setError('Transaction was rejected');
       } else if (err.message?.includes('insufficient funds')) {
-        setError('Insufficient ETH balance (including gas fees).');
+        setError(`Insufficient ${nativeSymbol} balance (including gas fees).`);
       } else {
         setError(err.message || 'Transaction failed');
       }
@@ -111,6 +114,7 @@ export default function SendEthModal({
   };
 
   const truncate = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const explorerUrl = networkConfig?.explorerUrl || 'https://etherscan.io';
 
   return (
     <div
@@ -121,10 +125,9 @@ export default function SendEthModal({
         className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
         }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-700">
           <div className="flex items-center gap-3">
             {step === 'confirm' && (
@@ -138,7 +141,7 @@ export default function SendEthModal({
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center">
               <Send className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-100">Send ETH</h3>
+            <h3 className="text-lg font-semibold text-slate-100">Send {nativeSymbol}</h3>
           </div>
           <button
             onClick={onClose}
@@ -150,51 +153,37 @@ export default function SendEthModal({
         </div>
 
         <div className="p-5">
-          {/* Input Step */}
           {step === 'input' && (
             <div className="space-y-4">
-              {/* Balance Display */}
               <div className="p-3 bg-slate-700/30 rounded-xl border border-slate-700">
                 <p className="text-xs text-slate-400">Available Balance</p>
                 <p className="text-lg font-bold text-slate-100">
                   {currentBalance !== null
-                    ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ETH`
-                    : '-- ETH'}
+                    ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ${nativeSymbol}`
+                    : `-- ${nativeSymbol}`}
                 </p>
               </div>
 
-              {/* Recipient Address */}
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">
-                  Recipient Address
-                </label>
+                <label className="block text-sm font-bold text-slate-100 mb-2">Recipient Address</label>
                 <input
                   type="text"
                   value={recipientAddress}
-                  onChange={(e) => {
-                    setRecipientAddress(e.target.value);
-                    setError(null);
-                  }}
+                  onChange={(e) => { setRecipientAddress(e.target.value); setError(null); }}
                   placeholder="0x..."
                   className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"
                 />
               </div>
 
-              {/* Amount */}
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">
-                  Amount (ETH)
-                </label>
+                <label className="block text-sm font-bold text-slate-100 mb-2">Amount ({nativeSymbol})</label>
                 <div className="relative">
                   <input
                     type="number"
                     step="0.0001"
                     min="0"
                     value={amount}
-                    onChange={(e) => {
-                      setAmount(e.target.value);
-                      setError(null);
-                    }}
+                    onChange={(e) => { setAmount(e.target.value); setError(null); }}
                     placeholder="0.0000"
                     className="w-full px-4 py-3 pr-16 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold"
                   />
@@ -209,22 +198,17 @@ export default function SendEthModal({
                 </div>
               </div>
 
-              {/* Gas Warning */}
               <div className="flex items-start gap-2 p-3 bg-amber-900/20 border border-amber-700/30 rounded-xl">
                 <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-amber-300">
-                  A small amount of ETH will be reserved for gas fees. The actual amount sent may be slightly less than your full balance.
+                  A small amount of {nativeSymbol} will be reserved for gas fees.
                 </p>
               </div>
 
-              {/* Error */}
               {error && (
-                <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm">
-                  {error}
-                </div>
+                <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm">{error}</div>
               )}
 
-              {/* Continue Button */}
               <button
                 onClick={handleContinue}
                 disabled={!recipientAddress || !amount}
@@ -235,7 +219,6 @@ export default function SendEthModal({
             </div>
           )}
 
-          {/* Confirm Step */}
           {step === 'confirm' && (
             <div className="space-y-4">
               <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700 space-y-3">
@@ -249,15 +232,13 @@ export default function SendEthModal({
                 </div>
                 <div className="border-t border-slate-600 pt-3 flex justify-between">
                   <span className="text-slate-400 text-sm">Amount</span>
-                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(6)} ETH</span>
+                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(6)} {nativeSymbol}</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-2 p-3 bg-amber-900/20 border border-amber-700/30 rounded-xl">
                 <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-amber-300">
-                  Please verify the recipient address. Transactions cannot be reversed.
-                </p>
+                <p className="text-xs text-amber-300">Please verify the recipient address. Transactions cannot be reversed.</p>
               </div>
 
               <button
@@ -267,37 +248,27 @@ export default function SendEthModal({
                 Confirm & Send
               </button>
 
-              <button
-                onClick={() => setStep('input')}
-                className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
+              <button onClick={() => setStep('input')} className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
                 Cancel
               </button>
             </div>
           )}
 
-          {/* Sending Step */}
           {step === 'sending' && (
             <div className="text-center py-8 space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400 mx-auto" />
               <div>
-                <p className="text-slate-100 font-semibold">Sending ETH...</p>
+                <p className="text-slate-100 font-semibold">Sending {nativeSymbol}...</p>
                 <p className="text-xs text-slate-400 mt-1">Please confirm in your wallet</p>
               </div>
               {txHash && (
-                <a
-                  href={`https://etherscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  View on Etherscan <ExternalLink className="w-3 h-3" />
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300">
+                  View on Explorer <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
           )}
 
-          {/* Success Step */}
           {step === 'success' && (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 rounded-full bg-green-900/30 border border-green-700/50 flex items-center justify-center mx-auto">
@@ -307,30 +278,19 @@ export default function SendEthModal({
               </div>
               <div>
                 <p className="text-lg font-semibold text-slate-100">Transaction Sent!</p>
-                <p className="text-sm text-slate-400 mt-1">
-                  {parseFloat(amount).toFixed(6)} ETH sent to {truncate(recipientAddress)}
-                </p>
+                <p className="text-sm text-slate-400 mt-1">{parseFloat(amount).toFixed(6)} {nativeSymbol} sent to {truncate(recipientAddress)}</p>
               </div>
               {txHash && (
-                <a
-                  href={`https://etherscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors"
-                >
-                  View on Etherscan <ExternalLink className="w-3.5 h-3.5" />
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors">
+                  View on Explorer <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              <button
-                onClick={onClose}
-                className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
-              >
+              <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
                 Done
               </button>
             </div>
           )}
 
-          {/* Error Step */}
           {step === 'error' && (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 rounded-full bg-red-900/30 border border-red-700/50 flex items-center justify-center mx-auto">
@@ -341,19 +301,10 @@ export default function SendEthModal({
                 <p className="text-sm text-red-300 mt-1">{error}</p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setStep('input');
-                  }}
-                  className="flex-1 py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all"
-                >
+                <button onClick={() => { setError(null); setStep('input'); }} className="flex-1 py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all">
                   Try Again
                 </button>
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
-                >
+                <button onClick={onClose} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
                   Close
                 </button>
               </div>

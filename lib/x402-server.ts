@@ -1,62 +1,40 @@
 /**
- * x402 Server-Side Payment Verification and Settlement for Ethereum Mainnet
+ * x402 Server-Side Payment Verification and Settlement
  *
- * This module handles x402 payments using USDC on Ethereum mainnet.
- * Only used for specific endpoints (e.g., vision-analysis) that require mainnet payments.
- *
- * IMPORTANT: This uses REAL USDC on Ethereum mainnet - not testnet!
+ * Supports two settlement strategies:
+ * - eip3009: transferWithAuthorization (USDC on Ethereum/Base, USDT0 on Conflux eSpace)
+ * - direct:  transferFrom after user approval (tokens without EIP-3009)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData } from './payment-tracker';
+import { NETWORKS, FACILITATOR_ADDRESS, getNetwork, type NetworkConfig } from '@/config/networks';
 
-// USDC contract on Ethereum Mainnet
-export const USDC_CONTRACT_MAINNET = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-export const ETHEREUM_MAINNET_CHAIN_ID = 1;
-export const FACILITATOR_ADDRESS_MAINNET = process.env.X402_MAINNET_FACILITATOR_ADDRESS || process.env.X402_FACILITATOR_ADDRESS || '0xc10561c1c0d718b3d362df9d510a1b4e4331a4ee';
-
-// Ethereum Mainnet RPC URL
-const ETHEREUM_MAINNET_RPC = process.env.ETHEREUM_MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-
-// EIP-3009 transferWithAuthorization ABI (subset of USDC contract)
-const USDC_ABI = [
+// Token ABI covering both strategies
+const TOKEN_ABI = [
   'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external',
   'function authorizationState(address authorizer, bytes32 nonce) external view returns (bool)',
-  'function balanceOf(address account) external view returns (uint256)'
+  'function balanceOf(address account) external view returns (uint256)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function transferFrom(address from, address to, uint256 value) external returns (bool)',
 ];
 
-/**
- * Payment requirement configuration for an endpoint
- */
 export interface PaymentConfig {
-  /** Price in USDC atomic units (6 decimals, e.g., 10000 = $0.01) */
   priceUsdc: number;
-  /** Human-readable name for the endpoint */
   endpointName: string;
-  /** Description for the payment */
   description?: string;
+  network?: string;
 }
 
-/**
- * Result of x402 verification
- */
 export interface X402VerificationResult {
-  /** Whether payment is verified */
   verified: boolean;
-  /** The payer's address (if verified) */
   payerAddress?: string;
-  /** Error response to return (if not verified) */
   errorResponse?: NextResponse;
-  /** Payment tracking data (if verified) */
   paymentTracking?: any;
-  /** Transaction hash if payment was settled on-chain */
   transactionHash?: string;
 }
 
-/**
- * Result of on-chain settlement
- */
 interface SettlementResult {
   success: boolean;
   transactionHash?: string;
@@ -64,9 +42,9 @@ interface SettlementResult {
 }
 
 /**
- * Execute transferWithAuthorization on-chain to settle the payment (Ethereum Mainnet)
+ * Settle via EIP-3009 transferWithAuthorization (gasless for user)
  */
-async function settlePaymentOnChain(
+async function settleEip3009(
   authorization: {
     from: string;
     to: string;
@@ -75,144 +53,139 @@ async function settlePaymentOnChain(
     validBefore: string;
     nonce: string;
   },
-  signature: string
+  signature: string,
+  networkConfig: NetworkConfig
 ): Promise<SettlementResult> {
   const facilitatorPrivateKey = process.env.FACILITATOR_MAINNET_PRIVATE_KEY || process.env.FACILITATOR_PRIVATE_KEY;
-
   if (!facilitatorPrivateKey) {
-    console.error('[x402] FACILITATOR_MAINNET_PRIVATE_KEY not configured');
-    return {
-      success: false,
-      error: 'Payment settlement not configured. Please set FACILITATOR_MAINNET_PRIVATE_KEY.'
-    };
+    return { success: false, error: 'Facilitator private key not configured' };
   }
 
   try {
-    console.log('[x402] Connecting to Ethereum Mainnet for settlement...');
+    const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+    const facilitator = new ethers.Wallet(facilitatorPrivateKey, provider);
+    const tokenContract = new ethers.Contract(networkConfig.tokenAddress, TOKEN_ABI, facilitator);
 
-    // Connect to Ethereum Mainnet
-    const provider = new ethers.JsonRpcProvider(ETHEREUM_MAINNET_RPC);
-    const facilitatorWallet = new ethers.Wallet(facilitatorPrivateKey, provider);
-
-    // Verify facilitator address matches
-    const walletAddress = facilitatorWallet.address.toLowerCase();
-    if (walletAddress !== FACILITATOR_ADDRESS_MAINNET.toLowerCase()) {
-      console.warn(`[x402] Facilitator wallet mismatch: ${walletAddress} vs ${FACILITATOR_ADDRESS_MAINNET}`);
-    }
-
-    // Create USDC contract instance
-    const usdcContract = new ethers.Contract(USDC_CONTRACT_MAINNET, USDC_ABI, facilitatorWallet);
-
-    // Check if authorization has already been used
-    const isUsed = await usdcContract.authorizationState(authorization.from, authorization.nonce);
+    // Check nonce
+    const isUsed = await tokenContract.authorizationState(authorization.from, authorization.nonce);
     if (isUsed) {
-      console.log('[x402] Authorization nonce already used - payment already settled');
-      return {
-        success: true,
-        transactionHash: 'already-settled'
-      };
+      return { success: true, transactionHash: 'already-settled' };
     }
 
-    // Check payer's USDC balance
-    const payerBalance = await usdcContract.balanceOf(authorization.from);
-    const requiredAmount = BigInt(authorization.value);
-    if (payerBalance < requiredAmount) {
-      console.error(`[x402] Insufficient USDC balance: ${payerBalance} < ${requiredAmount}`);
+    // Check balance
+    const balance = await tokenContract.balanceOf(authorization.from);
+    if (balance < BigInt(authorization.value)) {
+      console.error(`[x402] Insufficient balance: required ${Number(authorization.value) / 1_000_000}, available ${Number(balance) / 1_000_000}`);
       return {
         success: false,
-        error: `Insufficient USDC balance. Required: ${Number(requiredAmount) / 1_000_000} USDC, Available: ${Number(payerBalance) / 1_000_000} USDC`
+        error: `Insufficient ${networkConfig.tokenSymbol} balance to complete this payment.`,
       };
     }
 
-    // Split signature into v, r, s components
     const sig = ethers.Signature.from(signature);
-    const v = sig.v;
-    const r = sig.r;
-    const s = sig.s;
+    console.log(`[x402] Submitting transferWithAuthorization on ${networkConfig.name}...`);
 
-    console.log('[x402] Submitting transferWithAuthorization on Ethereum Mainnet...');
-    console.log(`  From: ${authorization.from}`);
-    console.log(`  To: ${authorization.to}`);
-    console.log(`  Value: ${authorization.value} (${Number(authorization.value) / 1_000_000} USDC)`);
-    console.log(`  Nonce: ${authorization.nonce}`);
-
-    // Call transferWithAuthorization
-    const tx = await usdcContract.transferWithAuthorization(
-      authorization.from,
-      authorization.to,
-      authorization.value,
-      authorization.validAfter,
-      authorization.validBefore,
-      authorization.nonce,
-      v,
-      r,
-      s
+    const tx = await tokenContract.transferWithAuthorization(
+      authorization.from, authorization.to, authorization.value,
+      authorization.validAfter, authorization.validBefore, authorization.nonce,
+      sig.v, sig.r, sig.s
     );
 
-    console.log(`[x402] Transaction submitted: ${tx.hash}`);
-
-    // Wait for confirmation
+    console.log(`[x402] TX submitted: ${tx.hash}`);
     const receipt = await tx.wait();
 
     if (receipt.status === 1) {
-      console.log(`[x402] Payment settled on Ethereum Mainnet: ${tx.hash}`);
-      return {
-        success: true,
-        transactionHash: tx.hash
-      };
-    } else {
-      console.error('[x402] Transaction failed:', receipt);
-      return {
-        success: false,
-        error: 'Transaction failed on-chain'
-      };
+      return { success: true, transactionHash: tx.hash };
     }
+    return { success: false, error: 'Transaction failed on-chain' };
 
   } catch (error) {
-    console.error('[x402] Settlement error:', error);
-
+    console.error('[x402] EIP-3009 settlement error:', error);
     if (error instanceof Error) {
       if (error.message.includes('insufficient funds')) {
-        return {
-          success: false,
-          error: 'Facilitator has insufficient ETH for gas'
-        };
+        return { success: false, error: `Facilitator has insufficient ${networkConfig.nativeSymbol} for gas` };
       }
       if (error.message.includes('authorization is used')) {
-        return {
-          success: true,
-          transactionHash: 'already-settled'
-        };
-      }
-      if (error.message.includes('invalid signature')) {
-        return {
-          success: false,
-          error: 'Invalid payment signature'
-        };
+        return { success: true, transactionHash: 'already-settled' };
       }
     }
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Settlement failed'
-    };
+    return { success: false, error: error instanceof Error ? error.message : 'Settlement failed' };
   }
 }
 
 /**
- * Verify x402 payment header or return 402 Payment Required (Ethereum Mainnet USDC)
- *
- * Usage:
- * ```ts
- * const verification = await verifyX402Payment(req, {
- *   priceUsdc: 10000, // $0.01
- *   endpointName: 'Vision Analysis'
- * });
- *
- * if (!verification.verified) {
- *   return verification.errorResponse;
- * }
- * ```
+ * Settle via transferFrom after user approved the facilitator (Conflux USDT0 etc.)
+ */
+async function settleDirect(
+  payload: { from: string; to: string; value: string; approvalTxHash: string },
+  networkConfig: NetworkConfig
+): Promise<SettlementResult> {
+  const facilitatorPrivateKey = process.env.FACILITATOR_MAINNET_PRIVATE_KEY || process.env.FACILITATOR_PRIVATE_KEY;
+  if (!facilitatorPrivateKey) {
+    return { success: false, error: 'Facilitator private key not configured' };
+  }
+
+  try {
+    const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
+    const facilitator = new ethers.Wallet(facilitatorPrivateKey, provider);
+    const tokenContract = new ethers.Contract(networkConfig.tokenAddress, TOKEN_ABI, facilitator);
+
+    // Verify the approval tx was mined
+    const approvalReceipt = await provider.getTransactionReceipt(payload.approvalTxHash);
+    if (!approvalReceipt || approvalReceipt.status !== 1) {
+      return { success: false, error: 'Approval transaction not confirmed' };
+    }
+
+    // Verify allowance
+    const allowance = await tokenContract.allowance(payload.from, facilitator.address);
+    const requiredAmount = BigInt(payload.value);
+    if (allowance < requiredAmount) {
+      console.error(`[x402] Insufficient allowance: required ${Number(requiredAmount) / 1_000_000}, approved ${Number(allowance) / 1_000_000}`);
+      return {
+        success: false,
+        error: `Insufficient token allowance. Please re-approve the transaction.`,
+      };
+    }
+
+    // Verify balance
+    const balance = await tokenContract.balanceOf(payload.from);
+    if (balance < requiredAmount) {
+      console.error(`[x402] Insufficient balance: required ${Number(requiredAmount) / 1_000_000}, available ${Number(balance) / 1_000_000}`);
+      return {
+        success: false,
+        error: `Insufficient ${networkConfig.tokenSymbol} balance to complete this payment.`,
+      };
+    }
+
+    console.log(`[x402] Submitting transferFrom on ${networkConfig.name}...`);
+    const tx = await tokenContract.transferFrom(payload.from, payload.to, payload.value);
+    console.log(`[x402] TX submitted: ${tx.hash}`);
+
+    const receipt = await tx.wait();
+    if (receipt.status === 1) {
+      return { success: true, transactionHash: tx.hash };
+    }
+    return { success: false, error: 'TransferFrom failed on-chain' };
+
+  } catch (error) {
+    console.error('[x402] Direct settlement error:', error);
+    if (error instanceof Error && error.message.includes('insufficient funds')) {
+      return { success: false, error: `Facilitator has insufficient ${networkConfig.nativeSymbol} for gas` };
+    }
+    return { success: false, error: error instanceof Error ? error.message : 'Settlement failed' };
+  }
+}
+
+/**
+ * Resolve network from payment data
+ */
+function resolveNetwork(paymentData: any, config: PaymentConfig): NetworkConfig {
+  const networkKey = paymentData?.network || config.network || 'ethereum';
+  return getNetwork(networkKey);
+}
+
+/**
+ * Verify x402 payment header or return 402 Payment Required
  */
 export async function verifyX402Payment(
   req: NextRequest,
@@ -220,200 +193,224 @@ export async function verifyX402Payment(
 ): Promise<X402VerificationResult> {
   const { priceUsdc, endpointName, description } = config;
 
-  // If endpoint is free, skip payment verification
   if (priceUsdc === 0) {
     return { verified: true };
   }
 
-  // Check for x402 payment header
   const paymentHeader = req.headers.get('x-payment');
 
   if (!paymentHeader) {
-    // No payment provided - return 402 Payment Required
-    const paymentRequirement = {
-      asset: USDC_CONTRACT_MAINNET,
-      network: 'ethereum',
-      chainId: ETHEREUM_MAINNET_CHAIN_ID,
-      payTo: FACILITATOR_ADDRESS_MAINNET,
+    // Return 402 with requirements for all supported networks
+    const accepts = Object.entries(NETWORKS).map(([key, net]) => ({
+      asset: net.tokenAddress,
+      network: net.x402Network,
+      chainId: net.chainId,
+      payTo: FACILITATOR_ADDRESS,
       maxAmountRequired: priceUsdc.toString(),
+      strategy: net.paymentStrategy,
       extra: {
-        name: 'USD Coin',
-        version: '2'
-      }
-    };
+        name: net.eip712Name,
+        version: net.eip712Version,
+      },
+    }));
 
     const paymentTracking = extractPaymentTrackingData(
-      paymentRequirement,
-      endpointName,
-      req.nextUrl.pathname
+      accepts[0], endpointName, req.nextUrl.pathname
     );
 
-    const errorResponse = NextResponse.json(
-      {
+    return {
+      verified: false,
+      errorResponse: NextResponse.json({
         error: 'Payment required',
-        accepts: [paymentRequirement],
+        accepts,
         maxAmountRequired: priceUsdc.toString(),
         x402Payment: paymentTracking,
         endpoint_name: endpointName,
         description: description || `Payment for ${endpointName}`,
-      },
-      { status: 402 }
-    );
-
-    return { verified: false, errorResponse };
+      }, { status: 402 }),
+    };
   }
 
-  // Payment header exists - verify signature
+  // Verify payment
   try {
     const decoded = Buffer.from(paymentHeader, 'base64').toString('utf-8');
     const paymentData = JSON.parse(decoded);
-
     const { payload } = paymentData;
 
-    if (!payload || !payload.signature || !payload.authorization) {
+    if (!payload) {
       return {
         verified: false,
         errorResponse: NextResponse.json(
-          { success: false, error: 'Invalid x402 payment format. Expected payload.authorization.' },
+          { success: false, error: 'Invalid x402 payment format.' },
           { status: 400 }
-        )
+        ),
       };
     }
 
-    const { signature, authorization } = payload;
-    const { from, to, value, validAfter, validBefore, nonce } = authorization;
+    const networkConfig = resolveNetwork(paymentData, config);
+    const strategy = paymentData.strategy || networkConfig.paymentStrategy;
 
-    // Reconstruct EIP-712 domain for USDC on Ethereum Mainnet
-    // IMPORTANT: USDC contract uses "USD Coin" as the domain name (from contract.name())
-    const domain = {
-      name: 'USD Coin',
-      version: '2',
-      chainId: ETHEREUM_MAINNET_CHAIN_ID,
-      verifyingContract: USDC_CONTRACT_MAINNET,
-    };
+    let settlement: SettlementResult;
+    let payerAddress: string;
 
-    // EIP-712 types for TransferWithAuthorization
-    const types = {
-      TransferWithAuthorization: [
-        { name: 'from', type: 'address' },
-        { name: 'to', type: 'address' },
-        { name: 'value', type: 'uint256' },
-        { name: 'validAfter', type: 'uint256' },
-        { name: 'validBefore', type: 'uint256' },
-        { name: 'nonce', type: 'bytes32' },
-      ],
-    };
+    if (strategy === 'direct') {
+      // Direct strategy: user already approved, we call transferFrom
+      const { from, to, value, approvalTxHash } = payload;
+      if (!from || !to || !value || !approvalTxHash) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Invalid direct payment payload' },
+            { status: 400 }
+          ),
+        };
+      }
 
-    // Reconstruct message
-    const message = {
-      from,
-      to,
-      value,
-      validAfter: parseInt(validAfter),
-      validBefore: parseInt(validBefore),
-      nonce,
-    };
+      payerAddress = from.toLowerCase();
 
-    // Recover signer address
-    const recoveredAddress = ethers.verifyTypedData(domain, types, message, signature);
-    const payerAddress = recoveredAddress.toLowerCase();
+      // Validate amount
+      if (BigInt(value) < BigInt(priceUsdc)) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: `Insufficient payment. Required: ${priceUsdc}, provided: ${value}` },
+            { status: 402 }
+          ),
+        };
+      }
 
-    // Verify recovered address matches 'from'
-    if (payerAddress !== from.toLowerCase()) {
-      return {
-        verified: false,
-        errorResponse: NextResponse.json(
-          { success: false, error: 'Payment signature does not match sender address' },
-          { status: 400 }
-        )
+      // Validate recipient
+      if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Invalid payment recipient' },
+            { status: 400 }
+          ),
+        };
+      }
+
+      console.log(`[x402] Direct payment from ${payerAddress}, settling on ${networkConfig.name}...`);
+      settlement = await settleDirect(payload, networkConfig);
+
+    } else {
+      // EIP-3009 strategy: verify signature then call transferWithAuthorization
+      const { signature, authorization } = payload;
+      if (!signature || !authorization) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Invalid eip3009 payment payload' },
+            { status: 400 }
+          ),
+        };
+      }
+
+      const { from, to, value, validAfter, validBefore, nonce } = authorization;
+
+      // Reconstruct EIP-712 domain and verify signature
+      const domain = {
+        name: networkConfig.eip712Name,
+        version: networkConfig.eip712Version,
+        chainId: networkConfig.chainId,
+        verifyingContract: networkConfig.tokenAddress,
       };
-    }
 
-    // Verify payment amount
-    if (BigInt(value) < BigInt(priceUsdc)) {
-      return {
-        verified: false,
-        errorResponse: NextResponse.json(
-          {
-            success: false,
-            error: `Insufficient payment. Required: ${priceUsdc}, provided: ${value}`,
-          },
-          { status: 402 }
-        )
+      const types = {
+        TransferWithAuthorization: [
+          { name: 'from', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'validAfter', type: 'uint256' },
+          { name: 'validBefore', type: 'uint256' },
+          { name: 'nonce', type: 'bytes32' },
+        ],
       };
-    }
 
-    // Verify recipient
-    const recipientAddress = to.toLowerCase();
-    if (recipientAddress !== FACILITATOR_ADDRESS_MAINNET.toLowerCase()) {
-      return {
-        verified: false,
-        errorResponse: NextResponse.json(
-          { success: false, error: 'Invalid payment recipient' },
-          { status: 400 }
-        )
+      const message = {
+        from, to, value,
+        validAfter: parseInt(validAfter),
+        validBefore: parseInt(validBefore),
+        nonce,
       };
-    }
 
-    // Verify timing
-    const now = Math.floor(Date.now() / 1000);
-    if (now < parseInt(validAfter)) {
-      return {
-        verified: false,
-        errorResponse: NextResponse.json(
-          { success: false, error: 'Payment authorization not yet valid' },
-          { status: 400 }
-        )
-      };
-    }
-    if (now > parseInt(validBefore)) {
-      return {
-        verified: false,
-        errorResponse: NextResponse.json(
-          { success: false, error: 'Payment authorization has expired' },
-          { status: 400 }
-        )
-      };
-    }
+      const recovered = ethers.verifyTypedData(domain, types, message, signature);
+      payerAddress = recovered.toLowerCase();
 
-    // Signature verified - now settle the payment on-chain
-    console.log(`[x402] Signature verified for ${payerAddress}, settling payment on Ethereum Mainnet...`);
+      if (payerAddress !== from.toLowerCase()) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Payment signature does not match sender address' },
+            { status: 400 }
+          ),
+        };
+      }
 
-    const settlement = await settlePaymentOnChain(authorization, signature);
+      if (BigInt(value) < BigInt(priceUsdc)) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: `Insufficient payment. Required: ${priceUsdc}, provided: ${value}` },
+            { status: 402 }
+          ),
+        };
+      }
+
+      if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Invalid payment recipient' },
+            { status: 400 }
+          ),
+        };
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      if (now < parseInt(validAfter) || now > parseInt(validBefore)) {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Payment authorization expired or not yet valid' },
+            { status: 400 }
+          ),
+        };
+      }
+
+      console.log(`[x402] EIP-3009 verified for ${payerAddress}, settling on ${networkConfig.name}...`);
+      settlement = await settleEip3009(authorization, signature, networkConfig);
+    }
 
     if (!settlement.success) {
-      console.error(`[x402] Settlement failed: ${settlement.error}`);
       return {
         verified: false,
         errorResponse: NextResponse.json(
           { success: false, error: settlement.error || 'Payment settlement failed' },
           { status: 402 }
-        )
+        ),
       };
     }
 
-    // Create payment tracking data
     const paymentRequirement = {
-      asset: USDC_CONTRACT_MAINNET,
-      network: 'ethereum',
-      chainId: ETHEREUM_MAINNET_CHAIN_ID,
-      payTo: FACILITATOR_ADDRESS_MAINNET,
+      asset: networkConfig.tokenAddress,
+      network: networkConfig.x402Network,
+      chainId: networkConfig.chainId,
+      payTo: FACILITATOR_ADDRESS,
       maxAmountRequired: priceUsdc.toString(),
-      extra: { name: 'USD Coin', version: '2' }
+      extra: { name: networkConfig.eip712Name, version: networkConfig.eip712Version },
     };
     const paymentTracking = extractPaymentTrackingData(
-      paymentRequirement,
-      endpointName,
-      req.nextUrl.pathname
+      paymentRequirement, endpointName, req.nextUrl.pathname
     );
 
-    console.log(`[x402] Payment settled: ${payerAddress} paid ${priceUsdc / 1_000_000} USDC for ${endpointName} (tx: ${settlement.transactionHash})`);
+    console.log(`[x402] Payment settled: ${payerAddress} paid ${priceUsdc / 1_000_000} ${networkConfig.tokenSymbol} (tx: ${settlement.transactionHash})`);
 
     return {
       verified: true,
       payerAddress,
       paymentTracking,
-      transactionHash: settlement.transactionHash
+      transactionHash: settlement.transactionHash,
     };
 
   } catch (error) {
@@ -421,27 +418,29 @@ export async function verifyX402Payment(
     return {
       verified: false,
       errorResponse: NextResponse.json(
-        { success: false, error: `Invalid payment signature: ${error instanceof Error ? error.message : 'Unknown error'}` },
+        { success: false, error: `Invalid payment: ${error instanceof Error ? error.message : 'Unknown error'}` },
         { status: 400 }
-      )
+      ),
     };
   }
 }
 
 /**
- * Get x402 payment requirement for Ethereum Mainnet (for client-side use)
+ * Get x402 payment requirement (for client-side use)
  */
-export function getX402PaymentRequirement(priceUsdc: number, endpointName: string) {
+export function getX402PaymentRequirement(priceUsdc: number, endpointName: string, networkKey: string = 'ethereum') {
+  const network = getNetwork(networkKey);
   return {
-    asset: USDC_CONTRACT_MAINNET,
-    network: 'ethereum',
-    chainId: ETHEREUM_MAINNET_CHAIN_ID,
-    payTo: FACILITATOR_ADDRESS_MAINNET,
+    asset: network.tokenAddress,
+    network: network.x402Network,
+    chainId: network.chainId,
+    payTo: FACILITATOR_ADDRESS,
     maxAmountRequired: priceUsdc.toString(),
+    strategy: network.paymentStrategy,
     extra: {
-      name: 'USD Coin',
-      version: '2'
+      name: network.eip712Name,
+      version: network.eip712Version,
     },
-    endpoint_name: endpointName
+    endpoint_name: endpointName,
   };
 }

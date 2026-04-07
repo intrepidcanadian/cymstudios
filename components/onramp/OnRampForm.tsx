@@ -12,7 +12,8 @@ import { CryptoNetworkModal } from './CryptoNetworkModal';
 import { Wallet, CreditCard, Smartphone, Apple, Copy, Check, User, Clock, ChevronDown, Info } from 'lucide-react';
 import { OSL_PAY_CONFIG } from '@/config/oslPay';
 import { FIAT_CURRENCIES, getCurrencySymbol, getCurrencyLimits } from '@/config/fiatCurrencies';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 import { JPY, USD, EUR, GBP } from 'ccy-icons';
 import { CryptoIcon, NetworkIcon } from '@/utils/cryptoIcons';
 import { useToast } from '@/components/ui/use-toast';
@@ -61,17 +62,10 @@ export function OnRampForm({
   defaultAddress = '',
   onFormSubmit
 }: OnRampFormProps) {
-  const { ready: privyReady, user, authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
+  const { address, isConnected, status: accountStatus } = useAccount();
+  const { open } = useAppKit();
   const { toast } = useToast();
-
-  // Get Privy embedded wallet (not external wallets like MetaMask)
-  const embeddedWallet = useMemo(() => {
-    return wallets.find(wallet => wallet.walletClientType === 'privy') || wallets.find(wallet => wallet.connectorType === 'privy');
-  }, [wallets]);
-
-  const address = embeddedWallet?.address as `0x${string}` | undefined;
-  const isConnected = !!embeddedWallet && !!address;
+  const walletReady = accountStatus !== 'reconnecting';
   const [selectedCrypto, setSelectedCrypto] = useState(defaultCrypto);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [availableCryptos, setAvailableCryptos] = useState<any[]>([]);
@@ -87,9 +81,9 @@ export function OnRampForm({
     network: defaultNetwork,
     fiatCurrency: defaultFiatCurrency,
     payWayCode: defaultPayWayCode,
-    email: defaultEmail || user?.email?.address || user?.google?.email || '',
-    address: defaultAddress || embeddedWallet?.address || '',
-    merchantUser: user?.id || ''
+    email: defaultEmail || '',
+    address: defaultAddress || address || '',
+    merchantUser: address || ''
   });
 
   const [addressError, setAddressError] = useState<string>('');
@@ -473,25 +467,18 @@ export function OnRampForm({
     onFormSubmit?.(formData);
   };
 
-  // Update formData when user or wallet becomes available
+  // Update formData when wallet becomes available
   useEffect(() => {
-    const userEmail = user?.email?.address || user?.google?.email || '';
-    const walletAddress = embeddedWallet?.address || '';
-    const merchantUserId = user?.id || '';
+    const walletAddress = address || '';
 
-    if (
-      (userEmail && formData.email !== userEmail) ||
-      (walletAddress && formData.address !== walletAddress) ||
-      (merchantUserId && formData.merchantUser !== merchantUserId)
-    ) {
+    if (walletAddress && formData.address !== walletAddress) {
       setFormData(prev => ({
         ...prev,
-        email: userEmail || prev.email,
-        address: walletAddress || prev.address,
-        merchantUser: merchantUserId || prev.merchantUser
+        address: walletAddress,
+        merchantUser: walletAddress,
       }));
     }
-  }, [user?.email?.address, user?.google?.email, user?.id, embeddedWallet?.address]);
+  }, [address]);
 
   // Initialize crypto list on component mount
   useEffect(() => {
@@ -530,7 +517,7 @@ export function OnRampForm({
   }
 
   // Wait for Privy to be ready before rendering the form
-  if (!privyReady) {
+  if (!walletReady) {
     return (
       <div className="text-center p-8">
         <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -556,7 +543,7 @@ export function OnRampForm({
         payWayCode={formData.payWayCode}
         email={formData.email}
         address={formData.address}
-        merchantUser={user?.id || ''}
+        merchantUser={address || ''}
         className={className}
       >
         On-ramp with OSL Pay
@@ -643,8 +630,8 @@ export function OnRampForm({
             <div className="pt-2">
               <OslPayButton
                 appId={appId}
-                email={user?.email?.address || user?.google?.email || ''}
-                merchantUser={user?.id || ''}
+                email={''}
+                merchantUser={address || ''}
                 className="w-full h-11 text-base font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center"
               >
                 {isKycRejected
@@ -695,22 +682,16 @@ export function OnRampForm({
           </div>
 
           {/* Wallet Connection */}
-          {!authenticated ? (
+          {!isConnected ? (
             <div className="flex justify-center">
               <Button
-                onClick={login}
+                onClick={() => open()}
                 className="w-full"
                 variant="default"
               >
                 <Wallet className="w-4 h-4 mr-2" />
                 Connect Wallet
               </Button>
-            </div>
-          ) : !embeddedWallet ? (
-            <div className="flex justify-center">
-              <p className="text-sm text-muted-foreground">
-                Creating your wallet...
-              </p>
             </div>
           ) : null}
 
@@ -1094,7 +1075,7 @@ export function OnRampForm({
                 payWayCode={formData.payWayCode}
                 email={formData.email}
                 address={formData.address}
-                merchantUser={user?.id || ''}
+                merchantUser={address || ''}
                 className="w-full h-11 text-base font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center"
               >
                 On-ramp with OSL Pay

@@ -1,6 +1,6 @@
 {
   "name": "CYM Rewards",
-  "description": "Redeem USDC tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet. Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and GBP. Pricing: Card value + 1.5% service fee in USDC (all currencies).",
+  "description": "Redeem USDC or USDT0 tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Pricing: Card value + 1.5% service fee (all currencies).",
   "url": "https://ginsengswap-giftcard-agent.fly.dev:3001",
   "version": "0.2.1",
   "documentationUrl": "https://cymstudio.app/docs/rewards",
@@ -54,7 +54,7 @@
     {
       "id": "redeem-giftcard",
       "name": "Redeem Gift Card",
-      "description": "Redeem USDC tokens for a gift card on Ethereum Mainnet. Voucher is delivered via email. Supports USD, CAD, HKD, and GBP denominations. A 1.5% service fee is applied.",
+      "description": "Redeem USDC (Ethereum) or USDT0 (Conflux eSpace) tokens for a gift card. Voucher is delivered via email. Supports USD, CAD, HKD, and GBP denominations. A 1.5% service fee is applied.",
       "tags": ["redeem", "payment", "gift-cards", "x402"],
       "examples": [
         "Redeem $50 for an Amazon gift card",
@@ -91,11 +91,11 @@
     {
       "id": "search-mastercard",
       "name": "Search Mastercard Prepaid",
-      "description": "Search available Mastercard Prepaid cards. Returns Mastercard Prepaid products in USD and GBP.",
+      "description": "Search available Mastercard Prepaid cards. Returns Mastercard Prepaid products in USD and CAD.",
       "tags": ["search", "mastercard", "prepaid"],
       "examples": [
         "Find Mastercard Prepaid cards",
-        "Show me Mastercard gift cards in GBP"
+        "Show me Mastercard cards in CAD"
       ],
       "inputModes": ["text"],
       "outputModes": ["text"]
@@ -103,11 +103,11 @@
     {
       "id": "redeem-mastercard",
       "name": "Redeem Mastercard Prepaid",
-      "description": "Redeem USDC tokens for a Mastercard Prepaid card on Ethereum Mainnet. Supports USD and GBP. A 1.5% service fee is applied.",
+      "description": "Redeem USDC (Ethereum) or USDT0 (Conflux eSpace) tokens for a Mastercard Prepaid card. Supports USD and CAD. A 1.5% service fee is applied.",
       "tags": ["redeem", "mastercard", "prepaid", "x402"],
       "examples": [
         "Redeem $100 for a Mastercard Prepaid card",
-        "Use USDC for a 50 GBP Mastercard"
+        "Use USDC for a 100 CAD Mastercard"
       ],
       "inputModes": ["text"],
       "outputModes": ["text"]

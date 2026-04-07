@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Package, AlertCircle, RefreshCw, ArrowUpDown } from 'lucide-react';
+import { Package, AlertCircle, RefreshCw, ArrowUpDown, CreditCard, Gift } from 'lucide-react';
 
 interface OrderSummary {
   order_id: string;
@@ -13,6 +13,7 @@ interface OrderSummary {
   price: number;
   face_value?: number;
   voucher_currency?: string;
+  payment_network?: string;
   status: string;
   created_at: string;
   completed_at?: string;
@@ -21,16 +22,16 @@ interface OrderSummary {
 }
 
 interface OrderHistoryListProps {
-  getAccessToken: () => Promise<string | null>;
+  walletAddress?: string;
   onViewOrder: (orderId: string, orderToken: string, userEmail: string) => void;
 }
 
 type StatusFilter = 'all' | 'failed' | 'processing' | 'completed';
 type SortBy = 'date' | 'status';
 
-const STATUS_ORDER: Record<string, number> = { failed: 0, processing: 1, completed: 2, pending: 3 };
+const STATUS_ORDER: Record<string, number> = { failed: 0, pending_review: 1, processing: 2, completed: 3, pending: 4 };
 
-export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderHistoryListProps) {
+export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHistoryListProps) {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [resolvedEmail, setResolvedEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -39,18 +40,28 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
   const [sortBy, setSortBy] = useState<SortBy>('date');
 
   const fetchOrders = useCallback(async () => {
+    const savedProfile = typeof window !== 'undefined' ? localStorage.getItem('userProfile') : null;
+    let savedEmail: string | null = null;
+    if (savedProfile) {
+      try {
+        const parsed = JSON.parse(savedProfile);
+        if (parsed.email) savedEmail = parsed.email;
+      } catch {}
+    }
+
+    if (!walletAddress && !savedEmail) {
+      setError('no_lookup');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        setError('Not authenticated');
-        setLoading(false);
-        return;
-      }
-      const response = await fetch('/api/orders', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const params = new URLSearchParams();
+      if (walletAddress) params.set('address', walletAddress);
+      if (savedEmail) params.set('email', savedEmail);
+      const response = await fetch(`/api/orders?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
         setOrders(data.data || []);
@@ -63,18 +74,27 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken]);
+  }, [walletAddress]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
+  // Auto-refresh every 30s when there are pending/processing orders
+  const hasPendingOrders = orders.some((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'pending_review');
+  useEffect(() => {
+    if (!hasPendingOrders) return;
+    const interval = setInterval(fetchOrders, 30_000);
+    return () => clearInterval(interval);
+  }, [hasPendingOrders, fetchOrders]);
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { bg: string; text: string; label: string }> = {
-      pending:    { bg: 'bg-yellow-900/50 border-yellow-700/50', text: 'text-yellow-300', label: 'Pending' },
-      processing: { bg: 'bg-blue-900/50 border-blue-700/50',    text: 'text-blue-300',   label: 'Processing' },
-      completed:  { bg: 'bg-green-900/50 border-green-700/50',  text: 'text-green-300',  label: 'Completed' },
-      failed:     { bg: 'bg-red-900/50 border-red-700/50',      text: 'text-red-300',    label: 'Failed' },
+      pending:        { bg: 'bg-yellow-900/50 border-yellow-700/50', text: 'text-yellow-300', label: 'Pending' },
+      processing:     { bg: 'bg-blue-900/50 border-blue-700/50',    text: 'text-blue-300',   label: 'Processing' },
+      completed:      { bg: 'bg-green-900/50 border-green-700/50',  text: 'text-green-300',  label: 'Completed' },
+      failed:         { bg: 'bg-red-900/50 border-red-700/50',      text: 'text-red-300',    label: 'Failed' },
+      pending_review: { bg: 'bg-orange-900/50 border-orange-700/50', text: 'text-orange-300', label: 'Under Review' },
     };
     const c = config[status] || config.pending;
     return (
@@ -109,6 +129,16 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500" />
         </div>
         <p className="text-slate-400 mt-6 font-medium">Loading orders...</p>
+      </div>
+    );
+  }
+
+  if (error === 'no_lookup') {
+    return (
+      <div className="text-center py-20">
+        <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-slate-100 mb-2">Connect wallet to view orders</h3>
+        <p className="text-slate-400 mb-4">Connect your wallet or make a purchase to see your order history.</p>
       </div>
     );
   }
@@ -203,7 +233,7 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
           >
             <div className="flex items-start gap-3">
               {/* Product Image */}
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
                 {order.product_image ? (
                   <img
                     src={order.product_image}
@@ -213,6 +243,14 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
                 ) : (
                   <Package className="w-6 h-6 text-slate-400" />
                 )}
+                {/* Order type badge */}
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-slate-700" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
+                  {order.brand_name.toLowerCase().includes('mastercard') ? (
+                    <CreditCard className="w-2.5 h-2.5 text-orange-400" />
+                  ) : (
+                    <Gift className="w-2.5 h-2.5 text-indigo-400" />
+                  )}
+                </span>
               </div>
 
               {/* Order Info */}
@@ -234,9 +272,14 @@ export default function OrderHistoryList({ getAccessToken, onViewOrder }: OrderH
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-500">
-                  {formatDate(order.created_at)}
-                </p>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span>{formatDate(order.created_at)}</span>
+                  {order.payment_network && (
+                    <span className="px-1.5 py-0.5 bg-slate-700/50 rounded text-[10px] text-slate-400 uppercase tracking-wider">
+                      {order.payment_network === 'conflux' ? 'CFX' : order.payment_network === 'base' ? 'Base' : 'ETH'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </button>

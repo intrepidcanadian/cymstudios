@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 
 interface Order {
   order_id: string;
@@ -38,26 +39,68 @@ interface Order {
   how_to_use?: string;
   terms_and_conditions?: string;
 
+  // Payment info
+  payment_network?: string;
+  payment_from?: string;
+  payment_value?: string;
+
   // Timestamps
   created_at: string;
   completed_at?: string;
   error_message?: string;
 }
 
+const NETWORK_EXPLORERS: Record<string, { url: string; name: string }> = {
+  ethereum: { url: 'https://etherscan.io', name: 'Etherscan' },
+  base: { url: 'https://basescan.org', name: 'BaseScan' },
+  conflux: { url: 'https://evm.confluxscan.org', name: 'ConfluxScan' },
+};
+
 interface OrderStatusModalProps {
   orderId: string;
   orderToken: string;
   userEmail: string;
   onClose: () => void;
+  paymentTxHash?: string;
 }
 
-export default function OrderStatusModal({ orderId, orderToken, userEmail, onClose }: OrderStatusModalProps) {
+export default function OrderStatusModal({ orderId, orderToken, userEmail, onClose, paymentTxHash }: OrderStatusModalProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderIdCopied, setOrderIdCopied] = useState(false);
+  const [pollingExpired, setPollingExpired] = useState(false);
+  const [manualChecking, setManualChecking] = useState(false);
   const pollCountRef = useRef(0);
-  const MAX_POLLS = 40; // Stop polling after ~2 minutes (40 × 3s)
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key !== 'Tab' || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    if (modalRef.current) {
+      const first = modalRef.current.querySelector<HTMLElement>('button');
+      first?.focus();
+    }
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+  const MAX_POLLS = 40; // Stop polling after ~3.3 minutes (40 × 5s)
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +143,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
       pollCountRef.current += 1;
       if (pollCountRef.current >= MAX_POLLS) {
         clearInterval(interval);
+        setPollingExpired(true);
         return;
       }
       // Read the latest order status from the DOM-stable ref pattern:
@@ -118,12 +162,30 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
     };
   }, [orderId, orderToken]);
 
+  const handleManualCheck = async () => {
+    setManualChecking(true);
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        headers: { 'Authorization': `Bearer ${orderToken}` },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOrder(data.data);
+      }
+    } catch (err) {
+      console.error('Manual status check failed:', err);
+    } finally {
+      setManualChecking(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const badges: { [key: string]: { color: string; icon: string; text: string } } = {
       pending: { color: 'bg-slate-700 text-slate-300', icon: '⏳', text: 'Pending' },
       processing: { color: 'bg-blue-900/50 text-blue-300', icon: '🔄', text: 'Processing' },
       completed: { color: 'bg-green-900/50 text-green-300', icon: '✅', text: 'Completed' },
       failed: { color: 'bg-red-900/50 text-red-300', icon: '❌', text: 'Failed' },
+      pending_review: { color: 'bg-yellow-900/50 text-yellow-300', icon: '🔍', text: 'Under Review' },
       cancelled: { color: 'bg-slate-700 text-slate-300', icon: '⚠️', text: 'Cancelled' },
     };
 
@@ -139,14 +201,15 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Order Status" className="bg-slate-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <h3 className="text-xl font-bold text-slate-100">Order Status</h3>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 text-2xl leading-none"
+              aria-label="Close"
+              className="text-slate-400 hover:text-slate-200 text-2xl leading-none p-1"
             >
               ×
             </button>
@@ -172,6 +235,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   {order.status === 'processing' && 'Your order is being processed (usually 1-5 minutes)'}
                   {order.status === 'completed' && 'Voucher generated and sent to your email'}
                   {order.status === 'failed' && 'Order could not be completed. Tokens were refunded if processed.'}
+                  {order.status === 'pending_review' && 'Your payment was received but the gift card provider timed out. Our team is reviewing your order.'}
                   {order.status === 'cancelled' && 'Order was cancelled. No tokens were deducted.'}
                 </div>
               </div>
@@ -235,6 +299,45 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                 </div>
               </div>
 
+              {/* Transaction Link */}
+              {paymentTxHash && order.payment_network && NETWORK_EXPLORERS[order.payment_network] && (
+                <div className="bg-slate-700/50 rounded-lg p-3">
+                  <a
+                    href={`${NETWORK_EXPLORERS[order.payment_network].url}/tx/${paymentTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span>View transaction on {NETWORK_EXPLORERS[order.payment_network].name}</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Pending Review Message */}
+              {order.status === 'pending_review' && (
+                <div className="p-4 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
+                  <p className="text-sm text-yellow-300 mb-2 font-medium">
+                    Your order is under review
+                  </p>
+                  <p className="text-xs text-yellow-400">
+                    Your payment was received successfully. The gift card provider experienced a timeout,
+                    so our team is verifying your order. You will receive your voucher at{' '}
+                    <strong className="text-yellow-200">{order.user_email}</strong> once confirmed.
+                    If you need help, contact <strong>info@ginsengswap.com</strong> with your order ID.
+                  </p>
+                  <button
+                    onClick={handleManualCheck}
+                    disabled={manualChecking}
+                    className="mt-2 px-3 py-1.5 text-xs font-medium text-yellow-300 bg-yellow-900/30 border border-yellow-700/50 rounded-lg hover:bg-yellow-900/50 transition-colors disabled:opacity-50"
+                  >
+                    {manualChecking ? 'Checking...' : 'Check Status'}
+                  </button>
+                </div>
+              )}
+
               {/* Processing Message */}
               {(order.status === 'pending' || order.status === 'processing') && (
                 <div className="p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg">
@@ -245,6 +348,20 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                     Voucher details will be sent to <strong className="text-blue-200">{order.user_email}</strong> shortly.
                     This usually takes 1-5 minutes.
                   </p>
+                  {pollingExpired && (
+                    <div className="mt-2">
+                      <p className="text-xs text-yellow-400">
+                        Still processing — check your email or come back to My Orders later to view the result.
+                      </p>
+                      <button
+                        onClick={handleManualCheck}
+                        disabled={manualChecking}
+                        className="mt-2 px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-900/30 border border-blue-700/50 rounded-lg hover:bg-blue-900/50 transition-colors disabled:opacity-50"
+                      >
+                        {manualChecking ? 'Checking...' : 'Check Status'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -419,7 +536,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                           <h5 className="text-sm font-semibold text-slate-300 mb-2">How to Use:</h5>
                           <div
                             className="text-xs text-slate-400 leading-relaxed prose prose-sm prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: order.how_to_use }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(order.how_to_use) }}
                           />
                         </div>
                       )}
@@ -434,7 +551,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                             </summary>
                             <div
                               className="mt-2 text-xs text-slate-400 leading-relaxed prose prose-sm prose-invert max-w-none"
-                              dangerouslySetInnerHTML={{ __html: order.terms_and_conditions }}
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(order.terms_and_conditions) }}
                             />
                           </details>
                         </div>
@@ -450,9 +567,40 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   <p className="text-sm text-red-300 font-medium mb-2">
                     Redemption failed
                   </p>
-                  {order.error_message && (
-                    <p className="text-xs text-red-400">{order.error_message}</p>
-                  )}
+                  {order.error_message && (() => {
+                    // error_message is stored as JSON.stringify({...}) — parse and show human-readable message
+                    try {
+                      const parsed = JSON.parse(order.error_message);
+                      const msg = parsed.message || parsed.reason || parsed.error || order.error_message;
+                      const refundTx = parsed.refund_tx;
+                      const paymentTx = parsed.payment_tx;
+                      const network = order.payment_network;
+                      const explorer = network && NETWORK_EXPLORERS[network];
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-xs text-red-400">{msg}</p>
+                          {refundTx && explorer && (
+                            <a
+                              href={`${explorer.url}/tx/${refundTx}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-green-400 hover:text-green-300"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              View refund transaction on {explorer.name}
+                            </a>
+                          )}
+                          {!refundTx && paymentTx && parsed.requires_manual_refund && explorer && (
+                            <p className="text-xs text-yellow-400">
+                              Auto-refund failed. Please contact support with your order ID for a manual refund.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    } catch {
+                      return <p className="text-xs text-red-400">{order.error_message}</p>;
+                    }
+                  })()}
                   <p className="text-xs text-red-400 mt-2">
                     Please contact support if tokens were deducted.
                   </p>
