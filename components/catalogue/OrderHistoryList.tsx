@@ -238,6 +238,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                   <img
                     src={order.product_image}
                     alt={order.brand_name}
+                    loading="lazy"
                     className="w-full h-full object-contain p-1"
                   />
                 ) : (

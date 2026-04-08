@@ -548,7 +548,50 @@ export default function PurchaseModal({
         {/* Processing Step */}
         {step === 'processing' && (
           <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
-            <div className="text-center py-8">
+            <div className="text-center py-6">
+              {/* Step-based progress indicator */}
+              {(() => {
+                const steps = [
+                  { key: 'network', label: 'Network' },
+                  { key: 'sign', label: 'Sign' },
+                  { key: 'confirm', label: 'Confirm' },
+                  { key: 'order', label: 'Order' },
+                ];
+                const currentIdx = paymentStep?.includes('network') || paymentStep?.includes('Checking')
+                  ? 0
+                  : paymentStep?.includes('signature') || paymentStep?.includes('Awaiting')
+                    ? 1
+                    : paymentStep?.includes('on-chain') || paymentStep?.includes('Confirming')
+                      ? 2
+                      : paymentStep?.includes('Ordering') || paymentStep?.includes('gift card')
+                        ? 3
+                        : 0;
+                return (
+                  <div className="flex items-center justify-center gap-1 mb-5 px-4">
+                    {steps.map((s, i) => (
+                      <div key={s.key} className="flex items-center gap-1">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+                          i < currentIdx ? 'bg-green-500 text-white' :
+                          i === currentIdx ? 'bg-indigo-500 text-white animate-pulse' :
+                          'bg-slate-700 text-slate-500'
+                        }`}>
+                          {i < currentIdx ? (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                          ) : (
+                            i + 1
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-medium ${
+                          i <= currentIdx ? 'text-slate-200' : 'text-slate-500'
+                        }`}>{s.label}</span>
+                        {i < steps.length - 1 && (
+                          <div className={`w-4 sm:w-6 h-0.5 ${i < currentIdx ? 'bg-green-500' : 'bg-slate-700'}`} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="relative inline-flex mb-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-indigo-500" />
               </div>
@@ -803,6 +846,16 @@ export default function PurchaseModal({
           )}
 
           {/* Actions */}
+          {/* Disabled reason hint */}
+          {(!walletReady || !email || !amount || !!insufficientBalance) && (
+            <p className="text-xs text-slate-500 pt-1">
+              {!walletReady ? 'Connect your wallet to continue' :
+               !amount ? 'Select an amount' :
+               !email ? 'Enter your email address' :
+               insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` : ''}
+            </p>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
