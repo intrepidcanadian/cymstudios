@@ -64,11 +64,14 @@ async function handle(request: NextRequest) {
 
   const cutoffMaxAge = new Date(Date.now() - MIN_AGE_MS).toISOString();
 
-  // Fetch stuck orders: pending_review, processing, or pending without a voucher
+  // Fetch stuck orders: pending_review or processing, no voucher yet.
+  // We deliberately exclude bare 'pending' — those rows are inserted before
+  // payment settlement. If a server crash leaves one in 'pending' with no
+  // payment_tx, we MUST NOT refund it (no funds were ever received).
   const { data: stuckOrders, error: fetchError } = await supabase
     .from('orders')
     .select('*')
-    .in('status', ['pending_review', 'processing', 'pending'])
+    .in('status', ['pending_review', 'processing'])
     .is('voucher_code', null)
     .lt('created_at', cutoffMaxAge)
     .order('created_at', { ascending: true })
@@ -193,6 +196,41 @@ async function resolveOrder(supabase: any, order: any): Promise<ResolutionSummar
 async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary> {
   const orderId = order.order_id;
 
+  // SAFETY: refuse to refund unless we have positive proof of inbound payment.
+  // payment_tx is set only after settlement broadcasts the on-chain transfer.
+  // Without it, this could be a row that crashed mid-flow before any payment
+  // was ever collected — refunding would be a free withdrawal from the facilitator.
+  const meta = safeParse(order.error_message) || {};
+  const paymentTx: string | undefined = order.payment_tx || meta.payment_tx;
+  if (!paymentTx) {
+    await supabase
+      .from('orders')
+      .update({
+        status: 'failed',
+        error_message: JSON.stringify({
+          ...meta,
+          message: 'Pending >24h with no payment_tx — flagged for manual review (no refund issued)',
+          requires_manual_review: true,
+          flagged_by: 'cron_resolve',
+          flagged_at: new Date().toISOString(),
+        }),
+      })
+      .eq('order_id', orderId);
+
+    await sendOrderFailureAlert({
+      orderId,
+      productName: order.brand_name,
+      productId: order.product_id,
+      price: order.price,
+      currency: order.currency,
+      userEmail: order.user_email,
+      errorMessage: 'Order pending >24h with NO payment_tx — refund SKIPPED (could be unpaid). Manual review required.',
+      requiresRefund: false,
+    }).catch(err => logger.error(`[CronResolve] Alert send failed for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
+    return { orderId, action: 'manual_required', detail: 'No payment_tx — refund skipped' };
+  }
+
   // Need payment metadata stored on the order or in error_message JSON
   let paymentFrom: string | undefined;
   let paymentValue: string | undefined;
@@ -204,13 +242,10 @@ async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary
   paymentNetwork = order.payment_network;
 
   // Fall back to parsing error_message JSON (where pending_review path stores it)
-  if ((!paymentFrom || !paymentValue || !paymentNetwork) && order.error_message) {
-    try {
-      const parsed = JSON.parse(order.error_message);
-      paymentFrom = paymentFrom || parsed.payment_from;
-      paymentValue = paymentValue || parsed.payment_value;
-      paymentNetwork = paymentNetwork || parsed.payment_network;
-    } catch { /* not JSON */ }
+  if (!paymentFrom || !paymentValue || !paymentNetwork) {
+    paymentFrom = paymentFrom || meta.payment_from;
+    paymentValue = paymentValue || meta.payment_value;
+    paymentNetwork = paymentNetwork || meta.payment_network;
   }
 
   if (!paymentFrom || !paymentValue || !paymentNetwork) {

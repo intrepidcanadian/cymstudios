@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS used_nonces (
   network       TEXT NOT NULL,
   order_id      UUID,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (from_address, nonce)
+  -- Include network in PK: the same nonce on different chains is not a replay
+  PRIMARY KEY (from_address, nonce, network)
 );
 
 CREATE INDEX IF NOT EXISTS idx_used_nonces_created_at ON used_nonces (created_at DESC);
