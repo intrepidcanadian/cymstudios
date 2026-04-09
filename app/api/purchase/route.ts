@@ -5,6 +5,7 @@ import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
 import { getUsdcAmount, getUsdcAmountFresh } from '@/lib/exchange-rates';
 import { generateOrderToken } from '@/lib/auth-token';
+import { sendOrderDelayedEmail, sendOrderCompletedAlert } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { NETWORKS, FACILITATOR_ADDRESS, getNetwork, type NetworkConfig } from '@/config/networks';
 
@@ -663,6 +664,15 @@ export async function POST(request: NextRequest) {
         })
         .eq('order_id', orderId);
 
+      // Customer-facing: tell them we're investigating and a refund is coming if we can't deliver
+      sendOrderDelayedEmail({
+        to: userEmail,
+        orderId,
+        brandName: productData.brand_name,
+        cardValue: price.toString(),
+        currency: effectiveCurrency,
+      }).catch(err => logger.error(`[Purchase] Failed to send delayed-order email for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
       return NextResponse.json(
         {
           success: false,
@@ -753,6 +763,14 @@ export async function POST(request: NextRequest) {
           })
           .eq('order_id', orderId);
 
+        sendOrderDelayedEmail({
+          to: userEmail,
+          orderId,
+          brandName: productData.brand_name,
+          cardValue: price.toString(),
+          currency: effectiveCurrency,
+        }).catch(err => logger.error(`[Purchase] Failed to send delayed-order email for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
         return NextResponse.json(
           {
             success: false,
@@ -804,6 +822,19 @@ export async function POST(request: NextRequest) {
       .eq('order_id', orderId);
 
     logger.info(`[Purchase] Order ${orderId} submitted, xRemit ID: ${xremitData.id}`);
+
+    // Ops alert — order successfully placed at xRemit
+    sendOrderCompletedAlert({
+      orderId,
+      productName: productData.brand_name,
+      productId: productIdNumber,
+      price: price,
+      currency: effectiveCurrency,
+      userEmail: userEmail,
+      paymentTxHash: paymentTxHash || undefined,
+      paymentNetwork: paymentNetworkConfig.x402Network,
+      source: 'purchase',
+    }).catch(err => logger.error(`[Purchase] Failed to send completed-order alert for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
 
     // Create payment tracking data with transaction hash
     const usdcAmountAtomic = Math.floor(usdcAmountFloat * 1000000).toString();

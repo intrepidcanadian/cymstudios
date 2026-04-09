@@ -281,6 +281,201 @@ export async function sendOtpEmail(data: OtpEmailData): Promise<{ success: boole
 }
 
 // ============================================
+// Order Delayed (customer-facing)
+// ============================================
+
+interface OrderDelayedEmailData {
+  to: string;
+  orderId: string;
+  brandName?: string;
+  cardValue?: string;
+  currency?: string;
+}
+
+/**
+ * Notify the customer that their order is delayed and being investigated.
+ * Sent when an order enters pending_review or fails with refund pending.
+ * Sets expectation: refund within ~48 hours if voucher cannot be delivered.
+ */
+export async function sendOrderDelayedEmail(data: OrderDelayedEmailData): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !resend) {
+    console.warn('⚠️ RESEND_API_KEY not configured - skipping delayed-order email');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const productLine = data.brandName
+      ? `${data.brandName}${data.cardValue && data.currency ? ` (${data.currency} ${data.cardValue})` : ''}`
+      : 'your gift card';
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Your CYM Studio order is being reviewed</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px;">We're looking into your order</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px; color: #333; font-size: 15px; line-height: 1.6;">
+              <p style="margin-top: 0;">Hi there,</p>
+              <p>
+                Thanks for your purchase of <strong>${productLine}</strong>. Your payment was received,
+                but our gift card provider hasn't confirmed delivery of your voucher yet.
+              </p>
+              <p>
+                Our team has been notified and is investigating. <strong>If we can't deliver your voucher,
+                you'll be automatically refunded to the wallet you paid from within approximately 48 hours.</strong>
+              </p>
+              <p>
+                If your voucher does come through in the meantime, we'll email it to you as soon as it arrives —
+                no action needed on your end.
+              </p>
+              <table width="100%" cellpadding="10" cellspacing="0" style="margin-top: 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+                <tr>
+                  <td style="font-size: 13px; color: #6b7280;">Order ID</td>
+                  <td style="font-size: 13px; color: #111827; font-family: monospace; text-align: right;">${data.orderId}</td>
+                </tr>
+              </table>
+              <p style="margin-top: 24px;">
+                Questions? Reply to this email or reach us at
+                <a href="mailto:info@ginsengswap.com" style="color: #d97706;">info@ginsengswap.com</a>
+                with your order ID and we'll get back to you quickly.
+              </p>
+              <p style="margin-bottom: 0;">— The CYM Studio team</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f5f5f5; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999; font-size: 11px;">CYM Studio — Gift Cards Powered by x402</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to: data.to,
+      subject: `We're looking into your order ${data.orderId.substring(0, 8)} — refund in ~48h if not resolved`,
+      html: emailHtml,
+    });
+
+    console.log('✅ Delayed-order email sent:', result);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to send delayed-order email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============================================
+// Order Completed Alert (internal — ops notification)
+// ============================================
+
+interface OrderCompletedAlertData {
+  orderId: string;
+  productName?: string;
+  productId?: number;
+  price?: number | string;
+  currency?: string;
+  userEmail?: string;
+  paymentTxHash?: string;
+  paymentNetwork?: string;
+  source: 'purchase' | 'webhook' | 'cron';
+}
+
+/**
+ * Send internal alert to info@ginsengswap.com when an order is successfully placed/completed.
+ * Used so the ops team has a real-time feed of sales activity.
+ */
+export async function sendOrderCompletedAlert(data: OrderCompletedAlertData): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !resend) {
+    console.warn('⚠️ RESEND_API_KEY not configured - skipping completed-order alert');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const sourceLabel = {
+      purchase: 'Order placed',
+      webhook: 'Order completed (webhook)',
+      cron: 'Order completed (cron recovery)',
+    }[data.source];
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>${sourceLabel}</title></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #16a34a; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 22px;">${sourceLabel}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 25px;">
+              <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 14px; color: #333;">
+                <tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee; width: 140px;">Order ID</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace;">${data.orderId}</td></tr>
+                ${data.productName ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Product</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.productName}${data.productId ? ` (${data.productId})` : ''}</td></tr>` : ''}
+                ${data.price ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Amount</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.currency || ''} ${data.price}</td></tr>` : ''}
+                ${data.userEmail ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Customer</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.userEmail}</td></tr>` : ''}
+                ${data.paymentNetwork ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Network</td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${data.paymentNetwork}</td></tr>` : ''}
+                ${data.paymentTxHash ? `<tr><td style="font-weight: bold; padding: 8px 0; border-bottom: 1px solid #eee;">Payment TX</td><td style="padding: 8px 0; border-bottom: 1px solid #eee; font-family: monospace; font-size: 12px; word-break: break-all;">${data.paymentTxHash}</td></tr>` : ''}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f5f5f5; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999; font-size: 11px;">CYM Studio — Automated Order Notification</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to: 'info@ginsengswap.com',
+      subject: `[${data.source.toUpperCase()}] Order ${data.orderId.substring(0, 8)} — ${data.productName || 'Unknown Product'}`,
+      html: emailHtml,
+    });
+
+    console.log('✅ Order completed alert sent:', result);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to send completed-order alert:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============================================
 // Order Failure Alert (internal)
 // ============================================
 

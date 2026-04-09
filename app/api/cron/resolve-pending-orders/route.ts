@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
-import { sendVoucherEmail, sendOrderFailureAlert } from '@/lib/email';
+import { sendVoucherEmail, sendOrderFailureAlert, sendOrderCompletedAlert } from '@/lib/email';
 import { NETWORKS, getNetwork } from '@/config/networks';
 import { logger } from '@/lib/logger';
 
@@ -162,6 +162,20 @@ async function resolveOrder(supabase: any, order: any): Promise<ResolutionSummar
         logger.error(`[CronResolve] Failed to send voucher email for ${orderId}:`, emailErr instanceof Error ? emailErr.message : 'Unknown');
       }
     }
+
+    // Ops alert — recovered stuck order
+    const meta = safeParse(order.error_message) || {};
+    sendOrderCompletedAlert({
+      orderId,
+      productName: updated?.product_name || order.brand_name,
+      productId: order.product_id,
+      price: updated?.face_value || order.price,
+      currency: updated?.voucher_currency || order.currency,
+      userEmail: order.user_email,
+      paymentTxHash: meta.payment_tx,
+      paymentNetwork: meta.payment_network,
+      source: 'cron',
+    }).catch(err => logger.error(`[CronResolve] Alert send failed for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
 
     return { orderId, action: 'completed' };
   }
