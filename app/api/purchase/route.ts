@@ -132,6 +132,29 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // M8: Enforce email verification before allowing purchase.
+    // Vouchers are delivered by email and cannot be recovered if sent to a typo.
+    // OTP verification ensures the address is owned + reachable.
+    {
+      const normalizedEmail = userEmail.toLowerCase().trim();
+      const { data: verified } = await supabase
+        .from('verified_emails')
+        .select('email')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (!verified) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Email not verified. Please verify your email before completing the purchase.',
+            code: 'EMAIL_NOT_VERIFIED',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // CRITICAL: Validate purchase will succeed BEFORE processing payment
     // This prevents charging users for failed purchases
 
@@ -387,6 +410,38 @@ export async function POST(request: NextRequest) {
         { success: false, error: paymentError instanceof Error ? paymentError.message : 'Payment validation failed' },
         { status: 400 }
       );
+    }
+
+    // M7: Nonce replay protection — INSERT into used_nonces before settlement.
+    // The on-chain contract enforces nonce uniqueness, but only once a tx confirms.
+    // Between signature submission and confirmation, the same nonce could be replayed.
+    // Inserting first (with PK on (from_address, nonce)) closes this race window.
+    if (paymentStrategy === 'eip3009' && paymentNonce) {
+      const { error: nonceInsertError } = await supabase
+        .from('used_nonces')
+        .insert({
+          from_address: paymentFrom.toLowerCase(),
+          nonce: paymentNonce,
+          network: paymentNetworkConfig.x402Network,
+          order_id: orderId,
+        });
+
+      if (nonceInsertError) {
+        // 23505 = unique_violation in PostgreSQL
+        if (nonceInsertError.code === '23505') {
+          logger.warn(`[x402] Nonce replay blocked: ${paymentFrom} / ${paymentNonce}`);
+          return NextResponse.json(
+            { success: false, error: 'This payment authorization has already been submitted. Please try again with a fresh signature.' },
+            { status: 409 }
+          );
+        }
+        // Non-duplicate DB error — log and fail safely (do not settle)
+        logger.error('[x402] Nonce insert failed:', nonceInsertError.message);
+        return NextResponse.json(
+          { success: false, error: 'Unable to record payment authorization. Please try again.' },
+          { status: 500 }
+        );
+      }
     }
 
     // Idempotency guard: check for duplicate pending order from same wallet with same amount in last 60s

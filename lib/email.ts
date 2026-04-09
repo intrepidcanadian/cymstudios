@@ -197,6 +197,90 @@ export async function sendVoucherEmail(data: VoucherEmailData): Promise<{ succes
 }
 
 // ============================================
+// Email OTP (verification code)
+// ============================================
+
+interface OtpEmailData {
+  to: string;
+  code: string;
+}
+
+/**
+ * Send a 6-digit OTP code to the user for email verification.
+ * Used to ensure vouchers are delivered to a valid, owned address.
+ */
+export async function sendOtpEmail(data: OtpEmailData): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !resend) {
+    console.warn('⚠️ RESEND_API_KEY not configured - cannot send OTP');
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  try {
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Your CYM Studio verification code</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%); padding: 30px 20px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: bold;">Verify your email</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px;">
+              <p style="margin: 0 0 20px 0; color: #333; font-size: 15px; line-height: 1.6;">
+                Enter this code in the gift card checkout to verify your email address:
+              </p>
+              <div style="background: #f5f3ff; border: 2px solid #6366F1; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 20px;">
+                <p style="margin: 0; color: #4F46E5; font-size: 36px; font-weight: bold; letter-spacing: 8px; font-family: monospace;">${data.code}</p>
+              </div>
+              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">This code expires in <strong>10 minutes</strong>.</p>
+              <p style="margin: 0; color: #666; font-size: 14px;">If you did not request this code, you can safely ignore this email.</p>
+              <p style="margin: 25px 0 0 0; color: #999; font-size: 12px; line-height: 1.6;">
+                Why we ask: gift card vouchers are delivered by email and cannot be recovered if sent to a typo'd address. This one-time check protects your purchase.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f5f5f5; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; color: #999; font-size: 11px;">CYM Studio — Email verification</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to: data.to,
+      subject: `Your CYM Studio verification code: ${data.code}`,
+      html: emailHtml,
+    });
+
+    console.log('✅ OTP email sent:', result);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Failed to send OTP email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============================================
 // Order Failure Alert (internal)
 // ============================================
 

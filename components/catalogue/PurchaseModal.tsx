@@ -51,12 +51,98 @@ export default function PurchaseModal({
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [quoteFetchedAt, setQuoteFetchedAt] = useState<number | null>(null);
   const [quoteStale, setQuoteStale] = useState(false);
-  const [step, setStep] = useState<'form' | 'confirm' | 'processing'>('form');
+  const [step, setStep] = useState<'form' | 'verify-email' | 'confirm' | 'processing'>('form');
   const [paymentStep, setPaymentStep] = useState<string>('');
   const [hasFailedOnce, setHasFailedOnce] = useState(false);
   const [quoteRefreshed, setQuoteRefreshed] = useState(false);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+
+  // M8: Email OTP verification state
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
+  const [verifiedEmails, setVerifiedEmails] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('verifiedEmails');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch { return new Set(); }
+    }
+    return new Set();
+  });
+
+  const isEmailVerified = (e: string) => verifiedEmails.has(e.toLowerCase().trim());
+
+  const persistVerifiedEmail = (e: string) => {
+    setVerifiedEmails((prev) => {
+      const next = new Set(prev);
+      next.add(e.toLowerCase().trim());
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('verifiedEmails', JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
+  };
+
+  const requestOtp = async () => {
+    setOtpError(null);
+    setOtpSending(true);
+    try {
+      const resp = await fetch('/api/email/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        setOtpError(data.error || 'Failed to send verification code');
+        return false;
+      }
+      // Server may report email is already verified
+      if (data.alreadyVerified) {
+        persistVerifiedEmail(email);
+        return 'verified';
+      }
+      setOtpSentAt(Date.now());
+      return true;
+    } catch {
+      setOtpError('Network error sending verification code. Please try again.');
+      return false;
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const submitOtp = async () => {
+    if (!/^\d{6}$/.test(otpCode)) {
+      setOtpError('Please enter the 6-digit code from your email');
+      return;
+    }
+    setOtpError(null);
+    setOtpVerifying(true);
+    try {
+      const resp = await fetch('/api/email/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: otpCode }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        setOtpError(data.error || 'Verification failed');
+        return;
+      }
+      persistVerifiedEmail(email);
+      setOtpCode('');
+      setStep('confirm');
+    } catch {
+      setOtpError('Network error verifying code. Please try again.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('userProfile');
@@ -265,6 +351,22 @@ export default function PurchaseModal({
       }
     } catch { /* ignore localStorage errors */ }
 
+    // M8: Require email verification before showing confirmation
+    if (!isEmailVerified(email)) {
+      const result = await requestOtp();
+      if (result === false) {
+        // requestOtp set otpError; surface it on the form too
+        return;
+      }
+      if (result === 'verified') {
+        // Server says already verified — skip OTP step
+        setStep('confirm');
+        return;
+      }
+      setStep('verify-email');
+      return;
+    }
+
     // Show confirmation step
     setStep('confirm');
   };
@@ -434,6 +536,77 @@ export default function PurchaseModal({
             alt={product.brand_name}
             className="w-full h-48 object-cover"
           />
+        )}
+
+        {/* Email Verification Step (M8) */}
+        {step === 'verify-email' && (
+          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+            <h4 className="text-lg font-semibold text-slate-100 mb-1">Verify your email</h4>
+            <p className="text-sm text-slate-400">
+              We sent a 6-digit verification code to <strong className="text-slate-200">{email}</strong>.
+              Enter it below to continue. Your voucher will be delivered to this address, so verifying it
+              now protects you from typos.
+            </p>
+
+            <div>
+              <label htmlFor="otp-code" className="block text-sm font-medium text-slate-300 mb-1">
+                Verification code
+              </label>
+              <input
+                id="otp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                pattern="\d{6}"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl text-slate-100 text-center font-mono text-2xl tracking-[0.5em] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                aria-label="6-digit verification code"
+                autoFocus
+              />
+            </div>
+
+            {otpError && (
+              <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+                {otpError}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={submitOtp}
+                disabled={otpVerifying || otpCode.length !== 6}
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                {otpVerifying ? 'Verifying...' : 'Verify & Continue'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStep('form'); setOtpError(null); setOtpCode(''); }}
+                disabled={otpVerifying}
+                className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
+              <span>
+                {otpSentAt ? `Code sent ${Math.floor((Date.now() - otpSentAt) / 1000)}s ago` : 'Code sent'}
+              </span>
+              <button
+                type="button"
+                onClick={async () => { await requestOtp(); }}
+                disabled={otpSending}
+                className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 underline"
+              >
+                {otpSending ? 'Sending...' : 'Resend code'}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Confirmation Step */}
