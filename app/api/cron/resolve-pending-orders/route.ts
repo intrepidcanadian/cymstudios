@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
-import { sendVoucherEmail } from '@/lib/email';
+import { sendVoucherEmail, sendOrderFailureAlert } from '@/lib/email';
 import { NETWORKS, getNetwork } from '@/config/networks';
 import { logger } from '@/lib/logger';
 
@@ -213,6 +213,18 @@ async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary
         }),
       })
       .eq('order_id', orderId);
+
+    await sendOrderFailureAlert({
+      orderId,
+      productName: order.brand_name,
+      productId: order.product_id,
+      price: order.price,
+      currency: order.currency,
+      userEmail: order.user_email,
+      errorMessage: 'Order pending >24h with no voucher and payment metadata missing from DB',
+      requiresRefund: true,
+    }).catch(err => logger.error(`[CronResolve] Alert send failed for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
     return { orderId, action: 'manual_required', detail: 'Missing payment metadata' };
   }
 
@@ -252,6 +264,22 @@ async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary
       })
       .eq('order_id', orderId);
 
+    // FYI alert — refund went through, no manual action needed but ops should know
+    await sendOrderFailureAlert({
+      orderId,
+      productName: order.brand_name,
+      productId: order.product_id,
+      price: order.price,
+      currency: order.currency,
+      userEmail: order.user_email,
+      errorMessage: 'Auto-refunded by cron after 24h with no voucher from xRemit',
+      paymentTxHash: safeParse(order.error_message)?.payment_tx,
+      paymentNetwork: paymentNetwork,
+      paymentFrom: paymentFrom,
+      paymentValue: paymentValue,
+      requiresRefund: false,
+    }).catch(err => logger.error(`[CronResolve] Alert send failed for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
     return { orderId, action: 'refunded', detail: refundTx.hash };
   } catch (refundErr) {
     logger.error(`[CronResolve] Refund failed for ${orderId}:`, refundErr instanceof Error ? refundErr.message : 'Unknown');
@@ -269,6 +297,22 @@ async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary
         }),
       })
       .eq('order_id', orderId);
+
+    await sendOrderFailureAlert({
+      orderId,
+      productName: order.brand_name,
+      productId: order.product_id,
+      price: order.price,
+      currency: order.currency,
+      userEmail: order.user_email,
+      errorMessage: `Auto-refund attempt failed: ${refundErr instanceof Error ? refundErr.message : 'Unknown error'}`,
+      paymentTxHash: safeParse(order.error_message)?.payment_tx,
+      paymentNetwork: paymentNetwork,
+      paymentFrom: paymentFrom,
+      paymentValue: paymentValue,
+      requiresRefund: true,
+    }).catch(err => logger.error(`[CronResolve] Alert send failed for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
     return { orderId, action: 'manual_required', detail: 'Refund attempt failed' };
   }
 }
