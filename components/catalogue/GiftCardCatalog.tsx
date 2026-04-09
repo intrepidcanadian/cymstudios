@@ -45,6 +45,7 @@ export default function GiftCardCatalog() {
   const [mastercards, setMastercards] = useState<BrandProduct[]>([]);
   const [loadingMastercards, setLoadingMastercards] = useState(false);
   const [mastercardsFetched, setMastercardsFetched] = useState(false);
+  const [mastercardFetchError, setMastercardFetchError] = useState<string | null>(null);
 
   // Filters
   const [countryFilter, setCountryFilter] = useState<string>(() => {
@@ -195,6 +196,7 @@ export default function GiftCardCatalog() {
   const fetchMastercards = async () => {
     try {
       setLoadingMastercards(true);
+      setMastercardFetchError(null);
       const params = new URLSearchParams();
       if (countryFilter !== 'all') params.append('country', countryFilter);
       if (currencyFilter !== 'all') params.append('currency', currencyFilter);
@@ -210,6 +212,7 @@ export default function GiftCardCatalog() {
     } catch (error) {
       console.error('Error fetching Mastercards:', error);
       setMastercards([]);
+      setMastercardFetchError('Failed to load Mastercard products. Please check your connection and try again.');
     } finally {
       setLoadingMastercards(false);
     }
@@ -309,6 +312,7 @@ export default function GiftCardCatalog() {
           <input
             type="text"
             placeholder="Search for a brand..."
+            aria-label="Search gift card brands"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-11 pr-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
@@ -334,7 +338,11 @@ export default function GiftCardCatalog() {
           />
           <div className="flex-1">
             <span className="text-sm font-bold text-slate-100 block">Show Unique Brands Only</span>
-            <span className="text-xs text-slate-400 block mt-1">Display one product per brand</span>
+            <span className="text-xs text-slate-400 block mt-1">
+              {showUniqueBrandsOnly
+                ? `Showing 1 product per brand`
+                : `Showing all product variations`}
+            </span>
           </div>
         </label>
       </div>
@@ -671,6 +679,18 @@ export default function GiftCardCatalog() {
                       </div>
                     ))}
                   </div>
+                ) : mastercardFetchError ? (
+                  <div className="text-center py-20">
+                    <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
+                    <p className="text-slate-400 mb-6">{mastercardFetchError}</p>
+                    <button
+                      onClick={fetchMastercards}
+                      className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                      Try Again
+                    </button>
+                  </div>
                 ) : mastercards.length === 0 ? (
                   <div className="text-center py-20">
                     <CreditCard className="w-16 h-16 text-slate-600 mx-auto mb-4" />
@@ -789,6 +809,7 @@ export default function GiftCardCatalog() {
                           e.stopPropagation();
                           toggleLike(String(product.product_id));
                         }}
+                        aria-label={`${likedProducts.has(String(product.product_id)) ? 'Unlike' : 'Like'} ${product.brand_name}`}
                         className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-900/80 flex items-center justify-center hover:bg-slate-900 transition-colors shadow-lg border border-slate-700"
                       >
                         {likedProducts.has(String(product.product_id)) ? (

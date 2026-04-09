@@ -260,6 +260,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                       }}
                       className="flex items-center justify-center w-7 h-7 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
                       title="Copy full order ID"
+                      aria-label="Copy order ID to clipboard"
                     >
                       {orderIdCopied ? (
                         <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,6 +490,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                             {/* Copy Button */}
                             <button
                               onClick={handleCopy}
+                              aria-label={`Copy ${codeUrl ? 'redemption URL' : 'voucher code'} to clipboard`}
                               className="w-full p-3 bg-indigo-900/30 border-2 border-indigo-700/50 rounded-lg hover:bg-indigo-900/50 hover:border-indigo-600 transition-colors cursor-pointer text-center"
                             >
                               <div className="text-sm font-medium text-indigo-200">Copy {codeUrl ? 'Redemption URL' : 'Code'}</div>
