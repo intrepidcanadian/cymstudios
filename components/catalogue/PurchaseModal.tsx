@@ -87,7 +87,12 @@ export default function PurchaseModal({
     });
   };
 
-  const requestOtp = async () => {
+  type OtpResult =
+    | { status: 'sent' }
+    | { status: 'verified' }
+    | { status: 'error'; message: string };
+
+  const requestOtp = async (): Promise<OtpResult> => {
     setOtpError(null);
     setOtpSending(true);
     try {
@@ -98,19 +103,21 @@ export default function PurchaseModal({
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) {
-        setOtpError(data.error || 'Failed to send verification code');
-        return false;
+        const message = data.error || 'Failed to send verification code';
+        setOtpError(message);
+        return { status: 'error', message };
       }
       // Server may report email is already verified
       if (data.alreadyVerified) {
         persistVerifiedEmail(email);
-        return 'verified';
+        return { status: 'verified' };
       }
       setOtpSentAt(Date.now());
-      return true;
+      return { status: 'sent' };
     } catch {
-      setOtpError('Network error sending verification code. Please try again.');
-      return false;
+      const message = 'Network error sending verification code. Please try again.';
+      setOtpError(message);
+      return { status: 'error', message };
     } finally {
       setOtpSending(false);
     }
@@ -354,11 +361,12 @@ export default function PurchaseModal({
     // M8: Require email verification before showing confirmation
     if (!isEmailVerified(email)) {
       const result = await requestOtp();
-      if (result === false) {
-        // requestOtp set otpError; surface it on the form too
+      if (result.status === 'error') {
+        // Surface OTP send error on the form so the user sees what went wrong
+        setError(result.message);
         return;
       }
-      if (result === 'verified') {
+      if (result.status === 'verified') {
         // Server says already verified — skip OTP step
         setStep('confirm');
         return;
