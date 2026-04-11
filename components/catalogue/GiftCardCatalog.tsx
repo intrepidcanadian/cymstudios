@@ -67,6 +67,7 @@ export default function GiftCardCatalog() {
   const [showUniqueBrandsOnly, setShowUniqueBrandsOnly] = useState<boolean>(true);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const [showAllBrands, setShowAllBrands] = useState<boolean>(false);
+  const [sortOrder, setSortOrder] = useState<'default' | 'az' | 'za'>('default');
   const [likedProducts, setLikedProducts] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -272,6 +273,12 @@ export default function GiftCardCatalog() {
     filteredProducts = Array.from(brandMap.values());
   }
 
+  // Apply sorting
+  if (sortOrder === 'az') {
+    filteredProducts = [...filteredProducts].sort((a, b) => a.brand_name.localeCompare(b.brand_name));
+  } else if (sortOrder === 'za') {
+    filteredProducts = [...filteredProducts].sort((a, b) => b.brand_name.localeCompare(a.brand_name));
+  }
 
   const toggleBrandFilter = (brandName: string) => {
     setSelectedBrandFilters(prev =>
@@ -326,6 +333,20 @@ export default function GiftCardCatalog() {
             </svg>
           )}
         </div>
+      </div>
+
+      {/* Sort Order */}
+      <div>
+        <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Sort</h3>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value as 'default' | 'az' | 'za')}
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+        >
+          <option value="default">Default</option>
+          <option value="az">Name A–Z</option>
+          <option value="za">Name Z–A</option>
+        </select>
       </div>
 
       {/* Show Unique Brands Only Toggle */}
@@ -423,7 +444,7 @@ export default function GiftCardCatalog() {
       </div>
 
       {/* Clear Filters */}
-      {(selectedBrandFilters.length > 0 || countryFilter !== 'all' || currencyFilter !== 'all' || searchQuery || showUniqueBrandsOnly || showFavoritesOnly) && (
+      {(selectedBrandFilters.length > 0 || countryFilter !== 'all' || currencyFilter !== 'all' || searchQuery || showUniqueBrandsOnly || showFavoritesOnly || sortOrder !== 'default') && (
         <button
           onClick={() => {
             setSelectedBrandFilters([]);
@@ -433,6 +454,7 @@ export default function GiftCardCatalog() {
             setSearchInput('');
             setShowUniqueBrandsOnly(false);
             setShowFavoritesOnly(false);
+            setSortOrder('default');
           }}
           className="w-full px-5 py-3 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold rounded-lg transition-colors shadow-sm"
         >
@@ -620,6 +642,18 @@ export default function GiftCardCatalog() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Sort control — gift cards tab only */}
+                  {activeTab === 'giftcards' && (
+                    <select
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value as 'default' | 'az' | 'za')}
+                      className="hidden sm:block px-3 py-2 text-xs font-medium text-slate-300 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+                    >
+                      <option value="default">Sort: Default</option>
+                      <option value="az">Name A–Z</option>
+                      <option value="za">Name Z–A</option>
+                    </select>
+                  )}
                   {/* Mobile Wallet Auth */}
                   <div className="lg:hidden">
                     {walletReady && !isConnected ? (
@@ -694,7 +728,7 @@ export default function GiftCardCatalog() {
                   )}
                   {activeFilterCount > 1 && (
                     <button
-                      onClick={() => { setSelectedBrandFilters([]); setCountryFilter('all'); setCurrencyFilter('all'); setSearchQuery(''); setSearchInput(''); setShowFavoritesOnly(false); }}
+                      onClick={() => { setSelectedBrandFilters([]); setCountryFilter('all'); setCurrencyFilter('all'); setSearchQuery(''); setSearchInput(''); setShowFavoritesOnly(false); setSortOrder('default'); }}
                       className="text-xs text-slate-400 hover:text-slate-200 underline"
                     >
                       Clear all
@@ -915,8 +949,8 @@ export default function GiftCardCatalog() {
                           </p>
                         </div>
 
-                        {/* Denominations */}
-                        {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 && (
+                        {/* Denominations or Value Range */}
+                        {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 ? (
                           <div className="mb-2 sm:mb-3">
                             <div className="flex flex-wrap gap-1 sm:gap-1.5">
                               {/* Show 2 on mobile, 3 on desktop */}
@@ -944,7 +978,13 @@ export default function GiftCardCatalog() {
                               )}
                             </div>
                           </div>
-                        )}
+                        ) : product.value_restrictions ? (
+                          <div className="mb-2 sm:mb-3">
+                            <span className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
+                              {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min}–{product.value_restrictions.maxVal || product.value_restrictions.max}
+                            </span>
+                          </div>
+                        ) : null}
 
                         {/* Country & Currency - Simplified on mobile */}
                         <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
@@ -1063,6 +1103,12 @@ export default function GiftCardCatalog() {
                           placeholder={`${selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - ${selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}`}
                           value={purchaseInitialAmount}
                           onChange={(e) => setPurchaseInitialAmount(e.target.value)}
+                          onBlur={() => {
+                            const val = parseFloat(purchaseInitialAmount);
+                            if (!isNaN(val) && val > 0) {
+                              setPurchaseInitialAmount(val.toFixed(2));
+                            }
+                          }}
                           className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
                         />
                       </div>

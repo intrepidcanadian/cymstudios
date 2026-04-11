@@ -921,48 +921,58 @@ export default function PurchaseModal({
               </p>
             )}
             {walletReady && (
-              <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl">
-                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-[10px]">$</span>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xs text-slate-400">Available:</span>
-                  {usdcBalance !== null && usdcBalance !== undefined ? (
-                    <>
-                      <span className="text-sm font-bold text-slate-100">
-                        {parseFloat(usdcBalance).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                      <span className="text-xs text-slate-400">{networkConfig?.tokenSymbol}</span>
-                    </>
-                  ) : (
-                    <span className="inline-block w-16 h-4 bg-slate-600 rounded animate-pulse" />
+              <>
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl">
+                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-[10px]">$</span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs text-slate-400">Available:</span>
+                    {usdcBalance !== null && usdcBalance !== undefined ? (
+                      <>
+                        <span className="text-sm font-bold text-slate-100">
+                          {parseFloat(usdcBalance).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                        <span className="text-xs text-slate-400">{networkConfig?.tokenSymbol}</span>
+                      </>
+                    ) : (
+                      <span className="inline-block w-16 h-4 bg-slate-600 rounded animate-pulse" />
+                    )}
+                  </div>
+                  {onRefreshBalance && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (refreshingBalance) return;
+                        setRefreshingBalance(true);
+                        try { await onRefreshBalance(); } catch {}
+                        setTimeout(() => setRefreshingBalance(false), 1500);
+                      }}
+                      disabled={refreshingBalance}
+                      className="ml-auto p-1 text-slate-400 hover:text-indigo-400 transition-colors rounded disabled:opacity-50"
+                      title="Refresh balance"
+                    >
+                      <svg className={`w-3.5 h-3.5${refreshingBalance ? ' animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  )}
+                  {insufficientBalance && usdcBalance !== null && usdcBalance !== undefined && (
+                    <span className={`${onRefreshBalance ? '' : 'ml-auto '}text-xs text-red-400 font-medium`}>Insufficient</span>
                   )}
                 </div>
-                {onRefreshBalance && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (refreshingBalance) return;
-                      setRefreshingBalance(true);
-                      try { await onRefreshBalance(); } catch {}
-                      setTimeout(() => setRefreshingBalance(false), 1500);
-                    }}
-                    disabled={refreshingBalance}
-                    className="ml-auto p-1 text-slate-400 hover:text-indigo-400 transition-colors rounded disabled:opacity-50"
-                    title="Refresh balance"
-                  >
-                    <svg className={`w-3.5 h-3.5${refreshingBalance ? ' animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  </button>
+                {/* Zero balance funding guidance */}
+                {usdcBalance !== null && usdcBalance !== undefined && parseFloat(usdcBalance) === 0 && (
+                  <div className="mt-2 p-2.5 bg-amber-900/20 border border-amber-700/30 rounded-lg">
+                    <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                      Your {networkConfig?.tokenSymbol} balance is empty. Send {networkConfig?.tokenSymbol} to your wallet address to fund it, or switch to a network where you have tokens.
+                    </p>
+                  </div>
                 )}
-                {insufficientBalance && usdcBalance !== null && usdcBalance !== undefined && (
-                  <span className={`${onRefreshBalance ? '' : 'ml-auto '}text-xs text-red-400 font-medium`}>Insufficient</span>
-                )}
-              </div>
+              </>
             )}
           </div>
 
@@ -1001,6 +1011,12 @@ export default function PurchaseModal({
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  onBlur={() => {
+                    const val = parseFloat(amount);
+                    if (!isNaN(val) && val > 0) {
+                      setAmount(val.toFixed(2));
+                    }
+                  }}
                   placeholder={`${product.value_restrictions?.minVal || product.value_restrictions?.min || 1} - ${product.value_restrictions?.maxVal || product.value_restrictions?.max || 1000}`}
                   className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
                   required
