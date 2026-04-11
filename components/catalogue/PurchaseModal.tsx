@@ -49,6 +49,7 @@ export default function PurchaseModal({
   const [usdcAmount, setUsdcAmount] = useState<string | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rawExchangeRate, setRawExchangeRate] = useState<number | null>(null);
   const [quoteFetchedAt, setQuoteFetchedAt] = useState<number | null>(null);
   const [quoteStale, setQuoteStale] = useState(false);
   const [step, setStep] = useState<'form' | 'verify-email' | 'confirm' | 'processing'>('form');
@@ -268,6 +269,7 @@ export default function PurchaseModal({
 
       if (product.currency === 'USD') {
         setUsdcAmount(ceilCents(price * feeMultiplier));
+        setRawExchangeRate(1);
         setExchangeRate(feeMultiplier);
         setQuoteFetchedAt(Date.now());
         setQuoteStale(false);
@@ -282,15 +284,18 @@ export default function PurchaseModal({
         if (data.success && data.rate) {
           const adjustedRate = data.rate * feeMultiplier;
           setUsdcAmount(ceilCents(price * adjustedRate));
+          setRawExchangeRate(data.rate);
           setExchangeRate(adjustedRate);
           setQuoteFetchedAt(Date.now());
           setQuoteStale(false);
         } else {
           setUsdcAmount(null);
+          setRawExchangeRate(null);
           setExchangeRate(null);
         }
       } catch {
         setUsdcAmount(null);
+        setRawExchangeRate(null);
         setExchangeRate(null);
       } finally {
         setLoadingQuote(false);
@@ -357,6 +362,7 @@ export default function PurchaseModal({
           const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
           const adjustedRate = data.rate * feeMultiplier;
           setUsdcAmount((Math.ceil(price * adjustedRate * 100) / 100).toFixed(2));
+          setRawExchangeRate(data.rate);
           setExchangeRate(adjustedRate);
           setQuoteFetchedAt(Date.now());
           setQuoteStale(false);
@@ -566,7 +572,8 @@ export default function PurchaseModal({
           <img
             src={product.product_image}
             alt={product.brand_name}
-            className="w-full h-48 object-cover"
+            loading="lazy"
+            className="w-full h-48 object-contain bg-white p-4"
           />
         )}
 
@@ -658,10 +665,10 @@ export default function PurchaseModal({
                 <span className="text-slate-400">Reward Value</span>
                 <span className="text-slate-100 font-medium">{parseFloat(amount).toFixed(2)} {product.currency}</span>
               </div>
-              {product.currency !== 'USD' && exchangeRate !== null && (
+              {product.currency !== 'USD' && rawExchangeRate !== null && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Exchange Rate</span>
-                  <span className="text-slate-100 font-medium">1 {product.currency} = {exchangeRate.toFixed(4)} USD</span>
+                  <span className="text-slate-100 font-medium">1 {product.currency} = {rawExchangeRate.toFixed(4)} USD</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
@@ -992,14 +999,28 @@ export default function PurchaseModal({
                     {parseFloat(amount).toFixed(2)} {product.currency}
                   </span>
                 </div>
-                {product.currency !== 'USD' && (
+                {product.currency !== 'USD' && rawExchangeRate !== null && (
                   <div className="flex justify-between text-slate-300">
                     <span>Exchange Rate:</span>
                     <span className="font-mono">
-                      1 {product.currency} = {exchangeRate.toFixed(4)} USD
+                      1 {product.currency} = {rawExchangeRate.toFixed(4)} USD
                     </span>
                   </div>
                 )}
+                {product.currency !== 'USD' && rawExchangeRate !== null && (
+                  <div className="flex justify-between text-slate-300">
+                    <span>USD Value:</span>
+                    <span className="font-mono">
+                      {(parseFloat(amount) * rawExchangeRate).toFixed(2)} USD
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-slate-300">
+                  <span>Service Fee ({FX_FEE_PERCENT}%):</span>
+                  <span className="font-mono">
+                    +{((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD
+                  </span>
+                </div>
                 <div className="flex justify-between text-indigo-200 font-semibold pt-1 border-t border-indigo-700/50">
                   <span>Total {networkConfig?.tokenSymbol} Tokens:</span>
                   <span className="font-mono">
