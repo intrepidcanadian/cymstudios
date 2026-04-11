@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Copy, Check, Send, Download, ExternalLink, Wallet } from 'lucide-react';
+import { NETWORKS, getNetwork } from '@/config/networks';
 
 interface WalletViewModalProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface WalletViewModalProps {
   balanceLoading: boolean;
   onRefreshBalance: () => void;
   onExportWallet: () => void;
+  selectedNetwork?: string;
 }
 
 export default function WalletViewModal({
@@ -25,7 +27,9 @@ export default function WalletViewModal({
   balanceLoading,
   onRefreshBalance,
   onExportWallet,
+  selectedNetwork = 'ethereum',
 }: WalletViewModalProps) {
+  const network = getNetwork(selectedNetwork);
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
@@ -87,11 +91,11 @@ export default function WalletViewModal({
               )}
             </button>
             <a
-              href={`https://etherscan.io/address/${walletAddress}`}
+              href={`${network.explorerUrl}/address/${walletAddress}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors"
-              title="View on Etherscan"
+              title={`View on ${network.name} explorer`}
             >
               <ExternalLink className="w-4 h-4 text-slate-300" />
             </a>
@@ -100,7 +104,7 @@ export default function WalletViewModal({
 
         {/* Balances */}
         <div className="px-5 pt-4 space-y-3">
-          {/* USDC Balance */}
+          {/* Stablecoin Balance */}
           <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -108,7 +112,7 @@ export default function WalletViewModal({
                   <span className="text-white font-bold text-xs">$</span>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">USDC</p>
+                  <p className="text-xs text-slate-400">{network.tokenSymbol}</p>
                   <p className="text-lg font-bold text-slate-100">
                     {balanceLoading ? (
                       <span className="text-slate-500">Loading...</span>
@@ -120,19 +124,19 @@ export default function WalletViewModal({
                   </p>
                 </div>
               </div>
-              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">Ethereum</span>
+              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">{network.name}</span>
             </div>
           </div>
 
-          {/* ETH Balance */}
+          {/* Native Token Balance */}
           <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">E</span>
+                  <span className="text-white font-bold text-sm">{network.nativeSymbol.charAt(0)}</span>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">ETH</p>
+                  <p className="text-xs text-slate-400">{network.nativeSymbol}</p>
                   <p className="text-lg font-bold text-slate-100">
                     {balanceLoading ? (
                       <span className="text-slate-500">Loading...</span>
@@ -144,7 +148,7 @@ export default function WalletViewModal({
                   </p>
                 </div>
               </div>
-              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">Ethereum</span>
+              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">{network.name}</span>
             </div>
           </div>
         </div>
@@ -160,7 +164,7 @@ export default function WalletViewModal({
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg"
             >
               <Send className="w-4 h-4" />
-              Send USDC
+              Send {network.tokenSymbol}
             </button>
             <button
               onClick={() => {
@@ -170,7 +174,7 @@ export default function WalletViewModal({
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-semibold rounded-xl transition-all shadow-lg border border-slate-500"
             >
               <Send className="w-4 h-4" />
-              Send ETH
+              Send {network.nativeSymbol}
             </button>
           </div>
 

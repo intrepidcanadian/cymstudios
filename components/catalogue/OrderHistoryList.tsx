@@ -38,6 +38,8 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('date');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [, setTick] = useState(0);
 
   const fetchOrders = useCallback(async () => {
     const savedProfile = typeof window !== 'undefined' ? localStorage.getItem('userProfile') : null;
@@ -66,6 +68,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       if (data.success) {
         setOrders(data.data || []);
         if (data.userEmail) setResolvedEmail(data.userEmail);
+        setLastUpdated(new Date());
       } else {
         setError(data.error || 'Failed to load orders');
       }
@@ -79,6 +82,21 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Tick every 15s to keep "last updated" relative time fresh
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 15_000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  const getRelativeTime = (date: Date) => {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m ago`;
+  };
 
   // Auto-refresh every 30s when there are pending/processing orders
   const hasPendingOrders = orders.some((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'pending_review');
@@ -204,13 +222,18 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
             <ArrowUpDown className="w-3.5 h-3.5" />
             {sortBy === 'date' ? 'By Date' : 'By Status'}
           </button>
-          <button
-            onClick={fetchOrders}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-[10px] text-slate-500">{getRelativeTime(lastUpdated)}</span>
+            )}
+            <button
+              onClick={fetchOrders}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 

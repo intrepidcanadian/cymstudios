@@ -1155,6 +1155,7 @@ export default function GiftCardCatalog() {
           balanceLoading={balanceLoading}
           onRefreshBalance={refetchBalance}
           onExportWallet={() => open()}
+          selectedNetwork={selectedNetwork}
         />
       )}
 
