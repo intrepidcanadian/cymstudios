@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
     const walletAddress = searchParams.get('address');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10) || 50, 100);
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
 
     if (!email && !walletAddress) {
       return NextResponse.json(
@@ -45,6 +47,8 @@ export async function GET(request: NextRequest) {
       'created_at, completed_at, error_message';
 
     // Query by both email and wallet address to catch all orders
+    // Fetch extra rows per source to ensure correct deduplication with offset
+    const fetchLimit = limit + offset + 10;
     const queries = [];
     if (email) {
       queries.push(
@@ -53,7 +57,7 @@ export async function GET(request: NextRequest) {
           .select(selectFields)
           .eq('user_email', email)
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(fetchLimit)
       );
       queries.push(
         supabase
@@ -61,7 +65,7 @@ export async function GET(request: NextRequest) {
           .select(selectFields)
           .eq('user_id', email)
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(fetchLimit)
       );
     }
     if (walletAddress) {
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest) {
           .select(selectFields)
           .eq('payment_from', walletAddress.toLowerCase())
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(fetchLimit)
       );
     }
 
@@ -98,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     const orders = Array.from(merged.values())
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 50);
+      .slice(offset, offset + limit);
 
     // Fetch product images
     const productIds = Array.from(new Set(orders.map((o: any) => o.product_id).filter(Boolean)));

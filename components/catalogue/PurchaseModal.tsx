@@ -74,6 +74,14 @@ export default function PurchaseModal({
     return new Set();
   });
 
+  // Tick every second while on OTP step to keep cooldown countdown live
+  const [, setOtpTick] = useState(0);
+  useEffect(() => {
+    if (step !== 'verify-email' || !otpSentAt) return;
+    const interval = setInterval(() => setOtpTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [step, otpSentAt]);
+
   const isEmailVerified = (e: string) => verifiedEmails.has(e.toLowerCase().trim());
 
   const persistVerifiedEmail = (e: string) => {
@@ -608,10 +616,14 @@ export default function PurchaseModal({
               <button
                 type="button"
                 onClick={async () => { await requestOtp(); }}
-                disabled={otpSending}
+                disabled={otpSending || (otpSentAt !== null && Date.now() - otpSentAt < 60_000)}
                 className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 underline"
               >
-                {otpSending ? 'Sending...' : 'Resend code'}
+                {otpSending
+                  ? 'Sending...'
+                  : otpSentAt && Date.now() - otpSentAt < 60_000
+                    ? `Resend in ${60 - Math.floor((Date.now() - otpSentAt) / 1000)}s`
+                    : 'Resend code'}
               </button>
             </div>
           </div>
@@ -860,20 +872,26 @@ export default function PurchaseModal({
                   : '. You\u2019ll sign a gasless authorization.'}
               </p>
             )}
-            {walletReady && usdcBalance !== null && usdcBalance !== undefined && (
+            {walletReady && (
               <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl">
                 <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-[10px]">$</span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-xs text-slate-400">Available:</span>
-                  <span className="text-sm font-bold text-slate-100">
-                    {parseFloat(usdcBalance).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                  <span className="text-xs text-slate-400">{networkConfig?.tokenSymbol}</span>
+                  {usdcBalance !== null && usdcBalance !== undefined ? (
+                    <>
+                      <span className="text-sm font-bold text-slate-100">
+                        {parseFloat(usdcBalance).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                      <span className="text-xs text-slate-400">{networkConfig?.tokenSymbol}</span>
+                    </>
+                  ) : (
+                    <span className="inline-block w-16 h-4 bg-slate-600 rounded animate-pulse" />
+                  )}
                 </div>
                 {onRefreshBalance && (
                   <button
@@ -887,7 +905,7 @@ export default function PurchaseModal({
                     </svg>
                   </button>
                 )}
-                {insufficientBalance && (
+                {insufficientBalance && usdcBalance !== null && usdcBalance !== undefined && (
                   <span className={`${onRefreshBalance ? '' : 'ml-auto '}text-xs text-red-400 font-medium`}>Insufficient</span>
                 )}
               </div>

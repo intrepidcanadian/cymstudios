@@ -32,16 +32,19 @@ type SortBy = 'date' | 'status';
 const STATUS_ORDER: Record<string, number> = { failed: 0, pending_review: 1, processing: 2, completed: 3, pending: 4 };
 
 export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHistoryListProps) {
+  const PAGE_SIZE = 50;
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [resolvedEmail, setResolvedEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [, setTick] = useState(0);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (offset = 0) => {
     const savedProfile = typeof window !== 'undefined' ? localStorage.getItem('userProfile') : null;
     let savedEmail: string | null = null;
     if (savedProfile) {
@@ -57,16 +60,28 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       return;
     }
 
-    setLoading(true);
+    if (offset === 0) setLoading(true);
+    else setLoadingMore(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       if (walletAddress) params.set('address', walletAddress);
       if (savedEmail) params.set('email', savedEmail);
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(offset));
       const response = await fetch(`/api/orders?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
-        setOrders(data.data || []);
+        const fetched = data.data || [];
+        if (offset === 0) {
+          setOrders(fetched);
+        } else {
+          setOrders((prev) => {
+            const ids = new Set(prev.map((o) => o.order_id));
+            return [...prev, ...fetched.filter((o: OrderSummary) => !ids.has(o.order_id))];
+          });
+        }
+        setHasMore(fetched.length >= PAGE_SIZE);
         if (data.userEmail) setResolvedEmail(data.userEmail);
         setLastUpdated(new Date());
       } else {
@@ -76,6 +91,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       setError('Failed to load orders');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [walletAddress]);
 
@@ -102,11 +118,21 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   const hasPendingOrders = orders.some((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'pending_review');
   useEffect(() => {
     if (!hasPendingOrders) return;
-    const interval = setInterval(fetchOrders, 30_000);
+    const interval = setInterval(() => fetchOrders(), 30_000);
     return () => clearInterval(interval);
   }, [hasPendingOrders, fetchOrders]);
 
-  const getStatusBadge = (status: string) => {
+  const parseRefundInfo = (errorMessage?: string): { refunded: boolean; manualRefundNeeded: boolean } => {
+    if (!errorMessage) return { refunded: false, manualRefundNeeded: false };
+    try {
+      const parsed = JSON.parse(errorMessage);
+      if (parsed.refund_tx) return { refunded: true, manualRefundNeeded: false };
+      if (parsed.requires_manual_refund) return { refunded: false, manualRefundNeeded: true };
+    } catch (_) { /* not JSON */ }
+    return { refunded: false, manualRefundNeeded: false };
+  };
+
+  const getStatusBadge = (status: string, errorMessage?: string) => {
     const config: Record<string, { bg: string; text: string; label: string }> = {
       pending:        { bg: 'bg-yellow-900/50 border-yellow-700/50', text: 'text-yellow-300', label: 'Pending' },
       processing:     { bg: 'bg-blue-900/50 border-blue-700/50',    text: 'text-blue-300',   label: 'Processing' },
@@ -115,10 +141,23 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       pending_review: { bg: 'bg-orange-900/50 border-orange-700/50', text: 'text-orange-300', label: 'Under Review' },
     };
     const c = config[status] || config.pending;
+    const refundInfo = status === 'failed' ? parseRefundInfo(errorMessage) : { refunded: false, manualRefundNeeded: false };
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold border ${c.bg} ${c.text}`}>
-        {c.label}
-      </span>
+      <div className="flex flex-col items-end gap-0.5">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold border ${c.bg} ${c.text}`}>
+          {c.label}
+        </span>
+        {refundInfo.refunded && (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-green-900/40 border border-green-700/40 text-green-400">
+            Refunded
+          </span>
+        )}
+        {refundInfo.manualRefundNeeded && (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-yellow-900/40 border border-yellow-700/40 text-yellow-400">
+            Refund Pending
+          </span>
+        )}
+      </div>
     );
   };
 
@@ -168,7 +207,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
         <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
         <p className="text-slate-400 mb-6">{error}</p>
         <button
-          onClick={fetchOrders}
+          onClick={() => fetchOrders()}
           className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
@@ -227,7 +266,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
               <span className="text-[10px] text-slate-500">{getRelativeTime(lastUpdated)}</span>
             )}
             <button
-              onClick={fetchOrders}
+              onClick={() => fetchOrders()}
               className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -247,6 +286,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           <p className="text-slate-400">No {statusFilter} orders found.</p>
         </div>
       ) : (
+      <>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredOrders.map((order) => (
           <button
@@ -283,7 +323,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                   <h3 className="font-semibold text-slate-100 text-sm truncate">
                     {order.product_name || order.brand_name}
                   </h3>
-                  {getStatusBadge(order.status)}
+                  {getStatusBadge(order.status, order.error_message)}
                 </div>
 
                 <div className="flex items-baseline gap-1.5 mb-2">
@@ -309,6 +349,27 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           </button>
         ))}
       </div>
+
+      {/* Load More */}
+      {hasMore && statusFilter === 'all' && (
+        <div className="text-center mt-6">
+          <button
+            onClick={() => fetchOrders(orders.length)}
+            disabled={loadingMore}
+            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg transition-colors inline-flex items-center gap-2 text-sm disabled:opacity-50"
+          >
+            {loadingMore ? (
+              <>
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-500 border-t-slate-200" />
+                Loading...
+              </>
+            ) : (
+              'Load More Orders'
+            )}
+          </button>
+        </div>
+      )}
+      </>
       )}
     </div>
   );
