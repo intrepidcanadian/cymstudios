@@ -69,8 +69,10 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderIdCopied, setOrderIdCopied] = useState(false);
+  const [voucherCopied, setVoucherCopied] = useState(false);
   const [pollingExpired, setPollingExpired] = useState(false);
   const [manualChecking, setManualChecking] = useState(false);
+  const [pollsRemaining, setPollsRemaining] = useState(40);
   const pollCountRef = useRef(0);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -145,6 +147,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
     // and only up to MAX_POLLS times to avoid hammering the server
     const interval = setInterval(() => {
       pollCountRef.current += 1;
+      setPollsRemaining(MAX_POLLS - pollCountRef.current);
       if (pollCountRef.current >= MAX_POLLS) {
         clearInterval(interval);
         setPollingExpired(true);
@@ -353,6 +356,11 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                     Voucher details will be sent to <strong className="text-blue-200">{order.user_email}</strong> shortly.
                     This usually takes 1-5 minutes.
                   </p>
+                  {!pollingExpired && pollsRemaining > 0 && (
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Auto-checking for {Math.ceil(pollsRemaining * 5 / 60)}:{String((pollsRemaining * 5) % 60).padStart(2, '0')} more
+                    </p>
+                  )}
                   {pollingExpired && (
                     <div className="mt-2">
                       <p className="text-xs text-yellow-400">
@@ -407,6 +415,8 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                         const handleCopy = async () => {
                           try {
                             await navigator.clipboard.writeText(order.voucher_code!);
+                            setVoucherCopied(true);
+                            setTimeout(() => setVoucherCopied(false), 2000);
                           } catch (err) {
                             console.error('Failed to copy:', err);
                           }
@@ -495,10 +505,18 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                             <button
                               onClick={handleCopy}
                               aria-label={`Copy ${codeUrl ? 'redemption URL' : 'voucher code'} to clipboard`}
-                              className="w-full p-3 bg-indigo-900/30 border-2 border-indigo-700/50 rounded-lg hover:bg-indigo-900/50 hover:border-indigo-600 transition-colors cursor-pointer text-center"
+                              className={`w-full p-3 border-2 rounded-lg transition-colors cursor-pointer text-center ${
+                                voucherCopied
+                                  ? 'bg-green-900/30 border-green-700/50'
+                                  : 'bg-indigo-900/30 border-indigo-700/50 hover:bg-indigo-900/50 hover:border-indigo-600'
+                              }`}
                             >
-                              <div className="text-sm font-medium text-indigo-200">Copy {codeUrl ? 'Redemption URL' : 'Code'}</div>
-                              <div className="text-xs text-indigo-400 mt-1">Click to copy to clipboard</div>
+                              <div className={`text-sm font-medium ${voucherCopied ? 'text-green-200' : 'text-indigo-200'}`}>
+                                {voucherCopied ? 'Copied!' : `Copy ${codeUrl ? 'Redemption URL' : 'Code'}`}
+                              </div>
+                              <div className={`text-xs mt-1 ${voucherCopied ? 'text-green-400' : 'text-indigo-400'}`}>
+                                {voucherCopied ? 'Saved to clipboard' : 'Click to copy to clipboard'}
+                              </div>
                             </button>
                           </div>
                         );
@@ -585,6 +603,17 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                       return (
                         <div className="space-y-2">
                           <p className="text-xs text-red-400">{msg}</p>
+                          {paymentTx && explorer && (
+                            <a
+                              href={`${explorer.url}/tx/${paymentTx}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              View payment transaction on {explorer.name}
+                            </a>
+                          )}
                           {refundTx && explorer && (
                             <a
                               href={`${explorer.url}/tx/${refundTx}`}
@@ -596,9 +625,9 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                               View refund transaction on {explorer.name}
                             </a>
                           )}
-                          {!refundTx && paymentTx && parsed.requires_manual_refund && explorer && (
+                          {!refundTx && parsed.requires_manual_refund && (
                             <p className="text-xs text-yellow-400">
-                              Auto-refund failed. Please contact support with your order ID for a manual refund.
+                              Auto-refund failed. Please contact support at <strong>info@ginsengswap.com</strong> with your order ID for a manual refund.
                             </p>
                           )}
                         </div>
@@ -607,8 +636,22 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                       return <p className="text-xs text-red-400">{order.error_message}</p>;
                     }
                   })()}
+                  {/* Fallback payment TX link from prop when error_message doesn't contain it */}
+                  {paymentTxHash && order.payment_network && NETWORK_EXPLORERS[order.payment_network] && !order.error_message?.includes('payment_tx') && (
+                    <div className="mt-2">
+                      <a
+                        href={`${NETWORK_EXPLORERS[order.payment_network].url}/tx/${paymentTxHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        View payment transaction on {NETWORK_EXPLORERS[order.payment_network].name}
+                      </a>
+                    </div>
+                  )}
                   <p className="text-xs text-red-400 mt-2">
-                    Please contact support if tokens were deducted.
+                    If you need assistance, contact <strong>info@ginsengswap.com</strong> with your order ID.
                   </p>
                 </div>
               )}

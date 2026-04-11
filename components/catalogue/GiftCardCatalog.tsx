@@ -659,6 +659,50 @@ export default function GiftCardCatalog() {
                 </div>
               </div>
 
+              {/* Active filter chips (quick-remove without opening filter panel) */}
+              {activeTab === 'giftcards' && activeFilterCount > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                      Search: &quot;{searchQuery}&quot;
+                      <button onClick={() => { setSearchQuery(''); setSearchInput(''); }} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {countryFilter !== 'all' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                      {countryFilter}
+                      <button onClick={() => setCountryFilter('all')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {currencyFilter !== 'all' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                      {currencyFilter}
+                      <button onClick={() => setCurrencyFilter('all')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {selectedBrandFilters.map(brand => (
+                    <span key={brand} className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                      {brand}
+                      <button onClick={() => toggleBrandFilter(brand)} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                  {showFavoritesOnly && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-900/40 border border-red-700/50 rounded-full text-xs text-red-300">
+                      Favorites
+                      <button onClick={() => setShowFavoritesOnly(false)} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {activeFilterCount > 1 && (
+                    <button
+                      onClick={() => { setSelectedBrandFilters([]); setCountryFilter('all'); setCurrencyFilter('all'); setSearchQuery(''); setSearchInput(''); setShowFavoritesOnly(false); }}
+                      className="text-xs text-slate-400 hover:text-slate-200 underline"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Tab Content */}
               {activeTab === 'orders' ? (
                 <OrderHistoryList
