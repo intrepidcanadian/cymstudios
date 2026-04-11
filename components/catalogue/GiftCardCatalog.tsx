@@ -96,6 +96,7 @@ export default function GiftCardCatalog() {
   const [currentOrderToken, setCurrentOrderToken] = useState<string>('');
   const [currentPaymentTxHash, setCurrentPaymentTxHash] = useState<string>('');
   const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
+  const [hasNewOrders, setHasNewOrders] = useState(false);
 
   // Persist filter selections to localStorage
   useEffect(() => {
@@ -586,7 +587,7 @@ export default function GiftCardCatalog() {
                   Prepaid Mastercards
                 </button>
                 <button
-                  onClick={() => setActiveTab('orders')}
+                  onClick={() => { setActiveTab('orders'); setHasNewOrders(false); }}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                     activeTab === 'orders'
                       ? 'border-indigo-500 text-indigo-400'
@@ -595,6 +596,9 @@ export default function GiftCardCatalog() {
                 >
                   <Clock className="w-4 h-4" />
                   My Orders
+                  {hasNewOrders && activeTab !== 'orders' && (
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  )}
                 </button>
               </div>
 
@@ -1050,6 +1054,7 @@ export default function GiftCardCatalog() {
               setCurrentOrderToken(orderToken);
               setCurrentPaymentTxHash(paymentTxHash || '');
               setShowOrderStatusModal(true);
+              setHasNewOrders(true);
               refetchBalance();
             }}
           />

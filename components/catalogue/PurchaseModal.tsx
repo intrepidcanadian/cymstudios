@@ -58,6 +58,9 @@ export default function PurchaseModal({
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
+  // Clear duplicate warning when amount changes (user editing invalidates the old warning)
+  useEffect(() => { setDuplicateWarning(null); }, [amount]);
+
   // M8: Email OTP verification state
   const [otpCode, setOtpCode] = useState('');
   const [otpSending, setOtpSending] = useState(false);
@@ -130,6 +133,16 @@ export default function PurchaseModal({
       setOtpSending(false);
     }
   };
+
+  // Auto-submit when 6 digits are entered for smoother UX
+  const otpAutoSubmitRef = useRef(false);
+  useEffect(() => {
+    if (otpCode.length === 6 && /^\d{6}$/.test(otpCode) && !otpVerifying && !otpAutoSubmitRef.current) {
+      otpAutoSubmitRef.current = true;
+      submitOtp();
+    }
+    if (otpCode.length < 6) otpAutoSubmitRef.current = false;
+  }, [otpCode]);
 
   const submitOtp = async () => {
     if (!/^\d{6}$/.test(otpCode)) {
@@ -250,8 +263,11 @@ export default function PurchaseModal({
 
       const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
 
+      // Use Math.ceil to round up to next cent — protects merchant from underpayment
+      const ceilCents = (v: number) => (Math.ceil(v * 100) / 100).toFixed(2);
+
       if (product.currency === 'USD') {
-        setUsdcAmount((price * feeMultiplier).toFixed(2));
+        setUsdcAmount(ceilCents(price * feeMultiplier));
         setExchangeRate(feeMultiplier);
         setQuoteFetchedAt(Date.now());
         setQuoteStale(false);
@@ -265,7 +281,7 @@ export default function PurchaseModal({
 
         if (data.success && data.rate) {
           const adjustedRate = data.rate * feeMultiplier;
-          setUsdcAmount((price * adjustedRate).toFixed(2));
+          setUsdcAmount(ceilCents(price * adjustedRate));
           setExchangeRate(adjustedRate);
           setQuoteFetchedAt(Date.now());
           setQuoteStale(false);
@@ -340,7 +356,7 @@ export default function PurchaseModal({
         if (data.success && data.rate) {
           const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
           const adjustedRate = data.rate * feeMultiplier;
-          setUsdcAmount((price * adjustedRate).toFixed(2));
+          setUsdcAmount((Math.ceil(price * adjustedRate * 100) / 100).toFixed(2));
           setExchangeRate(adjustedRate);
           setQuoteFetchedAt(Date.now());
           setQuoteStale(false);
