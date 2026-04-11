@@ -508,7 +508,10 @@ export default function GiftCardCatalog() {
 
           {/* Mobile Filter Bottom Sheet */}
           {showMobileFilters && (
-            <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="fixed inset-0 z-50 lg:hidden"
+              onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileFilters(false); }}
+            >
               {/* Backdrop */}
               <div
                 className="absolute inset-0 bg-black/60"
@@ -1006,28 +1009,35 @@ export default function GiftCardCatalog() {
 
                 {/* Inline amount input for variable-amount cards (no denominations) */}
                 {selectedProduct.value_restrictions && (!selectedProduct.denominations || !Array.isArray(selectedProduct.denominations) || selectedProduct.denominations.length === 0) && (
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Amount ({selectedProduct.currency})</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder={`${selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - ${selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}`}
-                        value={purchaseInitialAmount}
-                        onChange={(e) => setPurchaseInitialAmount(e.target.value)}
-                        className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
-                      />
+                  <>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Amount ({selectedProduct.currency})</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder={`${selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - ${selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}`}
+                          value={purchaseInitialAmount}
+                          onChange={(e) => setPurchaseInitialAmount(e.target.value)}
+                          className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (purchaseInitialAmount) setShowPurchaseModal(true);
+                        }}
+                        disabled={!purchaseInitialAmount}
+                        className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm"
+                      >
+                        Buy Now
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        if (purchaseInitialAmount) setShowPurchaseModal(true);
-                      }}
-                      disabled={!purchaseInitialAmount}
-                      className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm"
-                    >
-                      Buy Now
-                    </button>
-                  </div>
+                    <div className="flex items-center gap-3 my-2">
+                      <div className="flex-1 h-px bg-slate-700" />
+                      <span className="text-xs text-slate-500 font-medium">or</span>
+                      <div className="flex-1 h-px bg-slate-700" />
+                    </div>
+                  </>
                 )}
 
                 <button
@@ -1107,7 +1117,9 @@ export default function GiftCardCatalog() {
               <div className="min-w-0">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></p>
                 <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
-                  {balanceLoading ? '...' : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                  {balanceLoading ? (
+                    <span className="inline-block w-20 h-5 bg-slate-700 rounded animate-pulse" />
+                  ) : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                 </p>
               </div>
               {ethBalance !== null && ethBalance !== undefined && (

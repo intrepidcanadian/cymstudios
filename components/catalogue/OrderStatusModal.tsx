@@ -74,8 +74,12 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
   const pollCountRef = useRef(0);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Focus trap
+  // Focus trap + Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
     if (e.key !== 'Tab' || !modalRef.current) return;
     const focusable = modalRef.current.querySelectorAll<HTMLElement>(
       'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -90,7 +94,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
       e.preventDefault();
       first.focus();
     }
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
