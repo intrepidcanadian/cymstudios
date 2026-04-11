@@ -930,6 +930,7 @@ export default function GiftCardCatalog() {
                             alt={product.brand_name}
                             loading="lazy"
                             className="w-full h-full object-contain p-3 sm:p-6 group-hover:scale-110 transition-transform duration-500"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-700"><span class="text-4xl sm:text-7xl text-slate-400">Reward</span></div>'; }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-slate-700">
@@ -1041,6 +1042,7 @@ export default function GiftCardCatalog() {
                     src={selectedProduct.product_image}
                     alt={selectedProduct.brand_name}
                     className="w-full h-48 sm:h-64 object-contain bg-white rounded-lg mb-4 sm:mb-6"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
 
@@ -1239,12 +1241,14 @@ export default function GiftCardCatalog() {
                         setSelectedNetwork(key);
                         if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
                       }}
-                      className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
+                      disabled={showPurchaseModal}
+                      className={`px-2 py-2 sm:py-1 min-w-[44px] min-h-[44px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
                         selectedNetwork === key
                           ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
                           : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
-                      }`}
-                      title={`Switch to ${net.name}`}
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                      title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
+                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
                     >
                       <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
                     </button>

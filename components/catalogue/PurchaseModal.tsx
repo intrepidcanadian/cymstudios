@@ -59,6 +59,7 @@ export default function PurchaseModal({
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [rpcFailedNetwork, setRpcFailedNetwork] = useState<string | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState<string>('');
 
   // Clear duplicate warning when amount changes (user editing invalidates the old warning)
   useEffect(() => { setDuplicateWarning(null); }, [amount]);
@@ -89,7 +90,7 @@ export default function PurchaseModal({
 
   const isEmailVerified = (e: string) => verifiedEmails.has(e.toLowerCase().trim());
 
-  const persistVerifiedEmail = (e: string) => {
+  const persistVerifiedEmail = useCallback((e: string) => {
     setVerifiedEmails((prev) => {
       const next = new Set(prev);
       next.add(e.toLowerCase().trim());
@@ -98,7 +99,7 @@ export default function PurchaseModal({
       }
       return next;
     });
-  };
+  }, []);
 
   type OtpResult =
     | { status: 'sent' }
@@ -136,17 +137,7 @@ export default function PurchaseModal({
     }
   };
 
-  // Auto-submit when 6 digits are entered for smoother UX
-  const otpAutoSubmitRef = useRef(false);
-  useEffect(() => {
-    if (otpCode.length === 6 && /^\d{6}$/.test(otpCode) && !otpVerifying && !otpAutoSubmitRef.current) {
-      otpAutoSubmitRef.current = true;
-      submitOtp();
-    }
-    if (otpCode.length < 6) otpAutoSubmitRef.current = false;
-  }, [otpCode]);
-
-  const submitOtp = async () => {
+  const submitOtp = useCallback(async () => {
     if (!/^\d{6}$/.test(otpCode)) {
       setOtpError('Please enter the 6-digit code from your email');
       return;
@@ -172,7 +163,17 @@ export default function PurchaseModal({
     } finally {
       setOtpVerifying(false);
     }
-  };
+  }, [otpCode, email, persistVerifiedEmail]);
+
+  // Auto-submit when 6 digits are entered for smoother UX
+  const otpAutoSubmitRef = useRef(false);
+  useEffect(() => {
+    if (otpCode.length === 6 && /^\d{6}$/.test(otpCode) && !otpVerifying && !otpAutoSubmitRef.current) {
+      otpAutoSubmitRef.current = true;
+      submitOtp();
+    }
+    if (otpCode.length < 6) otpAutoSubmitRef.current = false;
+  }, [otpCode, otpVerifying, submitOtp]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('userProfile');
@@ -349,6 +350,12 @@ export default function PurchaseModal({
 
     if (!email || !email.includes('@')) {
       setError('Please enter a valid email address');
+      return;
+    }
+
+    // Require email confirmation for unverified emails to prevent typo-driven voucher loss
+    if (!isEmailVerified(email) && confirmEmail.toLowerCase().trim() !== email.toLowerCase().trim()) {
+      setError('Email addresses do not match. Please confirm your email to protect your voucher delivery.');
       return;
     }
 
@@ -585,6 +592,7 @@ export default function PurchaseModal({
             alt={product.brand_name}
             loading="lazy"
             className="w-full h-48 object-contain bg-white p-4"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         )}
 
@@ -876,6 +884,7 @@ export default function PurchaseModal({
                   key={key}
                   type="button"
                   onClick={() => onNetworkChange(key)}
+                  disabled={step !== 'form'}
                   className={`flex-1 py-3 px-4 rounded-xl font-semibold text-center transition-all ${
                     selectedNetwork === key
                       ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg'
@@ -1102,6 +1111,29 @@ export default function PurchaseModal({
               disabled={loading}
             />
             <p className="text-xs text-slate-400 mt-1">Voucher details will be sent to this email</p>
+            {/* Confirm email for unverified addresses — prevents typo-driven voucher loss */}
+            {email && email.includes('@') && !isEmailVerified(email) && (
+              <div className="mt-2">
+                <input
+                  type="email"
+                  value={confirmEmail}
+                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  placeholder="Confirm email address"
+                  className={`w-full px-4 py-3 border-2 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none font-semibold shadow-sm ${
+                    confirmEmail && confirmEmail.toLowerCase().trim() !== email.toLowerCase().trim()
+                      ? 'border-red-500/60 focus:border-red-500'
+                      : confirmEmail && confirmEmail.toLowerCase().trim() === email.toLowerCase().trim()
+                        ? 'border-green-500/60 focus:border-green-500'
+                        : 'border-slate-600 focus:border-indigo-500'
+                  }`}
+                  required
+                  disabled={loading}
+                />
+                {confirmEmail && confirmEmail.toLowerCase().trim() !== email.toLowerCase().trim() && (
+                  <p className="text-xs text-red-400 mt-1">Emails do not match</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Name (Optional) */}
