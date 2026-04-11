@@ -25,6 +25,30 @@ interface UserProfile {
   lastName?: string;
 }
 
+// M12: Common email domain typo detection
+const COMMON_DOMAINS: Record<string, string> = {
+  'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com', 'gmaill.com': 'gmail.com',
+  'gmali.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gnail.com': 'gmail.com',
+  'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'gmail.cm': 'gmail.com',
+  'gmail.om': 'gmail.com', 'gmail.cmo': 'gmail.com', 'gmai.com': 'gmail.com',
+  'hotmal.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.co': 'hotmail.com',
+  'hotmail.con': 'hotmail.com', 'hotmil.com': 'hotmail.com', 'hotmaill.com': 'hotmail.com',
+  'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.co': 'outlook.com',
+  'outlook.con': 'outlook.com', 'outllook.com': 'outlook.com',
+  'yaho.com': 'yahoo.com', 'yahooo.com': 'yahoo.com', 'yahoo.co': 'yahoo.com',
+  'yahoo.con': 'yahoo.com', 'yhaoo.com': 'yahoo.com', 'yahho.com': 'yahoo.com',
+  'icloud.co': 'icloud.com', 'icloud.con': 'icloud.com', 'iclod.com': 'icloud.com',
+  'protonmal.com': 'protonmail.com', 'protonmail.co': 'protonmail.com',
+  'aol.co': 'aol.com', 'aol.con': 'aol.com',
+};
+
+function suggestEmailDomain(email: string): string | null {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return null;
+  const domain = email.slice(at + 1).toLowerCase().trim();
+  return COMMON_DOMAINS[domain] || null;
+}
+
 export default function PurchaseModal({
   product,
   onClose,
@@ -1111,6 +1135,19 @@ export default function PurchaseModal({
               disabled={loading}
             />
             <p className="text-xs text-slate-400 mt-1">Voucher details will be sent to this email</p>
+            {/* M12: Email domain typo suggestion */}
+            {email && suggestEmailDomain(email) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const suggested = suggestEmailDomain(email)!;
+                  setEmail(email.slice(0, email.lastIndexOf('@') + 1) + suggested);
+                }}
+                className="mt-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
+              >
+                Did you mean <strong>{email.slice(0, email.lastIndexOf('@') + 1)}{suggestEmailDomain(email)}</strong>?
+              </button>
+            )}
             {/* Confirm email for unverified addresses — prevents typo-driven voucher loss */}
             {email && email.includes('@') && !isEmailVerified(email) && (
               <div className="mt-2">

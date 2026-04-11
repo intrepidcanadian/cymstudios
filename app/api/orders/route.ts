@@ -7,6 +7,32 @@ export const dynamic = 'force-dynamic';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Rate limiting: max 10 requests per IP per 30 seconds
+const orderRateLimiter = new Map<string, { count: number; resetAt: number }>();
+const ORDER_RATE_LIMIT = 10;
+const ORDER_RATE_WINDOW_MS = 30_000;
+
+function checkOrderRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = orderRateLimiter.get(ip);
+  if (!entry || now > entry.resetAt) {
+    orderRateLimiter.set(ip, { count: 1, resetAt: now + ORDER_RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= ORDER_RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+// Clean up stale entries periodically (when map grows too large)
+function cleanupOrderRateLimiter() {
+  if (orderRateLimiter.size < 500) return;
+  const now = Date.now();
+  for (const [key, val] of orderRateLimiter) {
+    if (now > val.resetAt) orderRateLimiter.delete(key);
+  }
+}
+
 /**
  * GET /api/orders?email=<email>&address=<wallet_address>
  *
@@ -17,6 +43,18 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  */
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit by IP to prevent order enumeration
+    cleanupOrderRateLimiter();
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+    if (!checkOrderRateLimit(ip)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again shortly.' },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
     const walletAddress = searchParams.get('address');

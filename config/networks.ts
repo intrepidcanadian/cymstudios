@@ -96,9 +96,13 @@ export const NETWORKS: Record<string, NetworkConfig> = {
 /** Default network key */
 export const DEFAULT_NETWORK = 'ethereum';
 
-/** Get network config by key, falling back to default */
+/** Get network config by key — throws if key is invalid to prevent silent misrouting */
 export function getNetwork(key: string): NetworkConfig {
-  return NETWORKS[key] || NETWORKS[DEFAULT_NETWORK];
+  const network = NETWORKS[key];
+  if (!network) {
+    throw new Error(`Unknown network key: "${key}". Valid keys: ${Object.keys(NETWORKS).join(', ')}`);
+  }
+  return network;
 }
 
 /** Get network config by chain ID */

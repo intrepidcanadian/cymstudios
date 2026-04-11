@@ -217,8 +217,14 @@ export async function POST(request: NextRequest) {
       const verifyData = await verifyResponse.json();
       logger.info('[Purchase] xRemit catalog verified:', verifyData.brandName || verifyData.productName);
     } catch (verifyError) {
-      logger.warn('[Purchase] xRemit catalog check failed, continuing');
-      // Continue with purchase attempt - verification is best effort
+      logger.error('[Purchase] xRemit catalog check failed:', verifyError instanceof Error ? verifyError.message : 'Unknown');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unable to verify product availability with the gift card provider. Please try again in a moment.',
+        },
+        { status: 503 }
+      );
     }
 
     // Generate unique order ID
