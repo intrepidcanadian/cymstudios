@@ -58,6 +58,7 @@ export default function PurchaseModal({
   const [quoteRefreshed, setQuoteRefreshed] = useState(false);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [rpcFailedNetwork, setRpcFailedNetwork] = useState<string | null>(null);
 
   // Clear duplicate warning when amount changes (user editing invalidates the old warning)
   useEffect(() => { setDuplicateWarning(null); }, [amount]);
@@ -306,14 +307,19 @@ export default function PurchaseModal({
     return () => clearTimeout(timeoutId);
   }, [amount, product.currency]);
 
-  // Mark quote as stale after 2 minutes
+  // Mark quote as stale after 2 minutes, with live countdown
   const QUOTE_STALE_MS = 120_000;
+  const [quoteCountdown, setQuoteCountdown] = useState<number | null>(null);
   useEffect(() => {
-    if (!quoteFetchedAt || !usdcAmount) return;
-    const remaining = QUOTE_STALE_MS - (Date.now() - quoteFetchedAt);
-    if (remaining <= 0) { setQuoteStale(true); return; }
-    const timer = setTimeout(() => setQuoteStale(true), remaining);
-    return () => clearTimeout(timer);
+    if (!quoteFetchedAt || !usdcAmount) { setQuoteCountdown(null); return; }
+    const tick = () => {
+      const remaining = QUOTE_STALE_MS - (Date.now() - quoteFetchedAt);
+      if (remaining <= 0) { setQuoteStale(true); setQuoteCountdown(0); return; }
+      setQuoteCountdown(Math.ceil(remaining / 1000));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
   }, [quoteFetchedAt, usdcAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -447,7 +453,11 @@ export default function PurchaseModal({
         }
       }
     } catch {
-      setError(`${networkConfig?.name || 'Network'} RPC is not responding. Please try again in a moment or switch networks.`);
+      const otherNetworks = Object.entries(NETWORKS).filter(([k]) => k !== selectedNetwork);
+      setError(
+        `${networkConfig?.name || 'Network'} RPC is not responding. Please try again in a moment or switch to another network.`
+      );
+      setRpcFailedNetwork(selectedNetwork);
       setHasFailedOnce(true);
       setStep('confirm');
       setLoading(false);
@@ -731,6 +741,20 @@ export default function PurchaseModal({
             {error && (
               <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
                 {error}
+                {rpcFailedNetwork === selectedNetwork && (
+                  <div className="flex gap-2 mt-2 pt-2 border-t border-red-500/20">
+                    {Object.entries(NETWORKS).filter(([k]) => k !== selectedNetwork).map(([key, net]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { onNetworkChange(key); setError(null); setRpcFailedNetwork(null); }}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-600"
+                      >
+                        Switch to {net.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -989,9 +1013,13 @@ export default function PurchaseModal({
               <div className={`mt-3 p-3 rounded-xl text-xs space-y-1 ${quoteStale ? 'bg-yellow-900/30 border border-yellow-700/50' : 'bg-indigo-900/30 border border-indigo-700/50'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-indigo-300">Token Calculation</span>
-                  {quoteStale && (
+                  {quoteStale ? (
                     <span className="text-yellow-400 text-[10px] font-medium">Quote expired — will refresh on submit</span>
-                  )}
+                  ) : quoteCountdown !== null && quoteCountdown <= 30 ? (
+                    <span className="text-slate-400 text-[10px] font-medium">
+                      Expires in {Math.floor(quoteCountdown / 60)}:{String(quoteCountdown % 60).padStart(2, '0')}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex justify-between text-slate-300">
                   <span>Reward Value:</span>
@@ -1034,7 +1062,12 @@ export default function PurchaseModal({
           {/* Email */}
           <div>
             <label className="block text-sm font-bold text-slate-100 mb-2">
-              Email {userProfile.email && <span className="text-green-400">Saved</span>}
+              Email {isEmailVerified(email) ? (
+                <span className="text-green-400 text-xs font-medium inline-flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  Verified
+                </span>
+              ) : userProfile.email ? <span className="text-slate-500 text-xs">Saved</span> : null}
             </label>
             <input
               type="email"
