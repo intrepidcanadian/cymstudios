@@ -298,16 +298,13 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
               {/* Product Image */}
               <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
                 {order.product_image ? (
-                  <>
-                    <img
-                      src={order.product_image}
-                      alt={order.brand_name}
-                      loading="lazy"
-                      className="w-full h-full object-contain p-1"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.querySelector('.img-fallback')?.classList.remove('hidden'); }}
-                    />
-                    <Package className="w-6 h-6 text-slate-400 hidden img-fallback" />
-                  </>
+                  <img
+                    src={order.product_image}
+                    alt={order.brand_name}
+                    loading="lazy"
+                    className="w-full h-full object-contain p-1"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
                 ) : (
                   <Package className="w-6 h-6 text-slate-400" />
                 )}
