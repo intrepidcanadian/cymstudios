@@ -150,6 +150,31 @@ function DetailImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/** Recently viewed card with React-based image fallback */
+function RecentlyViewedCard({ product, onSelect }: { product: BrandProduct; onSelect: (p: BrandProduct) => void }) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <button
+      onClick={() => onSelect(product)}
+      className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
+    >
+      <div className="h-14 sm:h-20 bg-white overflow-hidden">
+        {product.product_image && !imgError ? (
+          <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={() => setImgError(true)} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-slate-700" role="img" aria-label={product.brand_name}>
+            <span className="text-sm sm:text-lg text-slate-400">Reward</span>
+          </div>
+        )}
+      </div>
+      <div className="p-1 sm:p-2">
+        <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
+        <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
+      </div>
+    </button>
+  );
+}
+
 /** Mastercard image with React-based fallback (no innerHTML injection) */
 function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelect: () => void }) {
   const [imgError, setImgError] = useState(false);
@@ -776,6 +801,9 @@ export default function GiftCardCatalog() {
           {showMobileFilters && (
             <div
               className="fixed inset-0 z-50 lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filter products"
               onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileFilters(false); }}
             >
               {/* Backdrop */}
@@ -835,7 +863,7 @@ export default function GiftCardCatalog() {
               {/* Tabs */}
               <div className="flex items-center gap-1 mb-4 sm:mb-6 border-b border-slate-700 overflow-x-auto scrollbar-none -mx-4 sm:mx-0 px-4 sm:px-0">
                 <button
-                  onClick={() => setActiveTab('giftcards')}
+                  onClick={() => { setActiveTab('giftcards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === 'giftcards'
                       ? 'border-indigo-500 text-indigo-400'
@@ -845,7 +873,7 @@ export default function GiftCardCatalog() {
                   Gift Cards
                 </button>
                 <button
-                  onClick={() => setActiveTab('mastercards')}
+                  onClick={() => { setActiveTab('mastercards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                     activeTab === 'mastercards'
                       ? 'border-indigo-500 text-indigo-400'
@@ -856,7 +884,7 @@ export default function GiftCardCatalog() {
                   Prepaid Mastercards
                 </button>
                 <button
-                  onClick={() => { setActiveTab('orders'); setHasNewOrders(false); }}
+                  onClick={() => { setActiveTab('orders'); setHasNewOrders(false); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                     activeTab === 'orders'
                       ? 'border-indigo-500 text-indigo-400'
@@ -894,25 +922,7 @@ export default function GiftCardCatalog() {
                   {!recentlyViewedCollapsed && (
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
                       {recentlyViewed.map((product) => (
-                        <button
-                          key={product.product_id}
-                          onClick={() => selectProduct(product)}
-                          className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
-                        >
-                          <div className="h-14 sm:h-20 bg-white overflow-hidden">
-                            {product.product_image ? (
-                              <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-slate-700">
-                                <span className="text-sm sm:text-lg text-slate-400">Reward</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-1 sm:p-2">
-                            <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
-                            <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
-                          </div>
-                        </button>
+                        <RecentlyViewedCard key={product.product_id} product={product} onSelect={selectProduct} />
                       ))}
                     </div>
                   )}
@@ -1320,6 +1330,17 @@ export default function GiftCardCatalog() {
                           }}
                           className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
                         />
+                        {/* Real-time inline validation */}
+                        {(() => {
+                          if (!purchaseInitialAmount) return null;
+                          const val = parseFloat(purchaseInitialAmount);
+                          if (isNaN(val) || val <= 0) return null;
+                          const minVal = selectedProduct!.value_restrictions?.minVal || selectedProduct!.value_restrictions?.min;
+                          const maxVal = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
+                          if (minVal && val < minVal) return <p className="text-xs text-red-400 mt-1">Minimum is {selectedProduct!.currency} {minVal}</p>;
+                          if (maxVal && val > maxVal) return <p className="text-xs text-red-400 mt-1">Maximum is {selectedProduct!.currency} {maxVal}</p>;
+                          return null;
+                        })()}
                       </div>
                       <button
                         onClick={() => {
@@ -1338,7 +1359,13 @@ export default function GiftCardCatalog() {
                           }
                           setShowPurchaseModal(true);
                         }}
-                        disabled={!purchaseInitialAmount}
+                        disabled={!purchaseInitialAmount || (() => {
+                          const val = parseFloat(purchaseInitialAmount);
+                          if (isNaN(val) || val <= 0) return true;
+                          const minVal = selectedProduct!.value_restrictions?.minVal || selectedProduct!.value_restrictions?.min;
+                          const maxVal = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
+                          return (minVal && val < minVal) || (maxVal && val > maxVal) || false;
+                        })()}
                         className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
                       >
                         Buy with {NETWORKS[selectedNetwork]?.tokenSymbol}
