@@ -98,11 +98,33 @@ async function handle(request: NextRequest) {
     }
   }
 
-  logger.info(`[CronResolve] Run complete. Processed ${summaries.length} order(s).`);
+  // Cleanup expired OTP records (older than 1 hour) to prevent unbounded DB growth
+  let otpCleaned = 0;
+  try {
+    const otpCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1h ago
+    const { count, error: otpDeleteError } = await supabase
+      .from('email_otps')
+      .delete({ count: 'exact' })
+      .lt('expires_at', otpCutoff);
+
+    if (otpDeleteError) {
+      logger.warn('[CronResolve] OTP cleanup failed:', otpDeleteError.message);
+    } else {
+      otpCleaned = count || 0;
+      if (otpCleaned > 0) {
+        logger.info(`[CronResolve] Cleaned up ${otpCleaned} expired OTP record(s).`);
+      }
+    }
+  } catch (otpErr) {
+    logger.warn('[CronResolve] OTP cleanup error:', otpErr instanceof Error ? otpErr.message : 'Unknown');
+  }
+
+  logger.info(`[CronResolve] Run complete. Processed ${summaries.length} order(s), cleaned ${otpCleaned} OTP(s).`);
 
   return NextResponse.json({
     success: true,
     processed: summaries.length,
+    otpsCleaned: otpCleaned,
     results: summaries,
   });
 }

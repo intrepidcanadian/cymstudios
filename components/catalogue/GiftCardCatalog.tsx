@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
@@ -14,6 +14,125 @@ import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
 import SendEthModal from './SendEthModal';
 import OrderHistoryList from './OrderHistoryList';
+
+/** Memoized product card — avoids re-render when filter/sort changes but this card's data hasn't */
+const ProductCard = memo(function ProductCard({
+  product,
+  isLiked,
+  onToggleLike,
+  onSelect,
+}: {
+  product: BrandProduct;
+  isLiked: boolean;
+  onToggleLike: (id: string) => void;
+  onSelect: (product: BrandProduct) => void;
+}) {
+  return (
+    <div
+      className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
+    >
+      {/* Like Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleLike(String(product.product_id));
+        }}
+        aria-label={`${isLiked ? 'Unlike' : 'Like'} ${product.brand_name}`}
+        className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-900/80 flex items-center justify-center hover:bg-slate-900 transition-colors shadow-lg border border-slate-700"
+      >
+        {isLiked ? (
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 fill-current" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        )}
+      </button>
+
+      {/* Product Image */}
+      <div className="relative h-32 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => onSelect(product)}>
+        {product.product_image ? (
+          <img
+            src={product.product_image}
+            alt={product.brand_name}
+            loading="lazy"
+            className="w-full h-full object-contain p-3 sm:p-6 group-hover:scale-110 transition-transform duration-500"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-700"><span class="text-4xl sm:text-7xl text-slate-400">Reward</span></div>'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-slate-700">
+            <span className="text-4xl sm:text-7xl text-slate-400">Reward</span>
+          </div>
+        )}
+      </div>
+
+      {/* Product Info */}
+      <div className="p-2.5 sm:p-4 border-t border-slate-700">
+        <div className="mb-2 sm:mb-3">
+          <h3 className="font-bold text-slate-100 text-xs sm:text-base mb-0.5 sm:mb-1.5 leading-tight line-clamp-2">
+            {product.brand_name}
+          </h3>
+          <p className="text-xs text-slate-400 uppercase tracking-wide hidden sm:block">
+            {product.country_name}
+          </p>
+        </div>
+
+        {/* Denominations or Value Range */}
+        {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 ? (
+          <div className="mb-2 sm:mb-3">
+            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+              {product.denominations.slice(0, 2).map((denom: number, idx: number) => (
+                <span key={idx} className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
+                  {product.currency} {denom}
+                </span>
+              ))}
+              <span className="hidden sm:inline">
+                {product.denominations.length > 2 && product.denominations[2] && (
+                  <span className="text-xs bg-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-md">
+                    {product.currency} {product.denominations[2]}
+                  </span>
+                )}
+              </span>
+              {product.denominations.length > 2 && (
+                <span className="sm:hidden text-[10px] text-slate-500 px-1 py-0.5 font-medium">
+                  +{product.denominations.length - 2}
+                </span>
+              )}
+              {product.denominations.length > 3 && (
+                <span className="hidden sm:inline text-xs text-slate-500 px-2 py-1 font-medium">
+                  +{product.denominations.length - 3}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : product.value_restrictions ? (
+          <div className="mb-2 sm:mb-3">
+            <span className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
+              {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min}–{product.value_restrictions.maxVal || product.value_restrictions.max}
+            </span>
+          </div>
+        ) : null}
+
+        {/* Country & Currency */}
+        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
+          <span className="font-medium truncate">{product.currency}</span>
+          <span className="hidden sm:inline font-medium truncate">* {product.country_name}</span>
+        </div>
+
+        {/* View Button */}
+        <button
+          onClick={() => onSelect(product)}
+          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+        >
+          <span className="sm:hidden">View</span>
+          <span className="hidden sm:inline">View & Redeem</span>
+        </button>
+      </div>
+    </div>
+  );
+});
 
 export default function GiftCardCatalog() {
   const { address, isConnected, status: accountStatus } = useAccount();
@@ -288,7 +407,7 @@ export default function GiftCardCatalog() {
     );
   };
 
-  const toggleLike = (productId: string) => {
+  const toggleLike = useCallback((productId: string) => {
     setLikedProducts(prev => {
       const newSet = new Set(prev);
       if (newSet.has(productId)) {
@@ -301,7 +420,11 @@ export default function GiftCardCatalog() {
       }
       return newSet;
     });
-  };
+  }, []);
+
+  const selectProduct = useCallback((product: BrandProduct) => {
+    setSelectedProduct(product);
+  }, []);
 
   // Count active filters for badge
   const activeFilterCount =
@@ -898,111 +1021,13 @@ export default function GiftCardCatalog() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                   {filteredProducts.map((product) => (
-                    <div
+                    <ProductCard
                       key={product.product_id}
-                      className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
-                    >
-                      {/* Like Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLike(String(product.product_id));
-                        }}
-                        aria-label={`${likedProducts.has(String(product.product_id)) ? 'Unlike' : 'Like'} ${product.brand_name}`}
-                        className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-900/80 flex items-center justify-center hover:bg-slate-900 transition-colors shadow-lg border border-slate-700"
-                      >
-                        {likedProducts.has(String(product.product_id)) ? (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 fill-current" viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Product Image */}
-                      <div className="relative h-32 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => setSelectedProduct(product)}>
-                        {product.product_image ? (
-                          <img
-                            src={product.product_image}
-                            alt={product.brand_name}
-                            loading="lazy"
-                            className="w-full h-full object-contain p-3 sm:p-6 group-hover:scale-110 transition-transform duration-500"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-700"><span class="text-4xl sm:text-7xl text-slate-400">Reward</span></div>'; }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-700">
-                            <span className="text-4xl sm:text-7xl text-slate-400">Reward</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Product Info */}
-                      <div className="p-2.5 sm:p-4 border-t border-slate-700">
-                        <div className="mb-2 sm:mb-3">
-                          <h3 className="font-bold text-slate-100 text-xs sm:text-base mb-0.5 sm:mb-1.5 leading-tight line-clamp-2">
-                            {product.brand_name}
-                          </h3>
-                          <p className="text-xs text-slate-400 uppercase tracking-wide hidden sm:block">
-                            {product.country_name}
-                          </p>
-                        </div>
-
-                        {/* Denominations or Value Range */}
-                        {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 ? (
-                          <div className="mb-2 sm:mb-3">
-                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                              {/* Show 2 on mobile, 3 on desktop */}
-                              {product.denominations.slice(0, 2).map((denom: number, idx: number) => (
-                                <span key={idx} className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
-                                  {product.currency} {denom}
-                                </span>
-                              ))}
-                              <span className="hidden sm:inline">
-                                {product.denominations.length > 2 && product.denominations[2] && (
-                                  <span className="text-xs bg-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-md">
-                                    {product.currency} {product.denominations[2]}
-                                  </span>
-                                )}
-                              </span>
-                              {product.denominations.length > 2 && (
-                                <span className="sm:hidden text-[10px] text-slate-500 px-1 py-0.5 font-medium">
-                                  +{product.denominations.length - 2}
-                                </span>
-                              )}
-                              {product.denominations.length > 3 && (
-                                <span className="hidden sm:inline text-xs text-slate-500 px-2 py-1 font-medium">
-                                  +{product.denominations.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : product.value_restrictions ? (
-                          <div className="mb-2 sm:mb-3">
-                            <span className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
-                              {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min}–{product.value_restrictions.maxVal || product.value_restrictions.max}
-                            </span>
-                          </div>
-                        ) : null}
-
-                        {/* Country & Currency - Simplified on mobile */}
-                        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
-                          <span className="font-medium truncate">{product.currency}</span>
-                          <span className="hidden sm:inline font-medium truncate">* {product.country_name}</span>
-                        </div>
-
-                        {/* View Button */}
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
-                        >
-                          <span className="sm:hidden">View</span>
-                          <span className="hidden sm:inline">View & Redeem</span>
-                        </button>
-                      </div>
-                    </div>
+                      product={product}
+                      isLiked={likedProducts.has(String(product.product_id))}
+                      onToggleLike={toggleLike}
+                      onSelect={selectProduct}
+                    />
                   ))}
                 </div>
               )}
