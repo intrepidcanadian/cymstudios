@@ -320,6 +320,25 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
         </div>
       </div>
 
+      {/* Attention needed summary — highlight failed/under review orders */}
+      {statusFilter === 'all' && (() => {
+        const failedCount = orders.filter((o) => o.status === 'failed' && !parseRefundInfo(o.error_message).refunded).length;
+        const reviewCount = orders.filter((o) => o.status === 'pending_review').length;
+        const total = failedCount + reviewCount;
+        if (total === 0) return null;
+        return (
+          <div className="mb-3 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2 text-xs">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+            <span className="text-amber-300">
+              {total} order{total !== 1 ? 's' : ''} need{total === 1 ? 's' : ''} attention
+              {failedCount > 0 && reviewCount > 0
+                ? ` (${failedCount} failed, ${reviewCount} under review)`
+                : failedCount > 0 ? ` (${failedCount} failed)` : ` (${reviewCount} under review)`}
+            </span>
+          </div>
+        );
+      })()}
+
       <p className="text-sm text-slate-400 mb-3">
         {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
         {statusFilter !== 'all' ? ` (${statusFilter})` : ''}

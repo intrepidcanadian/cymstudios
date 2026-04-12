@@ -563,6 +563,48 @@ export default function PurchaseModal({
     }
     lastAttemptRef.current = now;
 
+    // Re-check balance before proceeding — balance may have changed since form step
+    if (usdcAmount && usdcBalance && parseFloat(usdcBalance) < parseFloat(usdcAmount)) {
+      const shortfall = (parseFloat(usdcAmount) - parseFloat(usdcBalance)).toFixed(2);
+      setError(`Insufficient ${networkConfig?.tokenSymbol} balance. You need ${usdcAmount} but have ${parseFloat(usdcBalance).toFixed(2)} (short by ${shortfall} ${networkConfig?.tokenSymbol}). Please top up your wallet or switch networks.`);
+      setHasFailedOnce(true);
+      return;
+    }
+
+    // Auto-refresh stale quote before payment — prevents paying with outdated exchange rate
+    if (quoteStale && product.currency !== 'USD') {
+      try {
+        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
+        const data = await response.json();
+        if (data.success && data.rate) {
+          const price = parseFloat(amount);
+          const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
+          const adjustedRate = data.rate * feeMultiplier;
+          const newUsdcAmount = (Math.ceil(price * adjustedRate * 100) / 100).toFixed(2);
+          setUsdcAmount(newUsdcAmount);
+          setRawExchangeRate(data.rate);
+          setExchangeRate(adjustedRate);
+          setQuoteFetchedAt(Date.now());
+          setQuoteStale(false);
+          setQuoteRefreshed(true);
+          // Re-validate balance with fresh amount
+          if (usdcBalance && parseFloat(usdcBalance) < parseFloat(newUsdcAmount)) {
+            const shortfall = (parseFloat(newUsdcAmount) - parseFloat(usdcBalance)).toFixed(2);
+            setError(`Rate updated — insufficient ${networkConfig?.tokenSymbol} balance. You need ${newUsdcAmount} but have ${parseFloat(usdcBalance).toFixed(2)} (short by ${shortfall} ${networkConfig?.tokenSymbol}).`);
+            setHasFailedOnce(true);
+            return;
+          }
+          setError(null);
+          // Show updated quote and let user review before proceeding
+          setError('Exchange rate was refreshed before payment. Please review the updated amount and confirm again.');
+          return;
+        }
+      } catch {
+        setError('Exchange rate could not be refreshed. Please go back and try again.');
+        return;
+      }
+    }
+
     submittingRef.current = true;
     setError(null);
     setLoading(true);
