@@ -120,8 +120,7 @@ const ProductCard = memo(function ProductCard({
 
         {/* Country & Currency */}
         <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
-          <span className="font-medium truncate">{product.currency}</span>
-          <span className="font-medium truncate">* {product.country_name}</span>
+          <span className="font-medium truncate">{product.currency} · {product.country_name}</span>
         </div>
 
         {/* View Button */}
@@ -864,6 +863,39 @@ export default function GiftCardCatalog() {
                 </button>
               </div>
 
+              {/* M24: Recently Viewed Products — full width, above grid */}
+              {recentlyViewed.length > 0 && !loading && activeTab !== 'orders' && (
+                <div className="mb-4 sm:mb-6">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Recently Viewed
+                  </h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                    {recentlyViewed.map((product) => (
+                      <button
+                        key={product.product_id}
+                        onClick={() => selectProduct(product)}
+                        className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
+                      >
+                        <div className="h-14 sm:h-20 bg-white overflow-hidden">
+                          {product.product_image ? (
+                            <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                              <span className="text-sm sm:text-lg text-slate-400">Reward</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-1 sm:p-2">
+                          <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
+                          <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Top Bar */}
               <div className="flex items-center justify-between mb-4 sm:mb-8 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1044,7 +1076,7 @@ export default function GiftCardCatalog() {
                             </div>
                           )}
 
-                          <p className="text-xs text-slate-400 mb-3">{product.currency} * {product.country_name}</p>
+                          <p className="text-xs text-slate-400 mb-3">{product.currency} · {product.country_name}</p>
 
                           <button
                             onClick={() => setSelectedProduct(product)}
@@ -1132,39 +1164,6 @@ export default function GiftCardCatalog() {
                 </div>
               )}
             </div>
-
-            {/* M24: Recently Viewed Products */}
-            {recentlyViewed.length > 0 && !loading && (
-              <div className="mt-8 mb-4">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Recently Viewed
-                </h3>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-600">
-                  {recentlyViewed.map((product) => (
-                    <button
-                      key={product.product_id}
-                      onClick={() => selectProduct(product)}
-                      className="flex-shrink-0 w-28 sm:w-36 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
-                    >
-                      <div className="h-16 sm:h-20 bg-white overflow-hidden">
-                        {product.product_image ? (
-                          <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-700">
-                            <span className="text-lg text-slate-400">Reward</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-1.5 sm:p-2">
-                        <p className="text-[10px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
-                        <p className="text-[9px] sm:text-[10px] text-slate-400">{product.currency}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Back to Top FAB */}
             {showBackToTop && (
@@ -1434,40 +1433,47 @@ export default function GiftCardCatalog() {
                 <Send className="w-3 h-3" />
                 <span className="hidden sm:inline">Send {tokenSymbol}</span>
               </button>
-              {/* M11: Facilitator gas warning */}
-              {!selectedNetworkHealthy && (
-                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-lg flex-shrink-0" title="Settlement may be delayed on this network — facilitator gas is low">
-                  <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                  <span className="text-[10px] text-amber-300 font-medium whitespace-nowrap">Gas low</span>
-                </div>
-              )}
-              {/* Compact network switcher — visible on all screen sizes */}
-              <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Networks Supported — grouped switcher */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/40 rounded-lg border border-slate-600 flex-shrink-0">
+                <span className="hidden sm:inline text-[9px] text-slate-500 font-medium uppercase tracking-wider mr-1">Networks</span>
                 {Object.entries(NETWORKS).map(([key, net]) => {
                   const shortLabel = key === 'ethereum' ? 'ETH' : key === 'base' ? 'Base' : 'CFX';
-                  const networkHealthy = facilitatorHealth[key] !== false;
                   return (
                     <button
                       key={key}
                       onClick={() => {
                         setSelectedNetwork(key);
-                        if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
+                        if (typeof window !== 'undefined') try { localStorage.setItem('preferredNetwork', key); } catch { /* ignore */ }
                       }}
                       disabled={showPurchaseModal}
-                      className={`relative px-2 py-2 sm:py-1 min-w-[44px] min-h-[44px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
+                      className={`px-2 py-1.5 sm:py-1 min-w-[40px] min-h-[36px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
                         selectedNetwork === key
                           ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
-                          : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
+                          : 'text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-500'
                       } disabled:opacity-40 disabled:cursor-not-allowed`}
-                      title={showPurchaseModal ? 'Network locked during checkout' : !networkHealthy ? `${net.name} — settlement may be delayed (low gas)` : `Switch to ${net.name}`}
-                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})${!networkHealthy ? ' — low gas warning' : ''}`}
+                      title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
+                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
                     >
                       <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
-                      {!networkHealthy && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full" />}
                     </button>
                   );
                 })}
               </div>
+              {/* Facilitator status — far right */}
+              {(() => {
+                const anyUnhealthy = Object.entries(facilitatorHealth).some(([, healthy]) => healthy === false);
+                if (!anyUnhealthy) return null;
+                return (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 ml-auto group relative cursor-help">
+                    <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                    <span className="text-[10px] text-amber-300 font-medium whitespace-nowrap">Facilitator: Gas low</span>
+                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs text-slate-300 w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      <p className="font-semibold text-amber-300 mb-1">Facilitator Gas Low</p>
+                      <p className="text-slate-400 leading-relaxed">The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className="flex items-center gap-3 w-full">

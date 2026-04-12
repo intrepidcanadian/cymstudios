@@ -94,7 +94,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
 };
 
 /** Default network key */
-export const DEFAULT_NETWORK = 'ethereum';
+export const DEFAULT_NETWORK = 'conflux';
 
 /** Get network config by key — throws if key is invalid to prevent silent misrouting */
 export function getNetwork(key: string): NetworkConfig {

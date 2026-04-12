@@ -707,7 +707,7 @@ export default function PurchaseModal({
           <div>
             <h3 className="text-2xl font-semibold text-slate-100">{product.brand_name}</h3>
             <p className="text-sm text-slate-400 mt-1">
-              {product.country_name} * {product.currency}
+              {product.country_name} · {product.currency}
             </p>
           </div>
           <button
@@ -1119,6 +1119,14 @@ export default function PurchaseModal({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Amount</span>
                   <span className="text-slate-200">{parseFloat(amount).toFixed(2)} {product.currency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Paid</span>
+                  <span className="text-slate-200">{usdcAmount} {networkConfig?.tokenSymbol}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Network</span>
+                  <span className="text-slate-200">{networkConfig?.name}</span>
                 </div>
               </div>
               <div role="status" aria-live="polite" className="sr-only">Payment successful. Your voucher is being prepared.</div>
