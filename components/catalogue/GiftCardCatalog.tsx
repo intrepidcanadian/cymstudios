@@ -137,6 +137,20 @@ const ProductCard = memo(function ProductCard({
   );
 });
 
+/** Product detail modal image with React-based fallback */
+function DetailImage({ src, alt }: { src: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (error) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-48 sm:h-64 object-contain bg-white rounded-lg mb-4 sm:mb-6"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 /** Mastercard image with React-based fallback (no innerHTML injection) */
 function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelect: () => void }) {
   const [imgError, setImgError] = useState(false);
@@ -1125,12 +1139,7 @@ export default function GiftCardCatalog() {
                 </div>
 
                 {selectedProduct.product_image && (
-                  <img
-                    src={selectedProduct.product_image}
-                    alt={selectedProduct.brand_name}
-                    className="w-full h-48 sm:h-64 object-contain bg-white rounded-lg mb-4 sm:mb-6"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+                  <DetailImage src={selectedProduct.product_image} alt={selectedProduct.brand_name} />
                 )}
 
                 <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">

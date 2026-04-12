@@ -205,7 +205,11 @@ export async function payWithX402(
       ) || paymentInfo.accepts[0];
 
       assetAddress = accept.asset || assetAddress;
-      recipient = accept.payTo || recipient;
+      // Validate payTo matches configured facilitator (merchant protection)
+      if (accept.payTo && accept.payTo.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+        console.warn('x402: payTo mismatch — using configured facilitator address');
+      }
+      recipient = FACILITATOR_ADDRESS; // Always use configured facilitator, never trust 402 response
       if (accept.extra) {
         eip712Name = accept.extra.name || eip712Name;
         eip712Version = accept.extra.version || eip712Version;

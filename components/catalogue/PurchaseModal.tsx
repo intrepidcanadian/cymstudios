@@ -50,6 +50,21 @@ function suggestEmailDomain(email: string): string | null {
   return COMMON_DOMAINS[domain] || null;
 }
 
+/** Product image with React-based error handling */
+function PurchaseImage({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (!src || error) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className="w-full h-48 object-contain bg-white p-4"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 export default function PurchaseModal({
   product,
   onClose,
@@ -281,6 +296,37 @@ export default function PurchaseModal({
 
   // Fetch USDC quote when amount changes
   const FX_FEE_PERCENT = product.currency === 'USD' ? 0.5 : 1.5;
+
+  // M18: Auto-refresh quote when user switches payment network (if quote > 60s old)
+  const prevNetworkRef = useRef(selectedNetwork);
+  useEffect(() => {
+    if (prevNetworkRef.current === selectedNetwork) return;
+    prevNetworkRef.current = selectedNetwork;
+    if (!amount || product.currency === 'USD') return;
+    // Refresh if quote is older than 60 seconds or already stale
+    const quoteAge = quoteFetchedAt ? Date.now() - quoteFetchedAt : Infinity;
+    if (quoteAge < 60_000) return;
+    const price = parseFloat(amount);
+    if (isNaN(price) || price <= 0) return;
+    const refreshQuote = async () => {
+      setLoadingQuote(true);
+      try {
+        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
+        const data = await response.json();
+        if (data.success && data.rate) {
+          const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
+          const adjustedRate = data.rate * feeMultiplier;
+          setUsdcAmount((Math.ceil(price * adjustedRate * 100) / 100).toFixed(2));
+          setRawExchangeRate(data.rate);
+          setExchangeRate(adjustedRate);
+          setQuoteFetchedAt(Date.now());
+          setQuoteStale(false);
+        }
+      } catch { /* quote will refresh on submit as fallback */ }
+      setLoadingQuote(false);
+    };
+    refreshQuote();
+  }, [selectedNetwork, amount, product.currency, quoteFetchedAt]);
 
   useEffect(() => {
     const fetchUsdcQuote = async () => {
@@ -631,15 +677,7 @@ export default function PurchaseModal({
         </div>
 
         {/* Product Image */}
-        {product.product_image && (
-          <img
-            src={product.product_image}
-            alt={product.brand_name}
-            loading="lazy"
-            className="w-full h-48 object-contain bg-white p-4"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
+        <PurchaseImage src={product.product_image ?? undefined} alt={product.brand_name} />
 
         {/* Email Verification Step (M8) */}
         {step === 'verify-email' && (
