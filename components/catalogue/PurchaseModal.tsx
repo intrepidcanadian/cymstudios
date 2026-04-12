@@ -782,9 +782,15 @@ export default function PurchaseModal({
                   <span className="text-slate-100 font-medium">1 {product.currency} = {rawExchangeRate.toFixed(4)} USD</span>
                 </div>
               )}
+              {product.currency === 'USD' && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Exchange Rate</span>
+                  <span className="text-slate-100 font-medium">1 USD = 1 {networkConfig?.tokenSymbol}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Service Fee</span>
-                <span className="text-slate-100 font-medium">{FX_FEE_PERCENT}%</span>
+                <span className="text-slate-100 font-medium">{FX_FEE_PERCENT}%{product.currency === 'USD' ? '' : ` (${((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD)`}</span>
               </div>
               <div className="flex justify-between text-sm pt-2 border-t border-slate-600">
                 <span className="text-slate-400">You Pay</span>
@@ -1127,6 +1133,8 @@ export default function PurchaseModal({
                 <input
                   type="number"
                   step="0.01"
+                  min={product.value_restrictions?.minVal || product.value_restrictions?.min || 1}
+                  max={product.value_restrictions?.maxVal || product.value_restrictions?.max || 10000}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   onBlur={() => {

@@ -1183,7 +1183,7 @@ export default function GiftCardCatalog() {
                     <div>
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Value Range</h3>
                       <p className="text-sm sm:text-base text-slate-100">
-                        {selectedProduct.currency} {selectedProduct.value_restrictions.min} - {selectedProduct.value_restrictions.max}
+                        {selectedProduct.currency} {selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - {selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}
                       </p>
                     </div>
                   )}
@@ -1371,7 +1371,8 @@ export default function GiftCardCatalog() {
               <button
                 onClick={() => setShowSendModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
-                title="Send USDC"
+                title={`Send ${tokenSymbol}`}
+                aria-label={`Send ${tokenSymbol} tokens`}
               >
                 <Send className="w-3 h-3" />
                 <span className="hidden sm:inline">Send {tokenSymbol}</span>
