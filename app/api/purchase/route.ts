@@ -627,10 +627,43 @@ export async function POST(request: NextRequest) {
       logger.info('[x402] TX submitted:', tx.hash);
       paymentTxHash = tx.hash;
 
-      const receipt = await tx.wait();
-      logger.info('[x402] Payment confirmed, block:', receipt.blockNumber);
+      // Wait for on-chain confirmation with 90s timeout to prevent indefinite hangs
+      const SETTLEMENT_TIMEOUT_MS = 90_000;
+      const receipt = await Promise.race([
+        tx.wait(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Settlement confirmation timed out after 90s')), SETTLEMENT_TIMEOUT_MS)
+        ),
+      ]);
+      logger.info('[x402] Payment confirmed, block:', (receipt as any).blockNumber);
     } catch (paymentExecutionError) {
-      logger.error('[x402] Payment execution failed:', paymentExecutionError instanceof Error ? paymentExecutionError.message : 'Unknown');
+      const errorMsg = paymentExecutionError instanceof Error ? paymentExecutionError.message : 'Unknown';
+      const isTimeout = errorMsg.includes('timed out');
+      logger.error(`[x402] Payment execution ${isTimeout ? 'timed out' : 'failed'}:`, errorMsg);
+
+      if (isTimeout && paymentTxHash) {
+        // TX was submitted but confirmation timed out — mark as pending_review for cron resolution
+        await supabase
+          .from('orders')
+          .update({
+            status: 'pending_review',
+            error_message: JSON.stringify({
+              error: 'Settlement confirmation timed out',
+              payment_tx: paymentTxHash,
+              reason: 'Transaction was submitted but on-chain confirmation took too long. The cron job will resolve this order.',
+            })
+          })
+          .eq('order_id', orderId);
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Payment was submitted but confirmation is taking longer than expected. Your order is under review and will be processed automatically.',
+            orderId: orderId,
+          },
+          { status: 202 }
+        );
+      }
 
       // Update order status to failed
       await supabase
@@ -639,7 +672,7 @@ export async function POST(request: NextRequest) {
           status: 'failed',
           error_message: JSON.stringify({
             error: 'Payment execution failed',
-            payment_error: paymentExecutionError instanceof Error ? paymentExecutionError.message : 'Unknown payment error',
+            payment_error: errorMsg,
             reason: 'Insufficient balance or payment authorization failed'
           })
         })

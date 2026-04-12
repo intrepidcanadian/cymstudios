@@ -408,7 +408,10 @@ export default function PurchaseModal({
           setQuoteStale(false);
           setQuoteRefreshed(true);
         }
-      } catch { /* proceed with existing quote */ }
+      } catch {
+        // Quote refresh failed — warn user they're proceeding with a stale rate
+        setError('Exchange rate could not be refreshed. Proceeding with the previous quote — the final amount may differ slightly.');
+      }
       setLoadingQuote(false);
     }
 
@@ -1224,6 +1227,18 @@ export default function PurchaseModal({
               />
             </div>
           </div>
+
+          {/* Facilitator health warning on form step — lets user switch network before filling form */}
+          {!facilitatorHealthy && walletReady && (
+            <div className="bg-amber-500/15 border border-amber-500/30 text-amber-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>
+                <p className="text-xs text-amber-400/90">
+                  {networkConfig?.name} settlement may be delayed due to low facilitator gas. Consider switching to another network for faster processing.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

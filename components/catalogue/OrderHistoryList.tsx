@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Package, AlertCircle, RefreshCw, ArrowUpDown, CreditCard, Gift } from 'lucide-react';
 
 /** Order image with React-based fallback instead of hiding via style.display */
@@ -129,13 +129,34 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
     return `${minutes}m ago`;
   };
 
-  // Auto-refresh every 30s when there are pending/processing orders
+  // Auto-refresh with exponential backoff when there are pending/processing orders
+  // Starts at 30s, doubles each cycle (30s → 60s → 120s), caps at 5 min, stops after 30 min total
   const hasPendingOrders = orders.some((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'pending_review');
+  const pollIntervalRef = useRef(30_000);
+  const pollStartRef = useRef<number | null>(null);
+  const MAX_POLL_DURATION_MS = 30 * 60_000; // 30 minutes max polling
+  const MAX_POLL_INTERVAL_MS = 5 * 60_000; // cap at 5 min between polls
+
   useEffect(() => {
-    if (!hasPendingOrders) return;
-    const interval = setInterval(() => fetchOrders(), 30_000);
-    return () => clearInterval(interval);
-  }, [hasPendingOrders, fetchOrders]);
+    if (!hasPendingOrders) {
+      pollIntervalRef.current = 30_000; // reset for next time
+      pollStartRef.current = null;
+      return;
+    }
+    if (!pollStartRef.current) pollStartRef.current = Date.now();
+
+    const schedule = () => {
+      const elapsed = Date.now() - (pollStartRef.current || Date.now());
+      if (elapsed >= MAX_POLL_DURATION_MS) return; // stop polling after 30 min
+      const interval = Math.min(pollIntervalRef.current, MAX_POLL_INTERVAL_MS);
+      return setTimeout(() => {
+        fetchOrders();
+        pollIntervalRef.current = Math.min(pollIntervalRef.current * 2, MAX_POLL_INTERVAL_MS);
+      }, interval);
+    };
+    const timer = schedule();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [hasPendingOrders, fetchOrders, orders]);
 
   const parseRefundInfo = (errorMessage?: string): { refunded: boolean; manualRefundNeeded: boolean } => {
     if (!errorMessage) return { refunded: false, manualRefundNeeded: false };

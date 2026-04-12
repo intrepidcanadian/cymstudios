@@ -246,6 +246,7 @@ export default function GiftCardCatalog() {
 
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
   const [facilitatorHealth, setFacilitatorHealth] = useState<Record<string, boolean>>({});
+  const [facilitatorHealthLoaded, setFacilitatorHealthLoaded] = useState(false);
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -257,13 +258,23 @@ export default function GiftCardCatalog() {
             health[key] = val.healthy;
           }
           setFacilitatorHealth(health);
+          setFacilitatorHealthLoaded(true);
         }
-      } catch { /* silent — don't block UI */ }
+      } catch {
+        // On health-check failure, mark all networks as potentially unhealthy
+        // so users see warning rather than silently proceeding
+        if (!facilitatorHealthLoaded) {
+          const unhealthy: Record<string, boolean> = {};
+          for (const key of Object.keys(NETWORKS)) unhealthy[key] = false;
+          setFacilitatorHealth(unhealthy);
+        }
+        // If we had a previous successful check, keep those values (don't override with false)
+      }
     };
     checkHealth();
     const interval = setInterval(checkHealth, 120_000); // re-check every 2 min
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedNetworkHealthy = facilitatorHealth[selectedNetwork] !== false;
 
   // Persist filter selections to localStorage
