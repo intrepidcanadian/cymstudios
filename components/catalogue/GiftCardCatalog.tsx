@@ -162,9 +162,6 @@ const ProductCard = memo(function ProductCard({
           <h3 className="font-bold text-slate-100 text-xs sm:text-base mb-0.5 sm:mb-1.5 leading-tight line-clamp-2">
             {product.brand_name}
           </h3>
-          <p className="text-xs text-slate-400 uppercase tracking-wide hidden sm:block">
-            {product.country_name}
-          </p>
         </div>
 
         {/* Denominations or Value Range */}
@@ -1186,7 +1183,6 @@ export default function GiftCardCatalog() {
                         {/* Product Info */}
                         <div className="p-4 border-t border-slate-700">
                           <h3 className="font-bold text-slate-100 text-base mb-1">{product.brand_name}</h3>
-                          <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">{product.country_name}</p>
 
                           {/* Value Range */}
                           {product.value_restrictions && (

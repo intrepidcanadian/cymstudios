@@ -232,7 +232,8 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       <div className="text-center py-20">
         <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
         <h3 className="text-xl font-bold text-slate-100 mb-2">Connect wallet to view orders</h3>
-        <p className="text-slate-400 mb-4">Connect your wallet or make a purchase to see your order history.</p>
+        <p className="text-slate-400 mb-2">Connect the same wallet you used for your purchase.</p>
+        <p className="text-xs text-slate-500">Orders are matched by wallet address and email. If you purchased on a different device, connect the same wallet or use the same email to see your history.</p>
       </div>
     );
   }

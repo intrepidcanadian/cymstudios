@@ -851,7 +851,15 @@ export default function PurchaseModal({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Network</span>
-                <span className="text-slate-100 font-medium">{networkConfig?.name}</span>
+                <span className="text-slate-100 font-medium inline-flex items-center gap-1.5">
+                  {selectedNetwork === 'ethereum' && (
+                    <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 320 512" fill="currentColor"><path d="M311.9 260.8L160 353.6 8 260.8 160 0l151.9 260.8zM160 383.4L8 290.6 160 512l152-221.4-152 92.8z"/></svg>
+                  )}
+                  {selectedNetwork === 'conflux' && (
+                    <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M8 8h8l-4 8z"/></svg>
+                  )}
+                  {networkConfig?.name}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Email</span>
@@ -1498,13 +1506,29 @@ export default function PurchaseModal({
             </button>
           </div>
 
-          {/* Info Box */}
+          {/* How It Works — 3-step flow guide */}
           <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl backdrop-blur-sm">
-            <p className="text-xs text-indigo-300">
-              Redeem with the exact amount in digital {networkConfig?.tokenSymbol} tokens on{' '}
-              {networkConfig?.name}. Your reward voucher will be delivered via email within a few
-              minutes after confirmation.
-            </p>
+            <p className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider mb-2">How it works</p>
+            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">1</div>
+                <div className="w-px h-3 bg-indigo-500/20" />
+              </div>
+              <p className="pt-0.5">Review your order and {networkConfig?.paymentStrategy === 'eip3009' ? 'sign a gasless authorization' : 'approve a token transfer'}</p>
+            </div>
+            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">2</div>
+                <div className="w-px h-3 bg-indigo-500/20" />
+              </div>
+              <p className="pt-0.5">{networkConfig?.tokenSymbol} tokens are transferred on {networkConfig?.name}</p>
+            </div>
+            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">3</div>
+              </div>
+              <p className="pt-0.5">Voucher delivered to your email within 2–5 minutes</p>
+            </div>
           </div>
         </form>
       </div>
