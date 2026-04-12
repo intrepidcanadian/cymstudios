@@ -93,18 +93,19 @@ export default function PurchaseModal({
   const [rawExchangeRate, setRawExchangeRate] = useState<number | null>(null);
   const [quoteFetchedAt, setQuoteFetchedAt] = useState<number | null>(null);
   const [quoteStale, setQuoteStale] = useState(false);
-  const [step, setStep] = useState<'form' | 'verify-email' | 'confirm' | 'processing'>('form');
+  const [step, setStep] = useState<'form' | 'verify-email' | 'confirm' | 'processing' | 'success'>('form');
   const [paymentStep, setPaymentStep] = useState<string>('');
   const [hasFailedOnce, setHasFailedOnce] = useState(false);
   const [quoteRefreshed, setQuoteRefreshed] = useState(false);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
+  const [successData, setSuccessData] = useState<{ orderId: string; email: string; orderToken: string; txHash?: string } | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [rpcFailedNetwork, setRpcFailedNetwork] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string>('');
   const [chainSwitching, setChainSwitching] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('termsAccepted') === 'true';
+      try { return localStorage.getItem('termsAccepted') === 'true'; } catch { /* ignore */ }
     }
     return false;
   });
@@ -224,8 +225,10 @@ export default function PurchaseModal({
   }, [otpCode, otpVerifying, submitOtp]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('userProfile');
-      return saved ? JSON.parse(saved) : {};
+      try {
+        const saved = localStorage.getItem('userProfile');
+        return saved ? JSON.parse(saved) : {};
+      } catch { return {}; }
     }
     return {};
   });
@@ -597,7 +600,7 @@ export default function PurchaseModal({
       // Save profile
       const profile = { email, firstName: firstName || undefined, lastName: lastName || undefined };
       if (typeof window !== 'undefined') {
-        localStorage.setItem('userProfile', JSON.stringify(profile));
+        try { localStorage.setItem('userProfile', JSON.stringify(profile)); } catch { /* ignore */ }
         setUserProfile(profile);
       }
 
@@ -666,7 +669,12 @@ export default function PurchaseModal({
         localStorage.setItem('recentPurchases', JSON.stringify(recentPurchases.filter((p) => p.time > oneDayAgo)));
       } catch { /* ignore */ }
 
-      onPurchaseComplete(data.orderId, email, data.orderToken, data.x402Payment?.transactionHash);
+      // M25: Show brief success interstitial before transitioning to order status
+      setSuccessData({ orderId: data.orderId, email, orderToken: data.orderToken, txHash: data.x402Payment?.transactionHash });
+      setStep('success');
+      setTimeout(() => {
+        onPurchaseComplete(data.orderId, email, data.orderToken, data.x402Payment?.transactionHash);
+      }, 2500);
     } catch (err) {
       console.error('Redemption error:', err);
       setError(err instanceof Error ? err.message : 'Redemption failed');
@@ -745,7 +753,7 @@ export default function PurchaseModal({
             </div>
 
             {otpError && (
-              <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+              <div role="alert" className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
                 {otpError}
               </div>
             )}
@@ -936,7 +944,7 @@ export default function PurchaseModal({
             )}
 
             {error && (
-              <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+              <div role="alert" className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
                 {error}
                 {rpcFailedNetwork === selectedNetwork && (
                   <div className="flex gap-2 mt-2 pt-2 border-t border-red-500/20">
@@ -964,7 +972,7 @@ export default function PurchaseModal({
                   onChange={(e) => {
                     setTermsAccepted(e.target.checked);
                     if (e.target.checked && typeof window !== 'undefined') {
-                      localStorage.setItem('termsAccepted', 'true');
+                      try { localStorage.setItem('termsAccepted', 'true'); } catch { /* ignore */ }
                     }
                   }}
                   className="w-4 h-4 mt-0.5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700 flex-shrink-0"
@@ -1058,6 +1066,10 @@ export default function PurchaseModal({
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-indigo-500" />
               </div>
               <p className="text-lg font-semibold text-slate-100 mb-1">{paymentStep || 'Processing...'}</p>
+              {/* M22: Screen reader live region for payment progress */}
+              <div role="status" aria-live="assertive" className="sr-only">
+                {paymentStep || 'Processing payment'}
+              </div>
               <p className="text-xs text-slate-400">Please keep this window open — you can track your order in My Orders if needed</p>
 
               {showCloseWarning && (
@@ -1080,6 +1092,37 @@ export default function PurchaseModal({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* M25: Success Interstitial */}
+        {step === 'success' && successData && (
+          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500/40 mb-4">
+                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h4 className="text-xl font-bold text-slate-100 mb-1">Payment Successful</h4>
+              <p className="text-sm text-slate-400 mb-4">Your voucher is being prepared</p>
+              <div className="space-y-1.5 text-sm text-left max-w-xs mx-auto bg-slate-700/50 rounded-xl p-4 border border-slate-600">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Order</span>
+                  <span className="text-slate-200 font-mono text-xs">{successData.orderId.slice(0, 8)}...</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Voucher to</span>
+                  <span className="text-slate-200 text-xs">{successData.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Amount</span>
+                  <span className="text-slate-200">{parseFloat(amount).toFixed(2)} {product.currency}</span>
+                </div>
+              </div>
+              <div role="status" aria-live="polite" className="sr-only">Payment successful. Your voucher is being prepared.</div>
+              <p className="text-xs text-slate-500 mt-4">Opening order status...</p>
             </div>
           </div>
         )}
@@ -1406,7 +1449,7 @@ export default function PurchaseModal({
 
           {/* Error */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+            <div role="alert" className="bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
               {error}
             </div>
           )}

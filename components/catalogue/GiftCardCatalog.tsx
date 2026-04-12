@@ -194,8 +194,10 @@ export default function GiftCardCatalog() {
 
   const [selectedNetwork, setSelectedNetwork] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('preferredNetwork');
-      if (saved && NETWORKS[saved]) return saved;
+      try {
+        const saved = localStorage.getItem('preferredNetwork');
+        if (saved && NETWORKS[saved]) return saved;
+      } catch { /* localStorage unavailable or full */ }
     }
     return DEFAULT_NETWORK;
   });
@@ -221,13 +223,13 @@ export default function GiftCardCatalog() {
   // Filters
   const [countryFilter, setCountryFilter] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('catalogCountryFilter') || 'all';
+      try { return localStorage.getItem('catalogCountryFilter') || 'all'; } catch { /* ignore */ }
     }
     return 'all';
   });
   const [currencyFilter, setCurrencyFilter] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('catalogCurrencyFilter') || 'all';
+      try { return localStorage.getItem('catalogCurrencyFilter') || 'all'; } catch { /* ignore */ }
     }
     return 'all';
   });
@@ -306,8 +308,10 @@ export default function GiftCardCatalog() {
   // Persist filter selections to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('catalogCountryFilter', countryFilter);
-      localStorage.setItem('catalogCurrencyFilter', currencyFilter);
+      try {
+        localStorage.setItem('catalogCountryFilter', countryFilter);
+        localStorage.setItem('catalogCurrencyFilter', currencyFilter);
+      } catch { /* localStorage full or unavailable */ }
     }
   }, [countryFilter, currencyFilter]);
 
@@ -501,14 +505,34 @@ export default function GiftCardCatalog() {
         newSet.add(productId);
       }
       if (typeof window !== 'undefined') {
-        localStorage.setItem('likedProducts', JSON.stringify(Array.from(newSet)));
+        try { localStorage.setItem('likedProducts', JSON.stringify(Array.from(newSet))); } catch { /* ignore */ }
       }
       return newSet;
     });
   }, []);
 
+  // M24: Recently viewed products — track last 8 viewed products
+  const [recentlyViewed, setRecentlyViewed] = useState<BrandProduct[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('recentlyViewed');
+        return saved ? JSON.parse(saved) : [];
+      } catch { return []; }
+    }
+    return [];
+  });
+
   const selectProduct = useCallback((product: BrandProduct) => {
     setSelectedProduct(product);
+    // Track recently viewed
+    setRecentlyViewed(prev => {
+      const filtered = prev.filter(p => p.product_id !== product.product_id);
+      const updated = [product, ...filtered].slice(0, 8);
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('recentlyViewed', JSON.stringify(updated)); } catch { /* ignore */ }
+      }
+      return updated;
+    });
   }, []);
 
   // Count active filters for badge
@@ -1109,6 +1133,39 @@ export default function GiftCardCatalog() {
               )}
             </div>
 
+            {/* M24: Recently Viewed Products */}
+            {recentlyViewed.length > 0 && !loading && (
+              <div className="mt-8 mb-4">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Recently Viewed
+                </h3>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-600">
+                  {recentlyViewed.map((product) => (
+                    <button
+                      key={product.product_id}
+                      onClick={() => selectProduct(product)}
+                      className="flex-shrink-0 w-28 sm:w-36 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
+                    >
+                      <div className="h-16 sm:h-20 bg-white overflow-hidden">
+                        {product.product_image ? (
+                          <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                            <span className="text-lg text-slate-400">Reward</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-1.5 sm:p-2">
+                        <p className="text-[10px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
+                        <p className="text-[9px] sm:text-[10px] text-slate-400">{product.currency}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Back to Top FAB */}
             {showBackToTop && (
               <button
@@ -1298,7 +1355,7 @@ export default function GiftCardCatalog() {
             selectedNetwork={selectedNetwork}
             onNetworkChange={(net: string) => {
               setSelectedNetwork(net);
-              if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', net);
+              if (typeof window !== 'undefined') try { localStorage.setItem('preferredNetwork', net); } catch { /* ignore */ }
             }}
             walletProvider={walletProvider}
             onRefreshBalance={refetchBalance}

@@ -60,7 +60,8 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   const [, setTick] = useState(0);
 
   const fetchOrders = useCallback(async (offset = 0) => {
-    const savedProfile = typeof window !== 'undefined' ? localStorage.getItem('userProfile') : null;
+    let savedProfile: string | null = null;
+    if (typeof window !== 'undefined') { try { savedProfile = localStorage.getItem('userProfile'); } catch { /* ignore */ } }
     let savedEmail: string | null = null;
     if (savedProfile) {
       try {
