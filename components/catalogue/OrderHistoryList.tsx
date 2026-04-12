@@ -285,6 +285,8 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                 key={f}
                 onClick={() => setStatusFilter(f)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border border-transparent transition-colors ${colors[f]}`}
+                aria-label={`Filter by ${f === 'all' ? 'all statuses' : f === 'pending_review' ? 'under review' : f}: ${count} orders`}
+                aria-pressed={active}
               >
                 {f === 'all' ? 'All' : f === 'pending_review' ? 'Under Review' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
               </button>
@@ -296,6 +298,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           <button
             onClick={() => setSortBy(sortBy === 'date' ? 'status' : 'date')}
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            aria-label={`Sort orders ${sortBy === 'date' ? 'by status' : 'by date'}`}
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
             {sortBy === 'date' ? 'By Date' : 'By Status'}
@@ -307,6 +310,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
             <button
               onClick={() => fetchOrders()}
               className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+              aria-label="Refresh order list"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Refresh
@@ -332,6 +336,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
             key={order.order_id}
             onClick={() => onViewOrder(order.order_id, order.orderToken, resolvedEmail)}
             className="text-left bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-200"
+            aria-label={`View order: ${order.product_name || order.brand_name}, ${order.status}`}
           >
             <div className="flex items-start gap-3">
               {/* Product Image */}

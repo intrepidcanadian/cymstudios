@@ -127,6 +127,7 @@ const ProductCard = memo(function ProductCard({
         <button
           onClick={() => onSelect(product)}
           className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+          aria-label={`View and redeem ${product.brand_name}`}
         >
           <span className="sm:hidden">View</span>
           <span className="hidden sm:inline">View & Redeem</span>
@@ -911,6 +912,8 @@ export default function GiftCardCatalog() {
                       return next;
                     })}
                     className="w-full flex items-center justify-between group mb-3"
+                    aria-expanded={!recentlyViewedCollapsed}
+                    aria-label={`Recently viewed products (${recentlyViewed.length})`}
                   >
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                       <Clock className="w-4 h-4" />
@@ -1001,31 +1004,31 @@ export default function GiftCardCatalog() {
                   {searchQuery && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
                       Search: &quot;{searchQuery}&quot;
-                      <button onClick={() => { setSearchQuery(''); setSearchInput(''); }} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                      <button onClick={() => { setSearchQuery(''); setSearchInput(''); }} className="ml-0.5 hover:text-white" aria-label="Remove search filter"><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {countryFilter !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
                       {countryFilter}
-                      <button onClick={() => setCountryFilter('all')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                      <button onClick={() => setCountryFilter('all')} className="ml-0.5 hover:text-white" aria-label={`Remove ${countryFilter} filter`}><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {currencyFilter !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
                       {currencyFilter}
-                      <button onClick={() => setCurrencyFilter('all')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                      <button onClick={() => setCurrencyFilter('all')} className="ml-0.5 hover:text-white" aria-label={`Remove ${currencyFilter} filter`}><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {selectedBrandFilters.map(brand => (
                     <span key={brand} className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
                       {brand}
-                      <button onClick={() => toggleBrandFilter(brand)} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                      <button onClick={() => toggleBrandFilter(brand)} className="ml-0.5 hover:text-white" aria-label={`Remove ${brand} filter`}><X className="w-3 h-3" /></button>
                     </span>
                   ))}
                   {showFavoritesOnly && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-900/40 border border-red-700/50 rounded-full text-xs text-red-300">
                       Favorites
-                      <button onClick={() => setShowFavoritesOnly(false)} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                      <button onClick={() => setShowFavoritesOnly(false)} className="ml-0.5 hover:text-white" aria-label="Remove favorites filter"><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {activeFilterCount > 1 && (
@@ -1517,9 +1520,9 @@ export default function GiftCardCatalog() {
                 const anyUnhealthy = Object.entries(facilitatorHealth).some(([, healthy]) => healthy === false);
                 if (!anyUnhealthy) return null;
                 return (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help">
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help" role="status" aria-label="Facilitator gas low warning">
                     <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                    <span className="text-[10px] text-amber-300 font-medium whitespace-nowrap">Facilitator: Gas low</span>
+                    <span className="hidden sm:inline text-[10px] text-amber-300 font-medium whitespace-nowrap">Facilitator: Gas low</span>
                     <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs text-slate-300 w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                       <p className="font-semibold text-amber-300 mb-1">Facilitator Gas Low</p>
                       <p className="text-slate-400 leading-relaxed">The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.</p>
