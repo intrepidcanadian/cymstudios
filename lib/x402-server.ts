@@ -61,6 +61,7 @@ async function settleEip3009(
     return { success: false, error: 'Facilitator private key not configured' };
   }
 
+  let txHash: string | undefined;
   try {
     const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
     const facilitator = new ethers.Wallet(facilitatorPrivateKey, provider);
@@ -90,18 +91,30 @@ async function settleEip3009(
       authorization.validAfter, authorization.validBefore, authorization.nonce,
       sig.v, sig.r, sig.s
     );
+    txHash = tx.hash;
 
-    console.log(`[x402] TX submitted: ${tx.hash}`);
-    const receipt = await tx.wait();
+    console.log(`[x402] TX submitted: ${txHash}`);
 
-    if (receipt.status === 1) {
-      return { success: true, transactionHash: tx.hash };
+    // 90s timeout on confirmation — prevents indefinite hangs from stalled RPC
+    const receipt = await Promise.race([
+      tx.wait(),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('SETTLEMENT_TIMEOUT')), 90_000)
+      ),
+    ]);
+
+    if (receipt && receipt.status === 1) {
+      return { success: true, transactionHash: txHash };
     }
-    return { success: false, error: 'Transaction failed on-chain' };
+    return { success: false, error: 'Transaction failed on-chain', transactionHash: txHash };
 
   } catch (error) {
     console.error('[x402] EIP-3009 settlement error:', error);
     if (error instanceof Error) {
+      if (error.message === 'SETTLEMENT_TIMEOUT') {
+        // TX was submitted but confirmation timed out — caller should mark as pending_review
+        return { success: false, error: 'SETTLEMENT_TIMEOUT', transactionHash: txHash };
+      }
       if (error.message.includes('insufficient funds')) {
         return { success: false, error: `Facilitator has insufficient ${networkConfig.nativeSymbol} for gas` };
       }
@@ -125,6 +138,7 @@ async function settleDirect(
     return { success: false, error: 'Facilitator private key not configured' };
   }
 
+  let txHash: string | undefined;
   try {
     const provider = new ethers.JsonRpcProvider(networkConfig.rpcUrl);
     const facilitator = new ethers.Wallet(facilitatorPrivateKey, provider);
@@ -159,18 +173,30 @@ async function settleDirect(
 
     console.log(`[x402] Submitting transferFrom on ${networkConfig.name}...`);
     const tx = await tokenContract.transferFrom(payload.from, payload.to, payload.value);
-    console.log(`[x402] TX submitted: ${tx.hash}`);
+    txHash = tx.hash;
+    console.log(`[x402] TX submitted: ${txHash}`);
 
-    const receipt = await tx.wait();
-    if (receipt.status === 1) {
-      return { success: true, transactionHash: tx.hash };
+    // 90s timeout on confirmation — prevents indefinite hangs from stalled RPC
+    const receipt = await Promise.race([
+      tx.wait(),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('SETTLEMENT_TIMEOUT')), 90_000)
+      ),
+    ]);
+    if (receipt && receipt.status === 1) {
+      return { success: true, transactionHash: txHash };
     }
-    return { success: false, error: 'TransferFrom failed on-chain' };
+    return { success: false, error: 'TransferFrom failed on-chain', transactionHash: txHash };
 
   } catch (error) {
     console.error('[x402] Direct settlement error:', error);
-    if (error instanceof Error && error.message.includes('insufficient funds')) {
-      return { success: false, error: `Facilitator has insufficient ${networkConfig.nativeSymbol} for gas` };
+    if (error instanceof Error) {
+      if (error.message === 'SETTLEMENT_TIMEOUT') {
+        return { success: false, error: 'SETTLEMENT_TIMEOUT', transactionHash: txHash };
+      }
+      if (error.message.includes('insufficient funds')) {
+        return { success: false, error: `Facilitator has insufficient ${networkConfig.nativeSymbol} for gas` };
+      }
     }
     return { success: false, error: error instanceof Error ? error.message : 'Settlement failed' };
   }

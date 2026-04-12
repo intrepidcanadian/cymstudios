@@ -140,7 +140,7 @@ const ProductCard = memo(function ProductCard({
       </button>
 
       {/* Product Image */}
-      <div className="relative h-32 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => onSelect(product)}>
+      <div className="relative h-36 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => onSelect(product)}>
         {product.product_image && !imgError ? (
           <img
             src={product.product_image}
@@ -1225,7 +1225,7 @@ export default function GiftCardCatalog() {
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
-                      <div className="h-32 sm:h-56 bg-slate-700" />
+                      <div className="h-36 sm:h-56 bg-slate-700" />
                       <div className="p-2.5 sm:p-4 border-t border-slate-700 space-y-2 sm:space-y-3">
                         <div className="h-4 bg-slate-700 rounded w-3/4" />
                         <div className="h-3 bg-slate-700 rounded w-1/2 hidden sm:block" />

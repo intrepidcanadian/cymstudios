@@ -1051,7 +1051,7 @@ export default function PurchaseModal({
               </button>
               <button
                 type="button"
-                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); }}
+                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); }}
                 disabled={loading}
                 className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
               >
@@ -1550,30 +1550,35 @@ export default function PurchaseModal({
             </button>
           </div>
 
-          {/* How It Works — 3-step flow guide */}
-          <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl backdrop-blur-sm">
-            <p className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider mb-2">How it works</p>
-            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
-              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">1</div>
-                <div className="w-px h-3 bg-indigo-500/20" />
+          {/* How It Works — 3-step flow guide, collapsible on mobile */}
+          <details className="mt-4 group" open>
+            <summary className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl sm:rounded-b-none backdrop-blur-sm cursor-pointer list-none flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider">How it works</span>
+              <svg className="w-3.5 h-3.5 text-indigo-400 transition-transform group-open:rotate-180 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <div className="p-3 pt-1 bg-indigo-500/10 border border-t-0 border-indigo-500/20 rounded-b-xl backdrop-blur-sm">
+              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+                <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">1</div>
+                  <div className="w-px h-3 bg-indigo-500/20" />
+                </div>
+                <p className="pt-0.5">Review your order and {networkConfig?.paymentStrategy === 'eip3009' ? 'sign a gasless authorization' : 'approve a token transfer'}</p>
               </div>
-              <p className="pt-0.5">Review your order and {networkConfig?.paymentStrategy === 'eip3009' ? 'sign a gasless authorization' : 'approve a token transfer'}</p>
-            </div>
-            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
-              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">2</div>
-                <div className="w-px h-3 bg-indigo-500/20" />
+              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+                <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">2</div>
+                  <div className="w-px h-3 bg-indigo-500/20" />
+                </div>
+                <p className="pt-0.5">{networkConfig?.tokenSymbol} tokens are transferred on {networkConfig?.name}</p>
               </div>
-              <p className="pt-0.5">{networkConfig?.tokenSymbol} tokens are transferred on {networkConfig?.name}</p>
-            </div>
-            <div className="flex items-start gap-3 text-xs text-indigo-300/80">
-              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">3</div>
+              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+                <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">3</div>
+                </div>
+                <p className="pt-0.5">Voucher delivered to your email within 2–5 minutes</p>
               </div>
-              <p className="pt-0.5">Voucher delivered to your email within 2–5 minutes</p>
             </div>
-          </div>
+          </details>
         </form>
       </div>
     </div>
