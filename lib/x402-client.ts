@@ -196,6 +196,7 @@ export async function payWithX402(
     let assetAddress = network.tokenAddress;
     let eip712Name = network.eip712Name;
     let eip712Version = network.eip712Version;
+    // M19/L11: Use configured FACILITATOR_ADDRESS if available, else fall back to 402 response payTo
     let recipient = FACILITATOR_ADDRESS;
 
     if (paymentInfo.accepts?.length > 0) {
@@ -205,11 +206,21 @@ export async function payWithX402(
       ) || paymentInfo.accepts[0];
 
       assetAddress = accept.asset || assetAddress;
-      // Validate payTo matches configured facilitator (merchant protection)
-      if (accept.payTo && accept.payTo.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
-        console.warn('x402: payTo mismatch — using configured facilitator address');
+
+      if (FACILITATOR_ADDRESS) {
+        // Validate payTo matches configured facilitator (merchant protection)
+        if (accept.payTo && accept.payTo.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
+          console.warn('x402: payTo mismatch — using configured facilitator address');
+        }
+        recipient = FACILITATOR_ADDRESS; // Always use configured facilitator, never trust 402 response
+      } else if (accept.payTo) {
+        // Client-side fallback: FACILITATOR_ADDRESS not set via env var — use server's payTo
+        // Server-side always validates this is the correct facilitator address
+        recipient = accept.payTo;
+        console.warn('x402: using server-provided payTo address (FACILITATOR_ADDRESS not configured client-side)');
+      } else {
+        throw new Error('No facilitator address available. Payment cannot proceed.');
       }
-      recipient = FACILITATOR_ADDRESS; // Always use configured facilitator, never trust 402 response
       if (accept.extra) {
         eip712Name = accept.extra.name || eip712Name;
         eip712Version = accept.extra.version || eip712Version;

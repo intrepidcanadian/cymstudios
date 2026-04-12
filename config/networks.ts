@@ -96,7 +96,8 @@ export function getNetworkByChainId(chainId: number): NetworkConfig | undefined 
 
 /** Facilitator address (shared across networks — same EOA, different chains) */
 const _facilitatorAddress = process.env.X402_MAINNET_FACILITATOR_ADDRESS
-  || process.env.X402_FACILITATOR_ADDRESS;
+  || process.env.X402_FACILITATOR_ADDRESS
+  || process.env.NEXT_PUBLIC_FACILITATOR_ADDRESS;
 
 if (!_facilitatorAddress && typeof window === 'undefined') {
   throw new Error(
@@ -105,4 +106,13 @@ if (!_facilitatorAddress && typeof window === 'undefined') {
   );
 }
 
-export const FACILITATOR_ADDRESS = _facilitatorAddress || '0xc10561c1c0d718b3d362df9d510a1b4e4331a4ee';
+if (!_facilitatorAddress && typeof window !== 'undefined') {
+  console.error(
+    '[networks] FACILITATOR_ADDRESS not set via NEXT_PUBLIC_FACILITATOR_ADDRESS env var. '
+    + 'Client-side payment signing will use the server-provided payTo address from the 402 response.'
+  );
+}
+
+// M19/L11: No hardcoded fallback — env var must be configured at build time.
+// Server-side throws on missing. Client-side logs error and falls back to 402 response payTo.
+export const FACILITATOR_ADDRESS = _facilitatorAddress || '';

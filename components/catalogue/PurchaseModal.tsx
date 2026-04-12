@@ -275,6 +275,7 @@ export default function PurchaseModal({
   }, [handleKeyDown]);
   const PURCHASE_COOLDOWN_MS = 10_000; // 10 second cooldown between attempts
   const MIN_ORDER_USD = 1; // Minimum order value — orders below this cost more in facilitator gas than they generate
+  const MAX_ORDER_USD = 5000; // M31: Maximum order value — limits exposure per transaction
   const networkConfig = NETWORKS[selectedNetwork];
   const walletReady = isConnected && !!walletProvider;
 
@@ -453,6 +454,13 @@ export default function PurchaseModal({
     // Minimum order value guard — small orders cost more in facilitator gas than they generate
     if (usdcAmount && parseFloat(usdcAmount) < MIN_ORDER_USD) {
       setError(`Minimum order is $${MIN_ORDER_USD} USD equivalent. Your current total is $${usdcAmount}.`);
+      return;
+    }
+
+    // M31: Maximum order value guard — limits exposure per transaction
+    const orderPrice = parseFloat(amount);
+    if (!isNaN(orderPrice) && orderPrice > MAX_ORDER_USD) {
+      setError(`Maximum order value is $${MAX_ORDER_USD.toLocaleString()} per transaction. Please reduce the amount or split into multiple orders.`);
       return;
     }
 

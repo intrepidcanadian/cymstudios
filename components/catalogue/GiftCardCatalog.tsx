@@ -16,6 +16,91 @@ import SendUsdcModal from './SendUsdcModal';
 import SendEthModal from './SendEthModal';
 import OrderHistoryList from './OrderHistoryList';
 
+/** M27: Simple fuzzy matching — suggests brand names similar to a mistyped search query */
+function suggestBrands(query: string, brandNames: string[], maxSuggestions = 3): string[] {
+  if (!query || query.length < 2) return [];
+  const q = query.toLowerCase();
+  // Score each brand by how well it matches the query
+  const scored = brandNames.map(name => {
+    const n = name.toLowerCase();
+    // Exact substring match — highest priority
+    if (n.includes(q)) return { name, score: 0 };
+    // Check if query is a subsequence
+    let qi = 0;
+    for (let ni = 0; ni < n.length && qi < q.length; ni++) {
+      if (n[ni] === q[qi]) qi++;
+    }
+    if (qi === q.length) return { name, score: 1 };
+    // Simple edit distance for short queries (≤8 chars) — allow up to 2 edits
+    if (q.length <= 8) {
+      const maxLen = Math.max(q.length, n.length);
+      let dist = 0;
+      for (let i = 0; i < Math.min(q.length, n.length); i++) {
+        if (q[i] !== n[i]) dist++;
+      }
+      dist += Math.abs(q.length - n.length);
+      if (dist <= 2) return { name, score: 2 + dist };
+      // Also check against first word of brand name
+      const firstWord = n.split(/[\s-]/)[0];
+      let fDist = 0;
+      for (let i = 0; i < Math.min(q.length, firstWord.length); i++) {
+        if (q[i] !== firstWord[i]) fDist++;
+      }
+      fDist += Math.abs(q.length - firstWord.length);
+      if (fDist <= 2) return { name, score: 2 + fDist };
+    }
+    return { name, score: Infinity };
+  });
+  return scored
+    .filter(s => s.score < Infinity)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, maxSuggestions)
+    .map(s => s.name);
+}
+
+/** M27: Empty search state with fuzzy brand suggestions */
+function EmptySearchState({
+  searchQuery,
+  allBrandNames,
+  onSelectSuggestion,
+  onClearFilters,
+}: {
+  searchQuery: string;
+  allBrandNames: string[];
+  onSelectSuggestion: (name: string) => void;
+  onClearFilters: () => void;
+}) {
+  const suggestions = searchQuery ? suggestBrands(searchQuery, allBrandNames) : [];
+  return (
+    <div className="text-center py-20">
+      <h3 className="text-xl font-bold text-slate-100 mb-2">No products found</h3>
+      <p className="text-slate-400 mb-4">Try adjusting your filters or search query</p>
+      {suggestions.length > 0 && (
+        <div className="mb-6">
+          <p className="text-sm text-slate-400 mb-2">Did you mean:</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {suggestions.map(name => (
+              <button
+                key={name}
+                onClick={() => onSelectSuggestion(name)}
+                className="px-3 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-sm text-indigo-300 hover:bg-indigo-800/50 hover:text-indigo-200 transition-colors"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <button
+        onClick={onClearFilters}
+        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+      >
+        Clear All Filters
+      </button>
+    </div>
+  );
+}
+
 /** Memoized product card — avoids re-render when filter/sort changes but this card's data hasn't */
 const ProductCard = memo(function ProductCard({
   product,
@@ -1170,22 +1255,18 @@ export default function GiftCardCatalog() {
                   </button>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="text-center py-20">
-                  <h3 className="text-xl font-bold text-slate-100 mb-2">No products found</h3>
-                  <p className="text-slate-400 mb-6">Try adjusting your filters or search query</p>
-                  <button
-                    onClick={() => {
-                      setSelectedBrandFilters([]);
-                      setCountryFilter('all');
-                      setCurrencyFilter('all');
-                      setSearchQuery('');
-                      setSearchInput('');
-                    }}
-                    className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
+                <EmptySearchState
+                  searchQuery={searchQuery}
+                  allBrandNames={allUniqueBrands}
+                  onSelectSuggestion={(name) => { setSearchQuery(name); setSearchInput(name); }}
+                  onClearFilters={() => {
+                    setSelectedBrandFilters([]);
+                    setCountryFilter('all');
+                    setCurrencyFilter('all');
+                    setSearchQuery('');
+                    setSearchInput('');
+                  }}
+                />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                   {filteredProducts.map((product) => (

@@ -74,6 +74,6 @@ export const RATE_LIMITS = {
   orders: { limit: 30, windowSeconds: 60 },
   /** Read-only catalogue: 60 requests per minute per IP */
   catalogue: { limit: 60, windowSeconds: 60 },
-  /** Exchange rate: 60 requests per minute per IP */
-  exchangeRate: { limit: 60, windowSeconds: 60 },
+  /** Exchange rate: 20 requests per minute per IP (tighter to protect external FX API quota — 100 calls/month) */
+  exchangeRate: { limit: 20, windowSeconds: 60 },
 } as const;

@@ -164,6 +164,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // M31: Maximum order value ceiling — limits exposure per transaction (merchant protection)
+    const MAX_ORDER_VALUE_USD = 5000;
+    if (typeof price === 'number' && price > MAX_ORDER_VALUE_USD) {
+      logger.warn(`[Purchase] Order value ${price} ${currency || 'USD'} exceeds maximum ${MAX_ORDER_VALUE_USD}`);
+      return NextResponse.json(
+        { success: false, error: `Maximum order value is $${MAX_ORDER_VALUE_USD} USD per transaction. Please reduce the amount or split into multiple orders.` },
+        { status: 400 }
+      );
+    }
+
     // CRITICAL: Validate purchase will succeed BEFORE processing payment
     // This prevents charging users for failed purchases
 
