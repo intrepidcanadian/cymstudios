@@ -17,6 +17,7 @@ interface PurchaseModalProps {
   walletProvider: any;
   onRefreshBalance?: () => void;
   initialAmount?: string;
+  facilitatorHealthy?: boolean;
 }
 
 interface UserProfile {
@@ -59,6 +60,7 @@ export default function PurchaseModal({
   walletProvider,
   onRefreshBalance,
   initialAmount,
+  facilitatorHealthy = true,
 }: PurchaseModalProps) {
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -761,6 +763,18 @@ export default function PurchaseModal({
                 <div className="flex items-start gap-2">
                   <span className="text-orange-400 mt-0.5 flex-shrink-0">⚠</span>
                   <p className="text-xs text-orange-400/90">{duplicateWarning}</p>
+                </div>
+              </div>
+            )}
+
+            {!facilitatorHealthy && (
+              <div className="bg-amber-500/15 border border-amber-500/30 text-amber-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>
+                  <p className="text-xs text-amber-400/90">
+                    Settlement on {networkConfig?.name} may be delayed due to low facilitator gas.
+                    Your payment is still safe — consider switching to another network for faster processing.
+                  </p>
                 </div>
               </div>
             )}

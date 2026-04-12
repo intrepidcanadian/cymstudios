@@ -218,6 +218,28 @@ export default function GiftCardCatalog() {
   const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
   const [hasNewOrders, setHasNewOrders] = useState(false);
 
+  // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
+  const [facilitatorHealth, setFacilitatorHealth] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const resp = await fetch('/api/facilitator-health');
+        const data = await resp.json();
+        if (data.networks) {
+          const health: Record<string, boolean> = {};
+          for (const [key, val] of Object.entries(data.networks) as [string, { healthy: boolean }][]) {
+            health[key] = val.healthy;
+          }
+          setFacilitatorHealth(health);
+        }
+      } catch { /* silent — don't block UI */ }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 120_000); // re-check every 2 min
+    return () => clearInterval(interval);
+  }, []);
+  const selectedNetworkHealthy = facilitatorHealth[selectedNetwork] !== false;
+
   // Persist filter selections to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1144,9 +1166,9 @@ export default function GiftCardCatalog() {
                           if (purchaseInitialAmount) setShowPurchaseModal(true);
                         }}
                         disabled={!purchaseInitialAmount}
-                        className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm"
+                        className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
                       >
-                        Buy Now
+                        Buy with {NETWORKS[selectedNetwork]?.tokenSymbol}
                       </button>
                     </div>
                     <div className="flex items-center gap-3 my-2">
@@ -1165,6 +1187,10 @@ export default function GiftCardCatalog() {
                   className="w-full px-6 py-3 min-h-[48px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg transition-colors"
                 >
                   Redeem with Tokens
+                  <span className="block text-xs font-normal opacity-80 mt-0.5">
+                    Pay with {NETWORKS[selectedNetwork]?.tokenSymbol} on {NETWORKS[selectedNetwork]?.name}
+                    {!selectedNetworkHealthy && ' (delayed)'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1183,6 +1209,7 @@ export default function GiftCardCatalog() {
             walletProvider={walletProvider}
             onRefreshBalance={refetchBalance}
             initialAmount={purchaseInitialAmount}
+            facilitatorHealthy={selectedNetworkHealthy}
             onClose={() => {
               setShowPurchaseModal(false);
               setPurchaseInitialAmount('');
@@ -1255,10 +1282,18 @@ export default function GiftCardCatalog() {
                 <Send className="w-3 h-3" />
                 <span className="hidden sm:inline">Send {tokenSymbol}</span>
               </button>
+              {/* M11: Facilitator gas warning */}
+              {!selectedNetworkHealthy && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-lg flex-shrink-0" title="Settlement may be delayed on this network — facilitator gas is low">
+                  <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                  <span className="text-[10px] text-amber-300 font-medium whitespace-nowrap">Gas low</span>
+                </div>
+              )}
               {/* Compact network switcher — visible on all screen sizes */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 {Object.entries(NETWORKS).map(([key, net]) => {
                   const shortLabel = key === 'ethereum' ? 'ETH' : key === 'base' ? 'Base' : 'CFX';
+                  const networkHealthy = facilitatorHealth[key] !== false;
                   return (
                     <button
                       key={key}
@@ -1267,15 +1302,16 @@ export default function GiftCardCatalog() {
                         if (typeof window !== 'undefined') localStorage.setItem('preferredNetwork', key);
                       }}
                       disabled={showPurchaseModal}
-                      className={`px-2 py-2 sm:py-1 min-w-[44px] min-h-[44px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
+                      className={`relative px-2 py-2 sm:py-1 min-w-[44px] min-h-[44px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
                         selectedNetwork === key
                           ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
                           : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-600'
                       } disabled:opacity-40 disabled:cursor-not-allowed`}
-                      title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
-                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
+                      title={showPurchaseModal ? 'Network locked during checkout' : !networkHealthy ? `${net.name} — settlement may be delayed (low gas)` : `Switch to ${net.name}`}
+                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})${!networkHealthy ? ' — low gas warning' : ''}`}
                     >
                       <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
+                      {!networkHealthy && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full" />}
                     </button>
                   );
                 })}
