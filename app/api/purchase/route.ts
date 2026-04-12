@@ -156,6 +156,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Minimum order value guard — orders below $1 USD cost more in facilitator gas than they generate
+    if (typeof price === 'number' && price > 0 && price < 1 && (!currency || currency === 'USD')) {
+      return NextResponse.json(
+        { success: false, error: 'Minimum order value is $1 USD. Smaller orders are not economically viable due to settlement costs.' },
+        { status: 400 }
+      );
+    }
+
     // CRITICAL: Validate purchase will succeed BEFORE processing payment
     // This prevents charging users for failed purchases
 

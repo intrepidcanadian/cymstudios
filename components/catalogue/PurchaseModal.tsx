@@ -102,6 +102,12 @@ export default function PurchaseModal({
   const [rpcFailedNetwork, setRpcFailedNetwork] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string>('');
   const [chainSwitching, setChainSwitching] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('termsAccepted') === 'true';
+    }
+    return false;
+  });
 
   // Clear duplicate warning when amount changes (user editing invalidates the old warning)
   useEffect(() => { setDuplicateWarning(null); }, [amount]);
@@ -265,6 +271,7 @@ export default function PurchaseModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
   const PURCHASE_COOLDOWN_MS = 10_000; // 10 second cooldown between attempts
+  const MIN_ORDER_USD = 1; // Minimum order value — orders below this cost more in facilitator gas than they generate
   const networkConfig = NETWORKS[selectedNetwork];
   const walletReady = isConnected && !!walletProvider;
 
@@ -438,6 +445,12 @@ export default function PurchaseModal({
         setError(`Maximum amount is ${product.currency} ${max}`);
         return;
       }
+    }
+
+    // Minimum order value guard — small orders cost more in facilitator gas than they generate
+    if (usdcAmount && parseFloat(usdcAmount) < MIN_ORDER_USD) {
+      setError(`Minimum order is $${MIN_ORDER_USD} USD equivalent. Your current total is $${usdcAmount}.`);
+      return;
     }
 
     if (!email || !email.includes('@')) {
@@ -875,6 +888,32 @@ export default function PurchaseModal({
               </div>
             )}
 
+            {/* Smart network suggestion — Ethereum gas costs are high, suggest cheaper networks for small orders */}
+            {selectedNetwork === 'ethereum' && usdcAmount && parseFloat(usdcAmount) < 50 && facilitatorHealthy && (
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-400 mt-0.5 flex-shrink-0">i</span>
+                  <div>
+                    <p className="text-xs text-blue-400/90 mb-2">
+                      For orders under $50, Base or Conflux eSpace offer faster settlement at lower cost.
+                    </p>
+                    <div className="flex gap-2">
+                      {Object.entries(NETWORKS).filter(([k]) => k !== 'ethereum').map(([key, net]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { onNetworkChange(key); }}
+                          className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 text-xs font-semibold rounded-lg transition-colors border border-blue-500/30"
+                        >
+                          Switch to {net.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quote freshness indicator on confirm step */}
             {product.currency !== 'USD' && quoteCountdown !== null && !quoteStale && quoteCountdown <= 30 && (
               <div className="bg-slate-700/50 border border-slate-600 text-slate-300 px-4 py-2 rounded-xl text-xs backdrop-blur-sm flex items-center justify-between">
@@ -916,10 +955,30 @@ export default function PurchaseModal({
               </div>
             )}
 
+            {/* First-purchase terms acknowledgment — only shown until user accepts once */}
+            {!termsAccepted && (
+              <label className="flex items-start gap-2.5 cursor-pointer p-3 bg-slate-700/30 rounded-xl border border-slate-600 hover:border-slate-500 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked);
+                    if (e.target.checked && typeof window !== 'undefined') {
+                      localStorage.setItem('termsAccepted', 'true');
+                    }
+                  }}
+                  className="w-4 h-4 mt-0.5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700 flex-shrink-0"
+                />
+                <span className="text-xs text-slate-300 leading-relaxed">
+                  I understand that gift card purchases are <strong className="text-slate-200">final and non-refundable</strong> once the voucher has been issued. The voucher will be delivered to the email address provided.
+                </span>
+              </label>
+            )}
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleConfirmPurchase}
-                disabled={loading || chainSwitching}
+                disabled={loading || chainSwitching || !termsAccepted}
                 className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 {chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
@@ -934,12 +993,17 @@ export default function PurchaseModal({
               </button>
             </div>
 
-            <p className="text-xs text-slate-400/80 text-center">
-              {networkConfig?.paymentStrategy === 'eip3009'
-                ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
-                : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
-              }
-            </p>
+            <div className="text-xs text-slate-400/80 text-center space-y-1">
+              <p>
+                {networkConfig?.paymentStrategy === 'eip3009'
+                  ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
+                  : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
+                }
+              </p>
+              <p className="text-slate-500">
+                Vouchers are typically delivered to your email within 2–5 minutes after payment confirms.
+              </p>
+            </div>
           </div>
         )}
 
@@ -1356,7 +1420,8 @@ export default function PurchaseModal({
                !amount ? 'Select an amount' :
                amountValidation ? amountValidation :
                !email ? 'Enter your email address' :
-               insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` : ''}
+               insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` :
+               (usdcAmount && parseFloat(usdcAmount) < MIN_ORDER_USD) ? `Minimum order is $${MIN_ORDER_USD} USD` : ''}
             </p>
           )}
 
