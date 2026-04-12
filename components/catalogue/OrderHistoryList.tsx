@@ -344,7 +344,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
               <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
                 <OrderImage image={order.product_image} name={order.brand_name} />
                 {/* Order type badge */}
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-slate-700" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-slate-700 bg-slate-800" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
                   {order.brand_name.toLowerCase().includes('mastercard') ? (
                     <CreditCard className="w-2.5 h-2.5 text-orange-400" />
                   ) : (

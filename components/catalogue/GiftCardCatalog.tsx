@@ -227,6 +227,7 @@ function DetailImage({ src, alt }: { src: string; alt: string }) {
     <img
       src={src}
       alt={alt}
+      loading="lazy"
       className="w-full h-48 sm:h-64 object-contain bg-white rounded-lg mb-4 sm:mb-6"
       onError={() => setError(true)}
     />
@@ -450,6 +451,8 @@ export default function GiftCardCatalog() {
     if (!selectedProduct || showPurchaseModal) return;
     const el = productDetailRef.current;
     if (!el) return;
+    // Scroll modal content to top when product changes
+    el.scrollTop = 0;
     const first = el.querySelector<HTMLElement>('button, input, [tabindex]');
     first?.focus();
     const handler = (e: KeyboardEvent) => {
@@ -670,7 +673,7 @@ export default function GiftCardCatalog() {
             aria-label="Search gift card brands"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+            className="w-full pl-11 pr-9 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
           />
           {searchInput && searchInput !== searchQuery ? (
             <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-slate-500 border-t-indigo-400 rounded-full animate-spin" />
@@ -678,6 +681,16 @@ export default function GiftCardCatalog() {
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
+          )}
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => { handleSearchChange(''); setSearchQuery(''); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-200 transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -906,6 +919,7 @@ export default function GiftCardCatalog() {
                   <button
                     onClick={() => setShowMobileFilters(false)}
                     className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                    aria-label="Close filters"
                   >
                     <X className="w-5 h-5 text-slate-300" />
                   </button>
