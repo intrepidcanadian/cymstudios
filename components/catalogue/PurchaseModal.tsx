@@ -777,7 +777,7 @@ export default function PurchaseModal({
               </button>
               <button
                 type="button"
-                onClick={() => { setStep('form'); setOtpError(null); setOtpCode(''); }}
+                onClick={() => { setStep('form'); setOtpError(null); setOtpCode(''); setConfirmEmail(''); }}
                 disabled={otpVerifying}
                 className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
               >
@@ -1009,7 +1009,7 @@ export default function PurchaseModal({
               </button>
               <button
                 type="button"
-                onClick={() => { setStep('form'); setError(null); }}
+                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); }}
                 disabled={loading}
                 className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
               >
@@ -1398,8 +1398,10 @@ export default function PurchaseModal({
                 onClick={() => {
                   const suggested = suggestEmailDomain(email)!;
                   setEmail(email.slice(0, email.lastIndexOf('@') + 1) + suggested);
+                  setConfirmEmail('');
                 }}
                 className="mt-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
+                aria-label={`Fix email domain to ${suggestEmailDomain(email)}`}
               >
                 Did you mean <strong>{email.slice(0, email.lastIndexOf('@') + 1)}{suggestEmailDomain(email)}</strong>?
               </button>

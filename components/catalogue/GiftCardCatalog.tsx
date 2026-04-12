@@ -158,7 +158,7 @@ const ProductCard = memo(function ProductCard({
 
       {/* Product Info */}
       <div className="p-2.5 sm:p-4 border-t border-slate-700">
-        <div className="mb-2 sm:mb-3">
+        <div className="mb-2 sm:mb-3 cursor-pointer" onClick={() => onSelect(product)}>
           <h3 className="font-bold text-slate-100 text-xs sm:text-base mb-0.5 sm:mb-1.5 leading-tight line-clamp-2">
             {product.brand_name}
           </h3>
@@ -201,7 +201,7 @@ const ProductCard = memo(function ProductCard({
         ) : null}
 
         {/* Country & Currency */}
-        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
+        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700 cursor-pointer" onClick={() => onSelect(product)}>
           <span className="font-medium truncate">{product.currency} · {product.country_name}</span>
         </div>
 
