@@ -560,6 +560,16 @@ export default function PurchaseModal({
       }
 
       if (!data.success) {
+        // M14: Rate changed — go back to form to force fresh quote
+        if (data.code === 'RATE_CHANGED') {
+          setError(data.error || 'Exchange rate changed significantly. Please review the updated quote.');
+          setQuoteStale(true);
+          setHasFailedOnce(true);
+          setStep('form');
+          setLoading(false);
+          submittingRef.current = false;
+          return;
+        }
         throw new Error(data.error || 'Redemption failed');
       }
 
@@ -740,7 +750,9 @@ export default function PurchaseModal({
               </div>
               <div className="flex justify-between text-sm pt-2 border-t border-slate-600">
                 <span className="text-slate-400">You Pay</span>
-                <span className="text-indigo-300 font-bold">{usdcAmount} {networkConfig?.tokenSymbol}</span>
+                <span className="text-indigo-300 font-bold">
+                  {usdcAmount ? parseFloat(usdcAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : usdcAmount} {networkConfig?.tokenSymbol}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Network</span>

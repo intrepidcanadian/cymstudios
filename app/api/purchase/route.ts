@@ -410,6 +410,23 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+
+        // M14: Overpayment protection — EIP-3009 transfers the full signed value on-chain.
+        // If the exchange rate moved favorably between quote (24h cache) and settlement (fresh),
+        // the user would overpay. Reject if overpayment exceeds 5% to protect users.
+        const overpaymentRatio = Number(BigInt(value) - BigInt(settlementAmount)) / Number(BigInt(settlementAmount));
+        if (overpaymentRatio > 0.05) {
+          logger.warn(`[x402] Overpayment rejected: signed=${value}, settlement=${settlementAmount}, overpay=${(overpaymentRatio * 100).toFixed(1)}%`);
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'The exchange rate has changed significantly since your quote. Please go back and retry to get a fresh quote — this protects you from overpaying.',
+              code: 'RATE_CHANGED',
+            },
+            { status: 400 }
+          );
+        }
+
         if (to.toLowerCase() !== FACILITATOR_ADDRESS.toLowerCase()) {
           return NextResponse.json(
             { success: false, error: 'Invalid payment recipient' },

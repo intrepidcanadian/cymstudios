@@ -121,7 +121,7 @@ const ProductCard = memo(function ProductCard({
         {/* Country & Currency */}
         <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700">
           <span className="font-medium truncate">{product.currency}</span>
-          <span className="hidden sm:inline font-medium truncate">* {product.country_name}</span>
+          <span className="font-medium truncate">* {product.country_name}</span>
         </div>
 
         {/* View Button */}
