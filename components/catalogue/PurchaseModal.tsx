@@ -86,6 +86,7 @@ export default function PurchaseModal({
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [rpcFailedNetwork, setRpcFailedNetwork] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string>('');
+  const [chainSwitching, setChainSwitching] = useState(false);
 
   // Clear duplicate warning when amount changes (user editing invalidates the old warning)
   useEffect(() => { setDuplicateWarning(null); }, [amount]);
@@ -264,12 +265,17 @@ export default function PurchaseModal({
     if (userProfile.lastName) setLastName(userProfile.lastName);
   }, [userProfile]);
 
-  // Switch chain when network changes
+  // Switch chain when network changes (await to prevent race condition)
   useEffect(() => {
     if (!walletReady || !networkConfig) return;
     const targetChainId = networkConfig.chainId;
     if (chainId !== targetChainId) {
-      switchChain({ chainId: targetChainId });
+      setChainSwitching(true);
+      switchChain({ chainId: targetChainId }, {
+        onSettled: () => setChainSwitching(false),
+      });
+    } else {
+      setChainSwitching(false);
     }
   }, [selectedNetwork, walletReady, chainId, networkConfig, switchChain]);
 
@@ -820,10 +826,10 @@ export default function PurchaseModal({
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleConfirmPurchase}
-                disabled={loading}
+                disabled={loading || chainSwitching}
                 className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
               >
-                {loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
+                {chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
               </button>
               <button
                 type="button"
@@ -1249,9 +1255,10 @@ export default function PurchaseModal({
 
           {/* Actions */}
           {/* Disabled reason hint */}
-          {(!walletReady || !email || !amount || !!insufficientBalance) && (
+          {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance) && (
             <p className="text-xs text-slate-500 pt-1">
               {!walletReady ? 'Connect your wallet to continue' :
+               chainSwitching ? 'Switching network...' :
                !amount ? 'Select an amount' :
                !email ? 'Enter your email address' :
                insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` : ''}
@@ -1261,7 +1268,7 @@ export default function PurchaseModal({
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={!email || !amount || !walletReady || !!insufficientBalance}
+              disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance}
               className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               Review & Redeem

@@ -165,7 +165,19 @@ export default function GiftCardCatalog() {
   const { disconnect } = useDisconnect();
   const { open } = useAppKit();
   const { data: walletClient } = useWalletClient();
-  const walletReady = accountStatus !== 'reconnecting';
+  const [walletTimedOut, setWalletTimedOut] = useState(false);
+  const walletReady = accountStatus !== 'reconnecting' || walletTimedOut;
+
+  // M17: Timeout wallet initialization after 15 seconds
+  useEffect(() => {
+    if (accountStatus !== 'reconnecting') {
+      setWalletTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setWalletTimedOut(true), 15000);
+    return () => clearTimeout(timer);
+  }, [accountStatus]);
+
   const [selectedNetwork, setSelectedNetwork] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('preferredNetwork');
@@ -696,13 +708,18 @@ export default function GiftCardCatalog() {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => open()}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    <Wallet className="w-4 h-4" />
-                    Connect Wallet
-                  </button>
+                  <div className="space-y-2">
+                    {walletTimedOut && (
+                      <p className="text-xs text-amber-400">Wallet connection timed out — try reconnecting.</p>
+                    )}
+                    <button
+                      onClick={() => open()}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      {walletTimedOut ? 'Reconnect Wallet' : 'Connect Wallet'}
+                    </button>
+                  </div>
                 )}
               </div>
 
