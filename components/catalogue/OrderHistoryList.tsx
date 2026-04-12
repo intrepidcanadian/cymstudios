@@ -3,6 +3,21 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Package, AlertCircle, RefreshCw, ArrowUpDown, CreditCard, Gift } from 'lucide-react';
 
+/** Order image with React-based fallback instead of hiding via style.display */
+function OrderImage({ image, name }: { image?: string; name: string }) {
+  const [error, setError] = useState(false);
+  if (!image || error) return <Package className="w-6 h-6 text-slate-400" />;
+  return (
+    <img
+      src={image}
+      alt={name}
+      loading="lazy"
+      className="w-full h-full object-contain p-1"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 interface OrderSummary {
   order_id: string;
   brand_name: string;
@@ -26,7 +41,7 @@ interface OrderHistoryListProps {
   onViewOrder: (orderId: string, orderToken: string, userEmail: string) => void;
 }
 
-type StatusFilter = 'all' | 'failed' | 'processing' | 'completed';
+type StatusFilter = 'all' | 'failed' | 'processing' | 'completed' | 'pending_review';
 type SortBy = 'date' | 'status';
 
 const STATUS_ORDER: Record<string, number> = { failed: 0, pending_review: 1, processing: 2, completed: 3, pending: 4 };
@@ -232,12 +247,14 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
       {/* Filter & Sort Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
-          {(['all', 'failed', 'processing', 'completed'] as StatusFilter[]).map((f) => {
+          {(['all', 'failed', 'pending_review', 'processing', 'completed'] as StatusFilter[]).map((f) => {
             const count = f === 'all' ? orders.length : orders.filter((o) => o.status === f).length;
+            if (f !== 'all' && count === 0) return null; // hide empty filter tabs
             const active = statusFilter === f;
             const colors: Record<StatusFilter, string> = {
               all: active ? 'bg-slate-600 text-slate-100' : 'text-slate-400 hover:text-slate-200',
               failed: active ? 'bg-red-900/60 text-red-300 border-red-700/50' : 'text-slate-400 hover:text-red-300',
+              pending_review: active ? 'bg-orange-900/60 text-orange-300 border-orange-700/50' : 'text-slate-400 hover:text-orange-300',
               processing: active ? 'bg-blue-900/60 text-blue-300 border-blue-700/50' : 'text-slate-400 hover:text-blue-300',
               completed: active ? 'bg-green-900/60 text-green-300 border-green-700/50' : 'text-slate-400 hover:text-green-300',
             };
@@ -247,7 +264,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                 onClick={() => setStatusFilter(f)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border border-transparent transition-colors ${colors[f]}`}
               >
-                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+                {f === 'all' ? 'All' : f === 'pending_review' ? 'Under Review' : f.charAt(0).toUpperCase() + f.slice(1)} ({count})
               </button>
             );
           })}
@@ -297,17 +314,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
             <div className="flex items-start gap-3">
               {/* Product Image */}
               <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
-                {order.product_image ? (
-                  <img
-                    src={order.product_image}
-                    alt={order.brand_name}
-                    loading="lazy"
-                    className="w-full h-full object-contain p-1"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <Package className="w-6 h-6 text-slate-400" />
-                )}
+                <OrderImage image={order.product_image} name={order.brand_name} />
                 {/* Order type badge */}
                 <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-slate-700" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
                   {order.brand_name.toLowerCase().includes('mastercard') ? (

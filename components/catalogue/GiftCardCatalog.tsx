@@ -28,6 +28,8 @@ const ProductCard = memo(function ProductCard({
   onToggleLike: (id: string) => void;
   onSelect: (product: BrandProduct) => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div
       className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
@@ -54,16 +56,16 @@ const ProductCard = memo(function ProductCard({
 
       {/* Product Image */}
       <div className="relative h-32 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => onSelect(product)}>
-        {product.product_image ? (
+        {product.product_image && !imgError ? (
           <img
             src={product.product_image}
             alt={product.brand_name}
             loading="lazy"
             className="w-full h-full object-contain p-3 sm:p-6 group-hover:scale-110 transition-transform duration-500"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-700"><span class="text-4xl sm:text-7xl text-slate-400">Reward</span></div>'; }}
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-700">
+          <div className="w-full h-full flex items-center justify-center bg-slate-700" role="img" aria-label={product.brand_name}>
             <span className="text-4xl sm:text-7xl text-slate-400">Reward</span>
           </div>
         )}
@@ -134,6 +136,29 @@ const ProductCard = memo(function ProductCard({
     </div>
   );
 });
+
+/** Mastercard image with React-based fallback (no innerHTML injection) */
+function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelect: () => void }) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <div className="relative h-40 sm:h-56 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden cursor-pointer flex items-center justify-center group" onClick={onSelect}>
+      {product.product_image && !imgError ? (
+        <img
+          src={product.product_image}
+          alt={product.brand_name}
+          loading="lazy"
+          className="w-full h-full object-contain p-4 sm:p-6 group-hover:scale-105 transition-transform duration-500"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-3" role="img" aria-label={product.brand_name}>
+          <CreditCard className="w-16 h-16 text-orange-400" />
+          <span className="text-lg font-bold text-slate-300">Mastercard Prepaid</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function GiftCardCatalog() {
   const { address, isConnected, status: accountStatus } = useAccount();
@@ -735,10 +760,10 @@ export default function GiftCardCatalog() {
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-1 mb-4 sm:mb-6 border-b border-slate-700">
+              <div className="flex items-center gap-1 mb-4 sm:mb-6 border-b border-slate-700 overflow-x-auto scrollbar-none -mx-4 sm:mx-0 px-4 sm:px-0">
                 <button
                   onClick={() => setActiveTab('giftcards')}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === 'giftcards'
                       ? 'border-indigo-500 text-indigo-400'
                       : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -748,27 +773,27 @@ export default function GiftCardCatalog() {
                 </button>
                 <button
                   onClick={() => setActiveTab('mastercards')}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                     activeTab === 'mastercards'
                       ? 'border-indigo-500 text-indigo-400'
                       : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-4 h-4 flex-shrink-0" />
                   Prepaid Mastercards
                 </button>
                 <button
                   onClick={() => { setActiveTab('orders'); setHasNewOrders(false); }}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                     activeTab === 'orders'
                       ? 'border-indigo-500 text-indigo-400'
                       : 'border-transparent text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-4 h-4 flex-shrink-0" />
                   My Orders
                   {hasNewOrders && activeTab !== 'orders' && (
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
                   )}
                 </button>
               </div>
@@ -936,22 +961,7 @@ export default function GiftCardCatalog() {
                         className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
                       >
                         {/* Product Image */}
-                        <div className="relative h-40 sm:h-56 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden cursor-pointer flex items-center justify-center" onClick={() => setSelectedProduct(product)}>
-                          {product.product_image ? (
-                            <img
-                              src={product.product_image}
-                              alt={product.brand_name}
-                              loading="lazy"
-                              className="w-full h-full object-contain p-4 sm:p-6 group-hover:scale-105 transition-transform duration-500"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="flex flex-col items-center justify-center gap-3 w-full h-full"><svg class="w-16 h-16 text-orange-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg><span class="text-lg font-bold text-slate-300">Mastercard Prepaid</span></div>'; }}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center gap-3">
-                              <CreditCard className="w-16 h-16 text-orange-400" />
-                              <span className="text-lg font-bold text-slate-300">Mastercard Prepaid</span>
-                            </div>
-                          )}
-                        </div>
+                        <MastercardImage product={product} onSelect={() => setSelectedProduct(product)} />
 
                         {/* Product Info */}
                         <div className="p-4 border-t border-slate-700">

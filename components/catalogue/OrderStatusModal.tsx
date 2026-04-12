@@ -297,6 +297,24 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   </span>
                 </div>
 
+                {/* Token payment amount */}
+                {order.payment_value && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Tokens Paid:</span>
+                    <span className="text-indigo-300 font-medium">
+                      {(parseFloat(order.payment_value) / 1e6).toFixed(2)}{' '}
+                      {order.payment_network === 'conflux' ? 'USDT0' : 'USDC'}
+                    </span>
+                  </div>
+                )}
+                {order.payment_network && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Network:</span>
+                    <span className="text-slate-200">
+                      {order.payment_network === 'ethereum' ? 'Ethereum' : order.payment_network === 'base' ? 'Base' : order.payment_network === 'conflux' ? 'Conflux eSpace' : order.payment_network}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Email:</span>
                   <span className="text-slate-200">{order.user_email}</span>
@@ -305,6 +323,12 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   <span className="text-slate-400">Ordered:</span>
                   <span className="text-slate-200">{new Date(order.created_at).toLocaleString()}</span>
                 </div>
+                {order.completed_at && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Completed:</span>
+                    <span className="text-slate-200">{new Date(order.completed_at).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
 
               {/* Transaction Link */}
