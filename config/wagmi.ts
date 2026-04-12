@@ -1,5 +1,5 @@
 import { http, createConfig } from 'wagmi';
-import { mainnet, base } from 'wagmi/chains';
+import { mainnet } from 'wagmi/chains';
 import { defineChain } from 'viem';
 
 /**
@@ -20,7 +20,7 @@ export const confluxESpace = defineChain({
 /**
  * All supported chains
  */
-export const supportedChains = [mainnet, base, confluxESpace] as const;
+export const supportedChains = [mainnet, confluxESpace] as const;
 
 /**
  * Wagmi configuration
@@ -31,7 +31,6 @@ export const wagmiConfig = createConfig({
   chains: supportedChains,
   transports: {
     [mainnet.id]: http(process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL || 'https://eth.llamarpc.com'),
-    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
     [confluxESpace.id]: http(process.env.NEXT_PUBLIC_CONFLUX_RPC_URL || 'https://evm.confluxrpc.com'),
   },
   ssr: true,

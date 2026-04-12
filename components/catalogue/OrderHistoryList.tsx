@@ -370,7 +370,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                   <span>{formatDate(order.created_at)}</span>
                   {order.payment_network && (
                     <span className="px-1.5 py-0.5 bg-slate-700/50 rounded text-[10px] text-slate-400 uppercase tracking-wider">
-                      {order.payment_network === 'conflux' ? 'CFX' : order.payment_network === 'base' ? 'Base' : 'ETH'}
+                      {order.payment_network === 'conflux' ? 'CFX' : 'ETH'}
                     </span>
                   )}
                 </div>

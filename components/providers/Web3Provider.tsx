@@ -5,14 +5,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { mainnet, base } from '@reown/appkit/networks';
+import { mainnet } from '@reown/appkit/networks';
 import { confluxESpace, supportedChains } from '@/config/wagmi';
 
 // WalletConnect project ID from Reown Cloud
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
 
 // Reown AppKit networks (must match wagmi chains)
-const appKitNetworks = [mainnet, base, {
+const appKitNetworks = [mainnet, {
   id: 1030,
   name: 'Conflux eSpace',
   nativeCurrency: { name: 'CFX', symbol: 'CFX', decimals: 18 },

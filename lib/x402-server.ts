@@ -2,7 +2,7 @@
  * x402 Server-Side Payment Verification and Settlement
  *
  * Supports two settlement strategies:
- * - eip3009: transferWithAuthorization (USDC on Ethereum/Base, USDT0 on Conflux eSpace)
+ * - eip3009: transferWithAuthorization (USDC on Ethereum, USDT0 on Conflux eSpace)
  * - direct:  transferFrom after user approval (tokens without EIP-3009)
  */
 

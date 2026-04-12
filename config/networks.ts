@@ -5,7 +5,7 @@
  * and payment strategy for x402 payments.
  *
  * Payment strategies:
- * - 'eip3009': Gasless via transferWithAuthorization (USDC on Ethereum/Base, USDT0 on Conflux eSpace)
+ * - 'eip3009': Gasless via transferWithAuthorization (USDC on Ethereum, USDT0 on Conflux eSpace)
  * - 'direct':  Standard approve + transferFrom (tokens without EIP-3009 support)
  */
 
@@ -56,22 +56,6 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     rpcUrl: process.env.ETHEREUM_MAINNET_RPC_URL || 'https://eth.llamarpc.com',
     publicRpcUrl: process.env.NEXT_PUBLIC_ETHEREUM_RPC_URL || 'https://eth.llamarpc.com',
     explorerUrl: 'https://etherscan.io',
-    nativeSymbol: 'ETH',
-    paymentStrategy: 'eip3009',
-  },
-  base: {
-    name: 'Base',
-    chainId: 8453,
-    caip2: 'eip155:8453',
-    tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    tokenSymbol: 'USDC',
-    tokenDecimals: 6,
-    eip712Name: 'USD Coin',
-    eip712Version: '2',
-    x402Network: 'base',
-    rpcUrl: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
-    publicRpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org',
-    explorerUrl: 'https://basescan.org',
     nativeSymbol: 'ETH',
     paymentStrategy: 'eip3009',
   },

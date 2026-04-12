@@ -903,7 +903,7 @@ export default function PurchaseModal({
                   <span className="text-blue-400 mt-0.5 flex-shrink-0">i</span>
                   <div>
                     <p className="text-xs text-blue-400/90 mb-2">
-                      For orders under $50, Base or Conflux eSpace offer faster settlement at lower cost.
+                      For orders under $50, Conflux eSpace offers faster settlement at lower cost.
                     </p>
                     <div className="flex gap-2">
                       {Object.entries(NETWORKS).filter(([k]) => k !== 'ethereum').map(([key, net]) => (
@@ -1159,9 +1159,6 @@ export default function PurchaseModal({
                     {key === 'ethereum' && (
                       <svg className="w-4 h-4" viewBox="0 0 320 512" fill="currentColor"><path d="M311.9 260.8L160 353.6 8 260.8 160 0l151.9 260.8zM160 383.4L8 290.6 160 512l152-221.4-152 92.8z"/></svg>
                     )}
-                    {key === 'base' && (
-                      <svg className="w-4 h-4" viewBox="0 0 111 111" fill="currentColor"><path d="M54.921 110.034c30.355 0 54.951-24.596 54.951-54.951C109.872 24.728 85.276.132 54.921.132 26.012.132 2.085 22.527.133 50.713h73.074v8.674H.134c1.952 28.186 25.879 50.647 54.787 50.647z"/></svg>
-                    )}
                     {key === 'conflux' && (
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M8 8h8l-4 8z"/></svg>
                     )}
@@ -1192,7 +1189,6 @@ export default function PurchaseModal({
                   ? '. You\u2019ll approve a token transfer.'
                   : '. You\u2019ll sign a gasless authorization.'}
                 {selectedNetwork === 'ethereum' && ' Ethereum has the highest settlement security.'}
-                {selectedNetwork === 'base' && ' Base offers fast confirmations with low fees.'}
                 {selectedNetwork === 'conflux' && ' Conflux eSpace offers fast confirmations with minimal fees.'}
               </p>
             )}

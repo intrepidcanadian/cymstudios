@@ -2,7 +2,7 @@
  * x402 Client — Multi-strategy payment with WalletConnect/wagmi
  *
  * Strategies:
- * - eip3009: Gasless transferWithAuthorization (USDC on Ethereum/Base, USDT0 on Conflux eSpace)
+ * - eip3009: Gasless transferWithAuthorization (USDC on Ethereum, USDT0 on Conflux eSpace)
  * - direct:  User sends approve tx, server calls transferFrom (tokens without EIP-3009)
  */
 
@@ -17,7 +17,7 @@ export interface PaymentOptions extends RequestInit {
 }
 
 /**
- * Build EIP-3009 payment header (gasless — USDC on Ethereum/Base)
+ * Build EIP-3009 payment header (gasless — USDC on Ethereum, USDT0 on Conflux)
  */
 async function buildEip3009Payment(
   network: NetworkConfig,

@@ -52,7 +52,6 @@ interface Order {
 
 const NETWORK_EXPLORERS: Record<string, { url: string; name: string }> = {
   ethereum: { url: 'https://etherscan.io', name: 'Etherscan' },
-  base: { url: 'https://basescan.org', name: 'BaseScan' },
   conflux: { url: 'https://evm.confluxscan.org', name: 'ConfluxScan' },
 };
 
@@ -311,7 +310,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Network:</span>
                     <span className="text-slate-200">
-                      {order.payment_network === 'ethereum' ? 'Ethereum' : order.payment_network === 'base' ? 'Base' : order.payment_network === 'conflux' ? 'Conflux eSpace' : order.payment_network}
+                      {order.payment_network === 'ethereum' ? 'Ethereum' : order.payment_network === 'conflux' ? 'Conflux eSpace' : order.payment_network}
                     </span>
                   </div>
                 )}

@@ -250,6 +250,14 @@ export default function GiftCardCatalog() {
     return new Set();
   });
 
+  // Recently viewed collapse state
+  const [recentlyViewedCollapsed, setRecentlyViewedCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try { return localStorage.getItem('recentlyViewedCollapsed') === 'true'; } catch { /* ignore */ }
+    }
+    return false;
+  });
+
   // Mobile filter drawer state
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -863,36 +871,51 @@ export default function GiftCardCatalog() {
                 </button>
               </div>
 
-              {/* M24: Recently Viewed Products — full width, above grid */}
+              {/* M24: Recently Viewed Products — collapsible, above grid */}
               {recentlyViewed.length > 0 && !loading && activeTab !== 'orders' && (
                 <div className="mb-4 sm:mb-6">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Recently Viewed
-                  </h3>
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
-                    {recentlyViewed.map((product) => (
-                      <button
-                        key={product.product_id}
-                        onClick={() => selectProduct(product)}
-                        className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
-                      >
-                        <div className="h-14 sm:h-20 bg-white overflow-hidden">
-                          {product.product_image ? (
-                            <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-700">
-                              <span className="text-sm sm:text-lg text-slate-400">Reward</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-1 sm:p-2">
-                          <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
-                          <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setRecentlyViewedCollapsed(prev => {
+                      const next = !prev;
+                      if (typeof window !== 'undefined') {
+                        try { localStorage.setItem('recentlyViewedCollapsed', String(next)); } catch { /* ignore */ }
+                      }
+                      return next;
+                    })}
+                    className="w-full flex items-center justify-between group mb-3"
+                  >
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Recently Viewed
+                      <span className="text-xs font-normal normal-case text-slate-500">({recentlyViewed.length})</span>
+                    </h3>
+                    <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-transform ${recentlyViewedCollapsed ? '' : 'rotate-180'}`} />
+                  </button>
+                  {!recentlyViewedCollapsed && (
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                      {recentlyViewed.map((product) => (
+                        <button
+                          key={product.product_id}
+                          onClick={() => selectProduct(product)}
+                          className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
+                        >
+                          <div className="h-14 sm:h-20 bg-white overflow-hidden">
+                            {product.product_image ? (
+                              <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                                <span className="text-sm sm:text-lg text-slate-400">Reward</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-1 sm:p-2">
+                            <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
+                            <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1401,70 +1424,73 @@ export default function GiftCardCatalog() {
         <div className="max-w-[1920px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
           {/* Left: USDC Balance (when authenticated) */}
           {isConnected && address ? (
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-xs">$</span>
-                <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold bg-slate-700 text-slate-300 px-1 rounded border border-slate-600 leading-tight">
-                  {selectedNetwork === 'conflux' ? 'CFX' : selectedNetwork === 'base' ? 'Base' : 'ETH'}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></p>
-                <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
-                  {balanceLoading ? (
-                    <span className="inline-block w-20 h-5 bg-slate-700 rounded animate-pulse" />
-                  ) : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                </p>
-              </div>
-              {ethBalance !== null && ethBalance !== undefined && (
-                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 rounded-lg border border-slate-600 flex-shrink-0">
-                  <span className="text-[10px] text-slate-400">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
-                  <span className="text-xs font-semibold text-slate-200">
-                    {parseFloat(ethBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+            <>
+              {/* Left group: balance + send + networks */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-xs">$</span>
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold bg-slate-700 text-slate-300 px-1 rounded border border-slate-600 leading-tight">
+                    {selectedNetwork === 'conflux' ? 'CFX' : 'ETH'}
                   </span>
                 </div>
-              )}
-              <button
-                onClick={() => setShowSendModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
-                title={`Send ${tokenSymbol}`}
-                aria-label={`Send ${tokenSymbol} tokens`}
-              >
-                <Send className="w-3 h-3" />
-                <span className="hidden sm:inline">Send {tokenSymbol}</span>
-              </button>
-              {/* Networks Supported — grouped switcher */}
-              <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/40 rounded-lg border border-slate-600 flex-shrink-0">
-                <span className="hidden sm:inline text-[9px] text-slate-500 font-medium uppercase tracking-wider mr-1">Networks</span>
-                {Object.entries(NETWORKS).map(([key, net]) => {
-                  const shortLabel = key === 'ethereum' ? 'ETH' : key === 'base' ? 'Base' : 'CFX';
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        setSelectedNetwork(key);
-                        if (typeof window !== 'undefined') try { localStorage.setItem('preferredNetwork', key); } catch { /* ignore */ }
-                      }}
-                      disabled={showPurchaseModal}
-                      className={`px-2 py-1.5 sm:py-1 min-w-[40px] min-h-[36px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
-                        selectedNetwork === key
-                          ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
-                          : 'text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-500'
-                      } disabled:opacity-40 disabled:cursor-not-allowed`}
-                      title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
-                      aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
-                    >
-                      <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
-                    </button>
-                  );
-                })}
+                <div className="min-w-0">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></p>
+                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
+                    {balanceLoading ? (
+                      <span className="inline-block w-20 h-5 bg-slate-700 rounded animate-pulse" />
+                    ) : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                  </p>
+                </div>
+                {ethBalance !== null && ethBalance !== undefined && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 rounded-lg border border-slate-600 flex-shrink-0">
+                    <span className="text-[10px] text-slate-400">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
+                    <span className="text-xs font-semibold text-slate-200">
+                      {parseFloat(ethBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowSendModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
+                  title={`Send ${tokenSymbol}`}
+                  aria-label={`Send ${tokenSymbol} tokens`}
+                >
+                  <Send className="w-3 h-3" />
+                  <span className="hidden sm:inline">Send {tokenSymbol}</span>
+                </button>
+                {/* Networks Supported — grouped switcher */}
+                <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/40 rounded-lg border border-slate-600 flex-shrink-0">
+                  <span className="hidden sm:inline text-[9px] text-slate-500 font-medium uppercase tracking-wider mr-1">Networks</span>
+                  {Object.entries(NETWORKS).map(([key, net]) => {
+                    const shortLabel = key === 'ethereum' ? 'ETH' : 'CFX';
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSelectedNetwork(key);
+                          if (typeof window !== 'undefined') try { localStorage.setItem('preferredNetwork', key); } catch { /* ignore */ }
+                        }}
+                        disabled={showPurchaseModal}
+                        className={`px-2 py-1.5 sm:py-1 min-w-[40px] min-h-[36px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
+                          selectedNetwork === key
+                            ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-500'
+                        } disabled:opacity-40 disabled:cursor-not-allowed`}
+                        title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
+                        aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
+                      >
+                        <span className="hidden sm:inline">{shortLabel} </span>{net.tokenSymbol}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {/* Facilitator status — far right */}
+              {/* Right group: Facilitator status — separate from networks */}
               {(() => {
                 const anyUnhealthy = Object.entries(facilitatorHealth).some(([, healthy]) => healthy === false);
                 if (!anyUnhealthy) return null;
                 return (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 ml-auto group relative cursor-help">
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help">
                     <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
                     <span className="text-[10px] text-amber-300 font-medium whitespace-nowrap">Facilitator: Gas low</span>
                     <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs text-slate-300 w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
@@ -1474,7 +1500,7 @@ export default function GiftCardCatalog() {
                   </div>
                 );
               })()}
-            </div>
+            </>
           ) : (
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2 min-w-0">
