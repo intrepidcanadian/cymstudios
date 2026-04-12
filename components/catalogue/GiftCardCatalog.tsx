@@ -1032,16 +1032,17 @@ export default function GiftCardCatalog() {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Sort control — gift cards tab only */}
+                  {/* Sort control — gift cards tab only, visible on all screen sizes */}
                   {activeTab === 'giftcards' && (
                     <select
                       value={sortOrder}
                       onChange={(e) => setSortOrder(e.target.value as 'default' | 'az' | 'za')}
-                      className="hidden sm:block px-3 py-2 text-xs font-medium text-slate-300 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+                      className="px-2 sm:px-3 py-2 min-h-[36px] text-[11px] sm:text-xs font-medium text-slate-300 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+                      aria-label="Sort products"
                     >
-                      <option value="default">Sort: Default</option>
-                      <option value="az">Name A–Z</option>
-                      <option value="za">Name Z–A</option>
+                      <option value="default">Sort</option>
+                      <option value="az">A–Z</option>
+                      <option value="za">Z–A</option>
                     </select>
                   )}
                   {/* Mobile Wallet Auth */}

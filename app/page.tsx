@@ -10,6 +10,10 @@ import styles from './page.module.css'
 
 const VIDEOS = [
   {
+    id: 'TpDAeRkc9gk',
+    description: 'BSL Season 22 Intro'
+  },
+  {
     id: 'NTiKNaKZAF8',
     description: '2025 2v2 Random Starcraft Brood War Tournament ($500 Prize Pool)'
   },

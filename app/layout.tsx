@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import Providers from './providers'
 
 export const metadata: Metadata = {
   title: 'CYM Studio - Using AI for Epic Videos',
@@ -22,9 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        <Providers>
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   )

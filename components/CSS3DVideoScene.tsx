@@ -76,6 +76,7 @@ export default function CSS3DVideoScene({ videos, onVideoClick }: CSS3DVideoScen
 
   useEffect(() => {
     if (typeof window === 'undefined' || !containerRef.current || videos.length < 4) return
+    const hasTopVideo = videos.length >= 5
 
     const container = containerRef.current
     const blocker = blockerRef.current
@@ -140,6 +141,18 @@ export default function CSS3DVideoScene({ videos, onVideoClick }: CSS3DVideoScen
       if (onVideoClick) onVideoClick(videos[3].id, videos[3].description)
     })
     group.add(object4)
+
+    // Top (0, 240, 0) — 5th video on the top face of the cube
+    if (hasTopVideo) {
+      const video5 = createVideoElement(videos[4].id, videos[4].description)
+      const object5 = new CSS3DObject(video5)
+      object5.position.set(0, 240, 0)
+      object5.rotation.x = -Math.PI / 2
+      video5.addEventListener('click', () => {
+        if (onVideoClick) onVideoClick(videos[4].id, videos[4].description)
+      })
+      group.add(object5)
+    }
 
     scene.add(group)
 

@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>('about')
 
   const videos = [
+    'TpDAeRkc9gk',
     'NTiKNaKZAF8',
     'Q82c39DQoJc',
     '9RJzUTqOm5M',
@@ -38,9 +39,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           />
         </div>
         
-        <div className={styles.comingSoon}>
-          🎁 Rewards Catalogue <span className={styles.comingSoonBadge}>Coming Soon</span>
-        </div>
+        <a href="/catalogue" className={styles.comingSoon}>
+          🎁 Rewards Catalogue <span className={styles.comingSoonBadge}>Live</span>
+        </a>
 
         <div className={styles.tabs}>
           <button 

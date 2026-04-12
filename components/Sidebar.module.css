@@ -77,18 +77,25 @@
   text-align: center;
   padding: 14px 24px;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #e0e0e0 0%, #c0c0c0 100%);
-  color: #666;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
   border-radius: 10px;
   font-weight: 600;
   font-size: 16px;
-  cursor: not-allowed;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.comingSoon:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .comingSoonBadge {
   display: inline-block;
   padding: 4px 10px;
-  background: #ff9800;
+  background: #22c55e;
   color: white;
   border-radius: 20px;
   font-size: 12px;
