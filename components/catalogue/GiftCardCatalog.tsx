@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
 import OrderStatusModal from './OrderStatusModal';
-import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock, ArrowUp, AlertCircle } from 'lucide-react';
+import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock, ArrowUp, AlertCircle, ChevronDown } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useUsdcBalance } from '@/hooks/useUsdcBalance';
@@ -942,6 +943,7 @@ export default function GiftCardCatalog() {
                               alt={product.brand_name}
                               loading="lazy"
                               className="w-full h-full object-contain p-4 sm:p-6 group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="flex flex-col items-center justify-center gap-3 w-full h-full"><svg class="w-16 h-16 text-orange-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg><span class="text-lg font-bold text-slate-300">Mastercard Prepaid</span></div>'; }}
                             />
                           ) : (
                             <div className="flex flex-col items-center gap-3">
@@ -1138,6 +1140,36 @@ export default function GiftCardCatalog() {
                       </p>
                     </div>
                   )}
+
+                  {/* Expiry & Validity */}
+                  {selectedProduct.expiry_and_validity && (
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Expiry & Validity</h3>
+                      <div className="text-sm text-slate-300 leading-relaxed prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.expiry_and_validity) }} />
+                    </div>
+                  )}
+
+                  {/* How to Use — collapsible */}
+                  {selectedProduct.how_to_use && (
+                    <details className="group">
+                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-300 transition-colors">
+                        How to Use
+                        <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                      </summary>
+                      <div className="mt-2 text-sm text-slate-300 leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.how_to_use) }} />
+                    </details>
+                  )}
+
+                  {/* Terms & Conditions — collapsible */}
+                  {selectedProduct.terms_and_conditions && (
+                    <details className="group">
+                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-300 transition-colors">
+                        Terms & Conditions
+                        <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                      </summary>
+                      <div className="mt-2 text-sm text-slate-300 leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.terms_and_conditions) }} />
+                    </details>
+                  )}
                 </div>
 
                 {/* Inline amount input for variable-amount cards (no denominations) */}
@@ -1149,6 +1181,8 @@ export default function GiftCardCatalog() {
                         <input
                           type="number"
                           step="0.01"
+                          min={selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min || 1}
+                          max={selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max || 10000}
                           placeholder={`${selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - ${selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}`}
                           value={purchaseInitialAmount}
                           onChange={(e) => setPurchaseInitialAmount(e.target.value)}
@@ -1163,7 +1197,20 @@ export default function GiftCardCatalog() {
                       </div>
                       <button
                         onClick={() => {
-                          if (purchaseInitialAmount) setShowPurchaseModal(true);
+                          if (!purchaseInitialAmount) return;
+                          const val = parseFloat(purchaseInitialAmount);
+                          const min = selectedProduct!.value_restrictions?.minVal || selectedProduct!.value_restrictions?.min;
+                          const max = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
+                          if (isNaN(val) || val <= 0) return;
+                          if (min && val < min) {
+                            setPurchaseInitialAmount(String(min));
+                            return;
+                          }
+                          if (max && val > max) {
+                            setPurchaseInitialAmount(String(max));
+                            return;
+                          }
+                          setShowPurchaseModal(true);
                         }}
                         disabled={!purchaseInitialAmount}
                         className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
@@ -1318,7 +1365,19 @@ export default function GiftCardCatalog() {
               </div>
             </div>
           ) : (
-            <div />
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-2 min-w-0">
+                <Shield className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                <p className="text-xs text-slate-400 truncate">Connect a wallet to redeem gift cards with crypto</p>
+              </div>
+              <button
+                onClick={() => open()}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                Connect Wallet
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -28,9 +28,9 @@ function checkOrderRateLimit(ip: string): boolean {
 function cleanupOrderRateLimiter() {
   if (orderRateLimiter.size < 500) return;
   const now = Date.now();
-  for (const [key, val] of orderRateLimiter) {
+  orderRateLimiter.forEach((val, key) => {
     if (now > val.resetAt) orderRateLimiter.delete(key);
-  }
+  });
 }
 
 /**
