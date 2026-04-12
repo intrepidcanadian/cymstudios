@@ -700,7 +700,16 @@ export default function PurchaseModal({
         {/* Confirmation Step */}
         {step === 'confirm' && (
           <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
-            <h4 className="text-lg font-semibold text-slate-100 mb-3">Confirm Purchase</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-slate-100">Confirm Purchase</h4>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                networkConfig?.paymentStrategy === 'eip3009'
+                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                  : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+              }`}>
+                {networkConfig?.paymentStrategy === 'eip3009' ? 'Gasless' : 'Gas Required'}
+              </span>
+            </div>
             <div className="space-y-2 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Product</span>
@@ -823,12 +832,12 @@ export default function PurchaseModal({
               </button>
             </div>
 
-            {networkConfig?.paymentStrategy === 'eip3009' && (
-              <p className="text-xs text-green-400/80 text-center">Gasless — you will only sign a message, no gas fees</p>
-            )}
-            {networkConfig?.paymentStrategy === 'direct' && (
-              <p className="text-xs text-yellow-400/80 text-center">You will send an approval transaction (gas required)</p>
-            )}
+            <p className="text-xs text-slate-400/80 text-center">
+              {networkConfig?.paymentStrategy === 'eip3009'
+                ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
+                : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
+              }
+            </p>
           </div>
         )}
 
@@ -965,6 +974,9 @@ export default function PurchaseModal({
                 {networkConfig?.paymentStrategy === 'direct'
                   ? '. You\u2019ll approve a token transfer.'
                   : '. You\u2019ll sign a gasless authorization.'}
+                {selectedNetwork === 'ethereum' && ' Ethereum has the highest settlement security.'}
+                {selectedNetwork === 'base' && ' Base offers fast confirmations with low fees.'}
+                {selectedNetwork === 'conflux' && ' Conflux eSpace offers fast confirmations with minimal fees.'}
               </p>
             )}
             {walletReady && (

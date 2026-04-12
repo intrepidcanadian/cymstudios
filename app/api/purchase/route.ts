@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     logger.info('[Purchase] Verifying product:', productIdNumber);
     const { data: productData, error: productError } = await supabase
       .from('brands')
-      .select('product_id, brand_name, country_name, currency, product_image')
+      .select('product_id, brand_name, country_name, currency, product_image, denominations, value_restrictions')
       .eq('product_id', productIdNumber)
       .single();
 
@@ -179,6 +179,41 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('[Purchase] Product verified:', productData.brand_name);
+
+    // Validate price against product denominations or value restrictions.
+    // Prevents charging users (and burning facilitator gas on refunds) for amounts
+    // that xRemit would reject.
+    if (productData.denominations && Array.isArray(productData.denominations) && productData.denominations.length > 0) {
+      const validDenoms = productData.denominations.map((d: number) => Number(d));
+      if (!validDenoms.includes(Number(price))) {
+        logger.warn(`[Purchase] Invalid denomination ${price} for product ${productIdNumber}. Valid: ${validDenoms.join(', ')}`);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid amount ${price} ${productData.currency}. Valid denominations: ${validDenoms.join(', ')} ${productData.currency}.`,
+          },
+          { status: 400 }
+        );
+      }
+    } else if (productData.value_restrictions) {
+      const vr = productData.value_restrictions;
+      const min = vr.minVal ?? vr.min;
+      const max = vr.maxVal ?? vr.max;
+      if (min !== undefined && Number(price) < Number(min)) {
+        logger.warn(`[Purchase] Price ${price} below minimum ${min} for product ${productIdNumber}`);
+        return NextResponse.json(
+          { success: false, error: `Amount ${price} ${productData.currency} is below the minimum of ${min}.` },
+          { status: 400 }
+        );
+      }
+      if (max !== undefined && Number(price) > Number(max)) {
+        logger.warn(`[Purchase] Price ${price} above maximum ${max} for product ${productIdNumber}`);
+        return NextResponse.json(
+          { success: false, error: `Amount ${price} ${productData.currency} exceeds the maximum of ${max}.` },
+          { status: 400 }
+        );
+      }
+    }
 
     // Verify productId exists in xRemit's catalog BEFORE payment
     // This prevents payment for products that don't exist in xRemit
@@ -381,6 +416,26 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+
+        // Verify the authorization hasn't expired — prevents wasting facilitator gas
+        // on an on-chain call that would revert. Client sets validBefore = now + 3600s.
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        if (validBefore && Number(validBefore) <= nowSeconds) {
+          logger.warn(`[x402] Expired authorization: validBefore=${validBefore}, now=${nowSeconds}`);
+          return NextResponse.json(
+            { success: false, error: 'Payment authorization has expired. Please try again with a fresh signature.' },
+            { status: 400 }
+          );
+        }
+        // Also check validAfter hasn't been set in the future
+        if (validAfter && Number(validAfter) > nowSeconds) {
+          logger.warn(`[x402] Premature authorization: validAfter=${validAfter}, now=${nowSeconds}`);
+          return NextResponse.json(
+            { success: false, error: 'Payment authorization is not yet valid. Please try again.' },
+            { status: 400 }
+          );
+        }
+
         paymentSignature = signature;
         paymentFrom = from;
         paymentTo = to;
