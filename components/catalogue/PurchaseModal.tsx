@@ -273,6 +273,20 @@ export default function PurchaseModal({
     ? parseFloat(usdcBalance) < parseFloat(usdcAmount)
     : false;
 
+  // Inline amount validation for variable-amount products
+  const amountValidation = (() => {
+    if (!amount || (product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0)) return null;
+    const price = parseFloat(amount);
+    if (isNaN(price) || price <= 0) return null; // don't nag on empty/zero
+    if (product.value_restrictions) {
+      const min = product.value_restrictions.minVal || product.value_restrictions.min;
+      const max = product.value_restrictions.maxVal || product.value_restrictions.max;
+      if (min && price < min) return `Minimum is ${product.currency} ${min}`;
+      if (max && price > max) return `Maximum is ${product.currency} ${max}`;
+    }
+    return null;
+  })();
+
   // Load saved profile on mount
   useEffect(() => {
     if (userProfile.email) setEmail(userProfile.email);
@@ -506,6 +520,14 @@ export default function PurchaseModal({
 
   const handleConfirmPurchase = async () => {
     if (submittingRef.current) return;
+
+    // Guard: ensure wallet is still connected before attempting payment
+    if (!isConnected || !walletProvider) {
+      setError('Wallet disconnected. Please reconnect your wallet and try again.');
+      setHasFailedOnce(true);
+      setStep('form');
+      return;
+    }
 
     // Rate limit: enforce cooldown between purchase attempts
     const now = Date.now();
@@ -853,6 +875,21 @@ export default function PurchaseModal({
               </div>
             )}
 
+            {/* Quote freshness indicator on confirm step */}
+            {product.currency !== 'USD' && quoteCountdown !== null && !quoteStale && quoteCountdown <= 30 && (
+              <div className="bg-slate-700/50 border border-slate-600 text-slate-300 px-4 py-2 rounded-xl text-xs backdrop-blur-sm flex items-center justify-between">
+                <span>Quote expires in</span>
+                <span className="font-mono font-semibold text-amber-300">
+                  {Math.floor(quoteCountdown / 60)}:{String(quoteCountdown % 60).padStart(2, '0')}
+                </span>
+              </div>
+            )}
+            {product.currency !== 'USD' && quoteStale && (
+              <div className="bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 px-4 py-2 rounded-xl text-xs backdrop-blur-sm">
+                Quote expired — the rate will be refreshed when you confirm.
+              </div>
+            )}
+
             {quoteRefreshed && (
               <div className="bg-blue-500/20 border border-blue-500/30 text-blue-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
                 Quote updated — please review the new amount before confirming.
@@ -957,7 +994,7 @@ export default function PurchaseModal({
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-indigo-500" />
               </div>
               <p className="text-lg font-semibold text-slate-100 mb-1">{paymentStep || 'Processing...'}</p>
-              <p className="text-xs text-slate-400">Do not close this window</p>
+              <p className="text-xs text-slate-400">Please keep this window open — you can track your order in My Orders if needed</p>
 
               {showCloseWarning && (
                 <div className="mt-4 p-3 bg-yellow-900/40 border border-yellow-700/50 rounded-xl text-sm">
@@ -1149,9 +1186,8 @@ export default function PurchaseModal({
                   disabled={loading}
                 />
                 {product.value_restrictions && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    Range: {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min} -{' '}
-                    {product.value_restrictions.maxVal || product.value_restrictions.max}
+                  <p className={`text-xs mt-1 ${amountValidation ? 'text-red-400' : 'text-slate-400'}`}>
+                    {amountValidation || `Range: ${product.currency} ${product.value_restrictions.minVal || product.value_restrictions.min} – ${product.value_restrictions.maxVal || product.value_restrictions.max}`}
                   </p>
                 )}
               </div>
@@ -1313,11 +1349,12 @@ export default function PurchaseModal({
 
           {/* Actions */}
           {/* Disabled reason hint */}
-          {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance) && (
+          {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance || !!amountValidation) && (
             <p className="text-xs text-slate-500 pt-1">
               {!walletReady ? 'Connect your wallet to continue' :
                chainSwitching ? 'Switching network...' :
                !amount ? 'Select an amount' :
+               amountValidation ? amountValidation :
                !email ? 'Enter your email address' :
                insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` : ''}
             </p>
@@ -1326,7 +1363,7 @@ export default function PurchaseModal({
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance}
+              disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation}
               className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               Review & Redeem
