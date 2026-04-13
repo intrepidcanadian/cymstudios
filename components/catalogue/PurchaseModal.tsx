@@ -749,9 +749,10 @@ export default function PurchaseModal({
         onPurchaseComplete(data.orderId, email, data.orderToken, data.x402Payment?.transactionHash);
       }, 2500);
     } catch (err) {
-      console.error('Redemption error:', err);
+      if (process.env.NODE_ENV === 'development') console.error('Redemption error:', err);
       setError(err instanceof Error ? err.message : 'Redemption failed');
       setHasFailedOnce(true);
+      setShowCloseWarning(false);
       setStep('confirm');
     } finally {
       setLoading(false);
@@ -786,7 +787,7 @@ export default function PurchaseModal({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all backdrop-blur-sm"
+            className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all backdrop-blur-sm"
           >
             ×
           </button>
@@ -817,7 +818,7 @@ export default function PurchaseModal({
                 maxLength={6}
                 pattern="\d{6}"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                 placeholder="123456"
                 className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl text-slate-100 text-center font-mono text-2xl tracking-[0.5em] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 aria-label="6-digit verification code"
@@ -1225,6 +1226,19 @@ export default function PurchaseModal({
                   <span className="text-slate-400">Network</span>
                   <span className="text-slate-200">{networkConfig?.name}</span>
                 </div>
+                {successData.txHash && networkConfig?.explorerUrl && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Transaction</span>
+                    <a
+                      href={`${networkConfig.explorerUrl}/tx/${successData.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-400 hover:text-indigo-300 text-xs font-mono transition-colors"
+                    >
+                      {successData.txHash.slice(0, 10)}...
+                    </a>
+                  </div>
+                )}
               </div>
               <div role="status" aria-live="polite" className="sr-only">Payment successful. Your voucher is being prepared.</div>
               <p className="text-xs text-slate-500 mt-4">Opening order status...</p>
