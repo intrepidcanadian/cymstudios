@@ -454,13 +454,13 @@ export default function GiftCardCatalog() {
   const estimateTokenCost = useCallback((denomAmount: number, currency: string): string | null => {
     const fee = currency === 'USD' ? 0.005 : 0.015; // 0.5% USD, 1.5% non-USD
     if (currency === 'USD') {
-      return (denomAmount * (1 + fee)).toFixed(2);
+      return (Math.ceil(denomAmount * (1 + fee) * 100) / 100).toFixed(2);
     }
     const rate = fxRateCache[currency];
     if (!rate) return null;
     // rate is "1 fromCurrency = rate USD" (from /api/exchange-rate), so multiply
     const usdValue = denomAmount * rate;
-    return (usdValue * (1 + fee)).toFixed(2);
+    return (Math.ceil(usdValue * (1 + fee) * 100) / 100).toFixed(2);
   }, [fxRateCache]);
 
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
@@ -721,6 +721,7 @@ export default function GiftCardCatalog() {
 
   const selectProduct = useCallback((product: BrandProduct) => {
     setSelectedProduct(product);
+    setPurchaseInitialAmount(''); // Clear stale amount from previous product
     // Track recently viewed
     setRecentlyViewed(prev => {
       const filtered = prev.filter(p => p.product_id !== product.product_id);
