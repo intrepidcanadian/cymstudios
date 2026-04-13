@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData } from './payment-tracker';
 import { NETWORKS, FACILITATOR_ADDRESS, getNetwork, type NetworkConfig } from '@/config/networks';
+import { logger } from './logger';
 
 // Token ABI covering both strategies
 const TOKEN_ABI = [
@@ -76,7 +77,7 @@ async function settleEip3009(
     // Check balance
     const balance = await tokenContract.balanceOf(authorization.from);
     if (balance < BigInt(authorization.value)) {
-      console.error(`[x402] Insufficient balance: required ${Number(authorization.value) / 1_000_000}, available ${Number(balance) / 1_000_000}`);
+      logger.error(`[x402] Insufficient balance for settlement`);
       return {
         success: false,
         error: `Insufficient ${networkConfig.tokenSymbol} balance to complete this payment.`,
@@ -84,7 +85,7 @@ async function settleEip3009(
     }
 
     const sig = ethers.Signature.from(signature);
-    console.log(`[x402] Submitting transferWithAuthorization on ${networkConfig.name}...`);
+    logger.info(`[x402] Submitting transferWithAuthorization on ${networkConfig.name}...`);
 
     const tx = await tokenContract.transferWithAuthorization(
       authorization.from, authorization.to, authorization.value,
@@ -93,7 +94,7 @@ async function settleEip3009(
     );
     txHash = tx.hash;
 
-    console.log(`[x402] TX submitted: ${txHash}`);
+    logger.info(`[x402] TX submitted`, txHash);
 
     // 90s timeout on confirmation — prevents indefinite hangs from stalled RPC
     const receipt = await Promise.race([
@@ -109,7 +110,7 @@ async function settleEip3009(
     return { success: false, error: 'Transaction failed on-chain', transactionHash: txHash };
 
   } catch (error) {
-    console.error('[x402] EIP-3009 settlement error:', error);
+    logger.error('[x402] EIP-3009 settlement error:', error instanceof Error ? error.message : error);
     if (error instanceof Error) {
       if (error.message === 'SETTLEMENT_TIMEOUT') {
         // TX was submitted but confirmation timed out — caller should mark as pending_review
@@ -154,7 +155,7 @@ async function settleDirect(
     const allowance = await tokenContract.allowance(payload.from, facilitator.address);
     const requiredAmount = BigInt(payload.value);
     if (allowance < requiredAmount) {
-      console.error(`[x402] Insufficient allowance: required ${Number(requiredAmount) / 1_000_000}, approved ${Number(allowance) / 1_000_000}`);
+      logger.error(`[x402] Insufficient allowance for settlement`);
       return {
         success: false,
         error: `Insufficient token allowance. Please re-approve the transaction.`,
@@ -164,17 +165,17 @@ async function settleDirect(
     // Verify balance
     const balance = await tokenContract.balanceOf(payload.from);
     if (balance < requiredAmount) {
-      console.error(`[x402] Insufficient balance: required ${Number(requiredAmount) / 1_000_000}, available ${Number(balance) / 1_000_000}`);
+      logger.error(`[x402] Insufficient balance for direct settlement`);
       return {
         success: false,
         error: `Insufficient ${networkConfig.tokenSymbol} balance to complete this payment.`,
       };
     }
 
-    console.log(`[x402] Submitting transferFrom on ${networkConfig.name}...`);
+    logger.info(`[x402] Submitting transferFrom on ${networkConfig.name}...`);
     const tx = await tokenContract.transferFrom(payload.from, payload.to, payload.value);
     txHash = tx.hash;
-    console.log(`[x402] TX submitted: ${txHash}`);
+    logger.info(`[x402] TX submitted`, txHash);
 
     // 90s timeout on confirmation — prevents indefinite hangs from stalled RPC
     const receipt = await Promise.race([
@@ -189,7 +190,7 @@ async function settleDirect(
     return { success: false, error: 'TransferFrom failed on-chain', transactionHash: txHash };
 
   } catch (error) {
-    console.error('[x402] Direct settlement error:', error);
+    logger.error('[x402] Direct settlement error:', error instanceof Error ? error.message : error);
     if (error instanceof Error) {
       if (error.message === 'SETTLEMENT_TIMEOUT') {
         return { success: false, error: 'SETTLEMENT_TIMEOUT', transactionHash: txHash };
@@ -319,7 +320,7 @@ export async function verifyX402Payment(
         };
       }
 
-      console.log(`[x402] Direct payment from ${payerAddress}, settling on ${networkConfig.name}...`);
+      logger.info(`[x402] Direct payment settling on ${networkConfig.name}...`);
       settlement = await settleDirect(payload, networkConfig);
 
     } else {
@@ -407,7 +408,7 @@ export async function verifyX402Payment(
         };
       }
 
-      console.log(`[x402] EIP-3009 verified for ${payerAddress}, settling on ${networkConfig.name}...`);
+      logger.info(`[x402] EIP-3009 verified, settling on ${networkConfig.name}...`);
       settlement = await settleEip3009(authorization, signature, networkConfig);
     }
 
@@ -433,7 +434,7 @@ export async function verifyX402Payment(
       paymentRequirement, endpointName, req.nextUrl.pathname
     );
 
-    console.log(`[x402] Payment settled: ${payerAddress} paid ${priceUsdc / 1_000_000} ${networkConfig.tokenSymbol} (tx: ${settlement.transactionHash})`);
+    logger.info(`[x402] Payment settled: ${priceUsdc / 1_000_000} ${networkConfig.tokenSymbol}`, settlement.transactionHash);
 
     return {
       verified: true,
@@ -443,7 +444,7 @@ export async function verifyX402Payment(
     };
 
   } catch (error) {
-    console.error('[x402] Payment verification error:', error);
+    logger.error('[x402] Payment verification error:', error instanceof Error ? error.message : error);
     return {
       verified: false,
       errorResponse: NextResponse.json(

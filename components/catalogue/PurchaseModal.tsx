@@ -1269,7 +1269,7 @@ export default function PurchaseModal({
         )}
 
         {/* Purchase Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm" style={{ display: step === 'form' ? undefined : 'none' }}>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm" style={{ display: step === 'form' ? undefined : 'none' }} inert={step !== 'form' ? true : undefined}>
           {/* Network Selection */}
           <div>
             <label className="block text-sm font-bold text-slate-100 mb-2">

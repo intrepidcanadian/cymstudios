@@ -458,7 +458,8 @@ export default function GiftCardCatalog() {
     }
     const rate = fxRateCache[currency];
     if (!rate) return null;
-    const usdValue = denomAmount / rate;
+    // rate is "1 fromCurrency = rate USD" (from /api/exchange-rate), so multiply
+    const usdValue = denomAmount * rate;
     return (usdValue * (1 + fee)).toFixed(2);
   }, [fxRateCache]);
 
