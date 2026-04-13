@@ -135,7 +135,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
           }
         }
       } catch (err) {
-        console.error('Error fetching order:', err);
+        if (process.env.NODE_ENV === 'development') console.error('Error fetching order:', err);
         if (!cancelled) {
           setError('Failed to fetch order status');
         }
@@ -193,7 +193,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
         setOrder(data.data);
       }
     } catch (err) {
-      console.error('Manual status check failed:', err);
+      if (process.env.NODE_ENV === 'development') console.error('Manual status check failed:', err);
     } finally {
       setManualChecking(false);
     }
@@ -274,8 +274,8 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                           await navigator.clipboard.writeText(order.order_id);
                           setOrderIdCopied(true);
                           setTimeout(() => setOrderIdCopied(false), 2000);
-                        } catch (err) {
-                          console.error('Failed to copy order ID:', err);
+                        } catch {
+                          // clipboard API may fail in some contexts
                         }
                       }}
                       className="flex items-center justify-center w-7 h-7 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
@@ -457,8 +457,8 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                             await navigator.clipboard.writeText(order.voucher_code!);
                             setVoucherCopied(true);
                             setTimeout(() => setVoucherCopied(false), 2000);
-                          } catch (err) {
-                            console.error('Failed to copy:', err);
+                          } catch {
+                            // clipboard API may fail in some contexts
                           }
                         };
 

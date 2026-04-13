@@ -99,7 +99,7 @@ export default function SendEthModal({
       setStep('success');
       onTransactionComplete();
     } catch (err: any) {
-      console.error('[SendEthModal] Transaction error:', err);
+      if (process.env.NODE_ENV === 'development') console.error('[SendEthModal] Transaction error:', err);
       if (err.code === 'ACTION_REJECTED' || err.message?.includes('rejected')) {
         setError('Transaction was rejected');
       } else if (err.message?.includes('insufficient funds')) {

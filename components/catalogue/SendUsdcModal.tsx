@@ -103,7 +103,7 @@ export default function SendUsdcModal({
       setStep('success');
       onTransactionComplete();
     } catch (err: any) {
-      console.error('[SendUsdcModal] Transaction error:', err);
+      if (process.env.NODE_ENV === 'development') console.error('[SendUsdcModal] Transaction error:', err);
       if (err.code === 'ACTION_REJECTED' || err.message?.includes('rejected')) {
         setError('Transaction was rejected');
       } else if (err.message?.includes('insufficient funds for gas')) {

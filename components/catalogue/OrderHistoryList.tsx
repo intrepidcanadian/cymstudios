@@ -140,12 +140,20 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   const MAX_POLL_DURATION_MS = 30 * 60_000; // 30 minutes max polling
   const MAX_POLL_INTERVAL_MS = 5 * 60_000; // cap at 5 min between polls
 
-  // Track tab visibility — pause polling when hidden
+  // Track tab visibility — pause polling when hidden, reset interval on re-focus
   useEffect(() => {
-    const handleVisibility = () => setTabVisible(!document.hidden);
+    const handleVisibility = () => {
+      const visible = !document.hidden;
+      setTabVisible(visible);
+      // Reset to fast polling on tab re-focus so users see fresh data quickly
+      if (visible && hasPendingOrders) {
+        pollIntervalRef.current = 30_000;
+        fetchOrders();
+      }
+    };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
+  }, [hasPendingOrders, fetchOrders]);
 
   useEffect(() => {
     if (!hasPendingOrders || !tabVisible) {

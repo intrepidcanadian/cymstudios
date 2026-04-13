@@ -296,7 +296,7 @@ export default function PurchaseModal({
   const PURCHASE_COOLDOWN_MS = 10_000; // 10 second cooldown between attempts
   const MIN_ORDER_USD = 1; // Minimum order value — orders below this cost more in facilitator gas than they generate
   const MAX_ORDER_USD = 5000; // M31: Maximum order value — limits exposure per transaction
-  const networkConfig = NETWORKS[selectedNetwork];
+  const networkConfig = NETWORKS[selectedNetwork] || NETWORKS[Object.keys(NETWORKS)[0]];
   const walletReady = isConnected && !!walletProvider;
 
   // Check if balance is insufficient

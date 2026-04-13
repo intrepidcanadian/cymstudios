@@ -581,11 +581,11 @@ export default function GiftCardCatalog() {
       } else if (Array.isArray(result)) {
         setBrands(result);
       } else {
-        console.warn('Unexpected data format:', result);
+        if (process.env.NODE_ENV === 'development') console.warn('Unexpected data format:', result);
         setBrands([]);
       }
     } catch (error) {
-      console.error('Error fetching brands:', error);
+      if (process.env.NODE_ENV === 'development') console.error('Error fetching brands:', error);
       setBrands([]);
       setFetchError('Failed to load products. Please check your connection and try again.');
     } finally {
@@ -617,7 +617,7 @@ export default function GiftCardCatalog() {
       }
       setMastercardsFetched(true);
     } catch (error) {
-      console.error('Error fetching Mastercards:', error);
+      if (process.env.NODE_ENV === 'development') console.error('Error fetching Mastercards:', error);
       setMastercards([]);
       setMastercardFetchError('Failed to load Mastercard products. Please check your connection and try again.');
     } finally {
