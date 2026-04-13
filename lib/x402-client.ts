@@ -169,6 +169,11 @@ export async function payWithX402(
   const network = NETWORKS[networkKey];
   if (!network) throw new Error(`Unknown network: ${networkKey}`);
 
+  // Fail fast: validate wallet provider before making the initial request
+  if (!walletProvider || typeof walletProvider.request !== 'function') {
+    throw new Error('No wallet connected. Please connect your wallet to make payments.');
+  }
+
   console.log(`[x402] Initiating payment on ${network.name} (${network.tokenSymbol}, strategy: ${network.paymentStrategy})`);
 
   // Make initial request
@@ -229,13 +234,6 @@ export async function payWithX402(
       if (accept.maxAmountRequired) {
         amount = accept.maxAmountRequired;
       }
-    }
-
-    if (!walletProvider) {
-      throw new Error('No wallet connected. Please connect your wallet to make payments.');
-    }
-    if (typeof walletProvider.request !== 'function') {
-      throw new Error('Invalid wallet provider. Please reconnect your wallet.');
     }
 
     // Build payment header based on strategy

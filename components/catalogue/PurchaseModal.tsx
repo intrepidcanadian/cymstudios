@@ -690,7 +690,13 @@ export default function PurchaseModal({
         setPaymentStep('Confirming on-chain...');
         data = await response.json();
       } catch (err) {
-        throw new Error(err instanceof Error ? err.message : 'Token redemption failed');
+        // Bubble up specific wallet/network errors from x402-client instead of wrapping generically
+        const msg = err instanceof Error ? err.message : 'Token redemption failed';
+        // Detect user-rejected signature (common wallet error patterns)
+        if (msg.toLowerCase().includes('user rejected') || msg.toLowerCase().includes('user denied') || msg.includes('ACTION_REJECTED')) {
+          throw new Error('Transaction was rejected in your wallet. You can try again when ready.');
+        }
+        throw new Error(msg);
       }
 
       if (!data.success) {
@@ -1328,11 +1334,19 @@ export default function PurchaseModal({
                 required
               >
                 <option value="">Select amount...</option>
-                {product.denominations.map((denom: number) => (
-                  <option key={denom} value={denom}>
-                    {denom} {product.currency}
-                  </option>
-                ))}
+                {product.denominations.map((denom: number) => {
+                  // Show estimated token cost for non-USD denominations when exchange rate is known
+                  const tokenHint = product.currency !== 'USD' && rawExchangeRate
+                    ? ` ≈ ${(Math.ceil(denom * rawExchangeRate * (1 + FX_FEE_PERCENT / 100) * 100) / 100).toFixed(2)} ${networkConfig?.tokenSymbol}`
+                    : product.currency === 'USD'
+                      ? ` ≈ ${(Math.ceil(denom * (1 + FX_FEE_PERCENT / 100) * 100) / 100).toFixed(2)} ${networkConfig?.tokenSymbol}`
+                      : '';
+                  return (
+                    <option key={denom} value={denom}>
+                      {denom} {product.currency}{tokenHint}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <div>

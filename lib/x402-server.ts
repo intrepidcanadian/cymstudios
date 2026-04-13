@@ -206,7 +206,10 @@ async function settleDirect(
  * Resolve network from payment data
  */
 function resolveNetwork(paymentData: any, config: PaymentConfig): NetworkConfig {
-  const networkKey = paymentData?.network || config.network || 'ethereum';
+  const networkKey = paymentData?.network || config.network;
+  if (!networkKey) {
+    throw new Error('Payment data must specify a network. Cannot determine settlement chain.');
+  }
   return getNetwork(networkKey);
 }
 
