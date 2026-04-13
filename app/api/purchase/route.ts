@@ -233,6 +233,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Normalize price to 2 decimal places — xRemit expects standard currency precision.
+    // Prevents fractional cent amounts (e.g. 50.001) that could be rejected by the provider.
+    const normalizedPrice = Math.round(Number(price) * 100) / 100;
+
     // Verify productId exists in xRemit's catalog BEFORE payment
     // This prevents payment for products that don't exist in xRemit
     logger.info('[Purchase] Verifying xRemit catalog for:', productIdNumber);
@@ -605,9 +609,9 @@ export async function POST(request: NextRequest) {
       const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
       const tokenContract = new ethers.Contract(paymentNetworkConfig.tokenAddress, TOKEN_ABI, facilitator);
 
-      // M6: Pre-check facilitator has enough native token for gas before settlement
+      // M6: Pre-check facilitator has enough native token for gas before settlement (network-specific threshold)
       const facilitatorGasBalance = await provider.getBalance(facilitator.address);
-      const minGasBalance = ethers.parseEther('0.001'); // ~enough for one tx on most networks
+      const minGasBalance = ethers.parseEther(paymentNetworkConfig.minGasBalance.toString());
       if (facilitatorGasBalance < minGasBalance) {
         logger.error(`[x402] Facilitator ${paymentNetworkConfig.nativeSymbol} balance too low: ${ethers.formatEther(facilitatorGasBalance)}`);
         // Update order to failed before returning
@@ -730,7 +734,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cymstudio.app';
     const purchaseBody = {
       orderId: orderId,
-      price: price,
+      price: normalizedPrice,
       productId: productIdNumber, // xRemit expects number (integer)
       externalUserId: userId,
       externalUserFirstName: userFirstName || 'Customer',

@@ -413,10 +413,25 @@ export default function PurchaseModal({
   }, [amount, product.currency]);
 
   // Mark quote as stale after 2 minutes, with live countdown
+  // Pause staleness timer during OTP verification to avoid quote expiring mid-verification
   const QUOTE_STALE_MS = 120_000;
   const [quoteCountdown, setQuoteCountdown] = useState<number | null>(null);
+  const [quotePausedAt, setQuotePausedAt] = useState<number | null>(null);
+  // Pause/resume quote timer when entering/leaving verify-email step
+  useEffect(() => {
+    if (step === 'verify-email' && quoteFetchedAt && !quotePausedAt) {
+      setQuotePausedAt(Date.now());
+    } else if (step !== 'verify-email' && quotePausedAt && quoteFetchedAt) {
+      // Extend quoteFetchedAt by the time spent on OTP step
+      const pauseDuration = Date.now() - quotePausedAt;
+      setQuoteFetchedAt((prev) => prev ? prev + pauseDuration : prev);
+      setQuotePausedAt(null);
+    }
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!quoteFetchedAt || !usdcAmount) { setQuoteCountdown(null); return; }
+    // Don't count down while paused on OTP step
+    if (quotePausedAt) return;
     const tick = () => {
       const remaining = QUOTE_STALE_MS - (Date.now() - quoteFetchedAt);
       if (remaining <= 0) { setQuoteStale(true); setQuoteCountdown(0); return; }
@@ -425,7 +440,7 @@ export default function PurchaseModal({
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [quoteFetchedAt, usdcAmount]);
+  }, [quoteFetchedAt, usdcAmount, quotePausedAt]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1482,6 +1497,20 @@ export default function PurchaseModal({
                 />
                 {confirmEmail && confirmEmail.toLowerCase().trim() !== email.toLowerCase().trim() && (
                   <p className="text-xs text-red-400 mt-1">Emails do not match</p>
+                )}
+                {/* Email domain typo detection on confirm field — catches typos in both inputs */}
+                {confirmEmail && suggestEmailDomain(confirmEmail) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const suggested = suggestEmailDomain(confirmEmail)!;
+                      setConfirmEmail(confirmEmail.slice(0, confirmEmail.lastIndexOf('@') + 1) + suggested);
+                    }}
+                    className="mt-1 text-xs text-amber-300 hover:text-amber-200 transition-colors"
+                    aria-label={`Fix confirm email domain to ${suggestEmailDomain(confirmEmail)}`}
+                  >
+                    Did you mean <strong>{confirmEmail.slice(0, confirmEmail.lastIndexOf('@') + 1)}{suggestEmailDomain(confirmEmail)}</strong>?
+                  </button>
                 )}
               </div>
             )}

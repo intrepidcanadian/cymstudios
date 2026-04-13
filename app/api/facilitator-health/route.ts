@@ -8,8 +8,6 @@ export const dynamic = 'force-dynamic';
 let cachedResult: { data: any; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60_000;
 
-const MIN_GAS_BALANCE = 0.001; // Same threshold as purchase route M6 check
-
 export async function GET() {
   // Return cached if fresh
   if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_TTL_MS) {
@@ -25,7 +23,7 @@ export async function GET() {
         const balance = await provider.getBalance(FACILITATOR_ADDRESS);
         const balanceEth = parseFloat(ethers.formatEther(balance));
         results[key] = {
-          healthy: balanceEth >= MIN_GAS_BALANCE,
+          healthy: balanceEth >= net.minGasBalance,
           balance: balanceEth.toFixed(6),
         };
       } catch {
