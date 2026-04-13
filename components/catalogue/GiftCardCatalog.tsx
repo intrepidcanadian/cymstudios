@@ -146,7 +146,7 @@ const ProductCard = memo(function ProductCard({
             src={product.product_image}
             alt={product.brand_name}
             loading="lazy"
-            className="w-full h-full object-contain p-3 sm:p-6 group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-contain p-3 sm:p-6 [@media(hover:hover)]:group-hover:scale-110 transition-transform duration-500"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -269,7 +269,7 @@ function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelec
           src={product.product_image}
           alt={product.brand_name}
           loading="lazy"
-          className="w-full h-full object-contain p-4 sm:p-6 group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain p-4 sm:p-6 [@media(hover:hover)]:group-hover:scale-105 transition-transform duration-500"
           onError={() => setImgError(true)}
         />
       ) : (
@@ -1199,6 +1199,15 @@ export default function GiftCardCatalog() {
                 </div>
               )}
 
+              {/* Screen reader announcement for search/filter results */}
+              {activeTab === 'giftcards' && !loading && (
+                <div role="status" aria-live="polite" className="sr-only">
+                  {filteredProducts.length === 0
+                    ? 'No products found matching your filters'
+                    : `${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''} found`}
+                </div>
+              )}
+
               {/* Tab Content */}
               {activeTab === 'orders' ? (
                 <OrderHistoryList
@@ -1212,7 +1221,7 @@ export default function GiftCardCatalog() {
                 />
               ) : activeTab === 'mastercards' ? (
                 loadingMastercards ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6" aria-busy="true" aria-label="Loading Mastercard products">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
                         <div className="h-40 sm:h-56 bg-slate-700" />
@@ -1282,7 +1291,7 @@ export default function GiftCardCatalog() {
                   </div>
                 )
               ) : loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6" aria-busy="true" aria-label="Loading products">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
                       <div className="h-36 sm:h-56 bg-slate-700" />
@@ -1649,6 +1658,15 @@ export default function GiftCardCatalog() {
                 >
                   <Send className="w-3 h-3" />
                   <span className="hidden sm:inline">Send {tokenSymbol}</span>
+                </button>
+                <button
+                  onClick={() => setShowSendEthModal(true)}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition-colors border border-slate-600 flex-shrink-0"
+                  title={`Send ${NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}`}
+                  aria-label={`Send ${NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}`}
+                >
+                  <Send className="w-3 h-3" />
+                  Send {NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}
                 </button>
                 {/* Networks Supported — grouped switcher */}
                 <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/40 rounded-lg border border-slate-600 flex-shrink-0">

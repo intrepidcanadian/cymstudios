@@ -1081,34 +1081,37 @@ export default function PurchaseModal({
               </label>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleConfirmPurchase}
-                disabled={loading || chainSwitching || !termsAccepted || !facilitatorHealthy}
-                className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
-              >
-                {!facilitatorHealthy ? 'Switch network to continue' : chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); setDuplicateWarning(null); }}
-                disabled={loading}
-                className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
-              >
-                Back
-              </button>
-            </div>
+            {/* Sticky action buttons — always visible on mobile even when warnings push content */}
+            <div className="sticky bottom-0 bg-slate-800/95 backdrop-blur-sm pt-3 -mx-6 px-6 pb-1 sm:static sm:bg-transparent sm:backdrop-blur-none sm:pt-2 sm:mx-0 sm:px-0 sm:pb-0">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleConfirmPurchase}
+                  disabled={loading || chainSwitching || !termsAccepted || !facilitatorHealthy}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                >
+                  {!facilitatorHealthy ? 'Switch network to continue' : chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); setDuplicateWarning(null); }}
+                  disabled={loading}
+                  className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
+                >
+                  Back
+                </button>
+              </div>
 
-            <div className="text-xs text-slate-400/80 text-center space-y-1">
-              <p>
-                {networkConfig?.paymentStrategy === 'eip3009'
-                  ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
-                  : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
-                }
-              </p>
-              <p className="text-slate-500">
-                Vouchers are typically delivered to your email within 2–5 minutes after payment confirms.
-              </p>
+              <div className="text-xs text-slate-400/80 text-center space-y-1 mt-2">
+                <p>
+                  {networkConfig?.paymentStrategy === 'eip3009'
+                    ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
+                    : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
+                  }
+                </p>
+                <p className="text-slate-500">
+                  Vouchers are typically delivered to your email within 2–5 minutes after payment confirms.
+                </p>
+              </div>
             </div>
           </div>
         )}
