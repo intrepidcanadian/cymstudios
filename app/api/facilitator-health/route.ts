@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json(cachedResult.data);
   }
 
-  const results: Record<string, { healthy: boolean; balance?: string }> = {};
+  const results: Record<string, { healthy: boolean; balance?: string; reason?: string }> = {};
 
   await Promise.allSettled(
     Object.entries(NETWORKS).map(async ([key, net]) => {
@@ -25,9 +25,10 @@ export async function GET() {
         results[key] = {
           healthy: balanceEth >= net.minGasBalance,
           balance: balanceEth.toFixed(6),
+          ...(balanceEth < net.minGasBalance ? { reason: 'low_gas' } : {}),
         };
       } catch {
-        results[key] = { healthy: false };
+        results[key] = { healthy: false, reason: 'rpc_unreachable' };
       }
     })
   );

@@ -10,6 +10,9 @@
 
 import { NETWORKS, FACILITATOR_ADDRESS, type NetworkConfig } from '@/config/networks';
 
+const DEBUG = process.env.NODE_ENV === 'development';
+const log = (...args: unknown[]) => { if (DEBUG) console.log('[x402]', ...args); };
+
 export interface PaymentOptions extends RequestInit {
   method: string;
   headers?: Record<string, string>;
@@ -72,7 +75,7 @@ async function buildEip3009Payment(
     nonce,
   };
 
-  console.log('[x402] Requesting EIP-3009 signature...');
+  log('Requesting EIP-3009 signature...');
   const signature = await signer.signTypedData(domain, types, message);
 
   const paymentPayload = {
@@ -129,12 +132,12 @@ async function buildDirectPayment(
 
   const value = BigInt(amount).toString();
 
-  console.log(`[x402] Requesting approve(${recipient}, ${value}) on ${network.name}...`);
+  log(`Requesting approve(${recipient}, ${value}) on ${network.name}...`);
   const approveTx = await tokenContract.approve(recipient, value);
-  console.log(`[x402] Approve tx submitted: ${approveTx.hash}`);
+  log(`Approve tx submitted: ${approveTx.hash}`);
 
   const receipt = await approveTx.wait();
-  console.log(`[x402] Approve confirmed, block: ${receipt.blockNumber}`);
+  log(`Approve confirmed, block: ${receipt.blockNumber}`);
 
   const paymentPayload = {
     x402Version: 1,
@@ -174,13 +177,13 @@ export async function payWithX402(
     throw new Error('No wallet connected. Please connect your wallet to make payments.');
   }
 
-  console.log(`[x402] Initiating payment on ${network.name} (${network.tokenSymbol}, strategy: ${network.paymentStrategy})`);
+  log(`Initiating payment on ${network.name} (${network.tokenSymbol}, strategy: ${network.paymentStrategy})`);
 
   // Make initial request
   let response = await fetch(url, options);
 
   if (response.status === 402) {
-    console.log('[x402] 402 Payment Required detected');
+    log('402 Payment Required detected');
 
     const paymentInfo = await response.json();
 
@@ -259,10 +262,12 @@ export async function payWithX402(
     });
 
     if (!response.ok) {
-      const cloned = response.clone();
-      console.error('[x402] Payment request failed:', await cloned.text());
+      if (DEBUG) {
+        const cloned = response.clone();
+        console.error('[x402] Payment request failed:', await cloned.text());
+      }
     } else {
-      console.log('[x402] Payment successful!');
+      log('Payment successful!');
     }
   }
 

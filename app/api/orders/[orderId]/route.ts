@@ -94,7 +94,11 @@ export async function GET(
           if (!updateError && updatedOrder) {
             logger.info(`[Orders] Order ${orderId} updated from xRemit fallback`);
 
-            if (updatedOrder.status === 'completed' && updatedOrder.voucher_code && data.user_email) {
+            // Only send voucher email if we just transitioned to completed
+            // (order was previously in processing/pending, not already completed with voucher)
+            // This prevents duplicate emails when multiple status-check requests race
+            if (updatedOrder.status === 'completed' && updatedOrder.voucher_code && data.user_email
+                && !data.voucher_code) {
               try {
                 let productImage: string | null = null;
                 if (data.product_id) {

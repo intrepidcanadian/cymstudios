@@ -964,13 +964,27 @@ export default function PurchaseModal({
             )}
 
             {!facilitatorHealthy && (
-              <div className="bg-amber-500/15 border border-amber-500/30 text-amber-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
+              <div className="bg-red-500/15 border border-red-500/30 text-red-300 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
                 <div className="flex items-start gap-2">
-                  <span className="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>
-                  <p className="text-xs text-amber-400/90">
-                    Settlement on {networkConfig?.name} may be delayed due to low facilitator gas.
-                    Your payment is still safe — consider switching to another network for faster processing.
-                  </p>
+                  <span className="text-red-400 mt-0.5 flex-shrink-0">⚠</span>
+                  <div>
+                    <p className="text-xs text-red-400/90 mb-2">
+                      {networkConfig?.name} settlement is temporarily unavailable due to low facilitator gas.
+                      Please switch to another network to continue your purchase.
+                    </p>
+                    <div className="flex gap-2">
+                      {Object.entries(NETWORKS).filter(([k]) => k !== selectedNetwork).map(([key, net]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { onNetworkChange(key); }}
+                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-semibold rounded-lg transition-colors border border-red-500/30"
+                        >
+                          Switch to {net.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1065,10 +1079,10 @@ export default function PurchaseModal({
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleConfirmPurchase}
-                disabled={loading || chainSwitching || !termsAccepted}
+                disabled={loading || chainSwitching || !termsAccepted || !facilitatorHealthy}
                 className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
               >
-                {chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
+                {!facilitatorHealthy ? 'Switch network to continue' : chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
               </button>
               <button
                 type="button"
