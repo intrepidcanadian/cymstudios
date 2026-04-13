@@ -388,6 +388,41 @@ export default function GiftCardCatalog() {
   const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
   const [hasNewOrders, setHasNewOrders] = useState(false);
 
+  // Cached exchange rates for denomination token cost previews (display only)
+  const [fxRateCache, setFxRateCache] = useState<Record<string, number>>({});
+  const fxFetchedRef = useRef<Set<string>>(new Set());
+  const fetchFxForCurrency = useCallback((currency: string) => {
+    if (currency === 'USD' || fxFetchedRef.current.has(currency)) return;
+    fxFetchedRef.current.add(currency);
+    fetch(`/api/exchange-rate?from=${currency}&to=USD`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.rate) {
+          setFxRateCache(prev => ({ ...prev, [currency]: data.rate }));
+        }
+      })
+      .catch(() => { /* display-only — silent fail */ });
+  }, []);
+
+  // Fetch FX rate when product detail modal opens (for denomination cost preview)
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.currency && selectedProduct.currency !== 'USD') {
+      fetchFxForCurrency(selectedProduct.currency);
+    }
+  }, [selectedProduct, fetchFxForCurrency]);
+
+  // Helper: estimate token cost for a denomination amount
+  const estimateTokenCost = useCallback((denomAmount: number, currency: string): string | null => {
+    const fee = currency === 'USD' ? 0.005 : 0.015; // 0.5% USD, 1.5% non-USD
+    if (currency === 'USD') {
+      return (denomAmount * (1 + fee)).toFixed(2);
+    }
+    const rate = fxRateCache[currency];
+    if (!rate) return null;
+    const usdValue = denomAmount / rate;
+    return (usdValue * (1 + fee)).toFixed(2);
+  }, [fxRateCache]);
+
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
   const [facilitatorHealth, setFacilitatorHealth] = useState<Record<string, boolean>>({});
   const [facilitatorHealthLoaded, setFacilitatorHealthLoaded] = useState(false);
@@ -968,6 +1003,9 @@ export default function GiftCardCatalog() {
                   }`}
                 >
                   Gift Cards
+                  {!loading && filteredProducts.length > 0 && (
+                    <span className="ml-1.5 text-xs font-normal opacity-60">({filteredProducts.length})</span>
+                  )}
                 </button>
                 <button
                   onClick={() => { setActiveTab('mastercards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -979,6 +1017,9 @@ export default function GiftCardCatalog() {
                 >
                   <CreditCard className="w-4 h-4 flex-shrink-0" />
                   Prepaid Mastercards
+                  {mastercardsFetched && mastercards.length > 0 && (
+                    <span className="text-xs font-normal opacity-60">({mastercards.length})</span>
+                  )}
                 </button>
                 <button
                   onClick={() => { setActiveTab('orders'); setHasNewOrders(false); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -1016,7 +1057,22 @@ export default function GiftCardCatalog() {
                       Recently Viewed
                       <span className="text-xs font-normal normal-case text-slate-500">({recentlyViewed.length})</span>
                     </h3>
-                    <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-transform ${recentlyViewedCollapsed ? '' : 'rotate-180'}`} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRecentlyViewed([]);
+                          if (typeof window !== 'undefined') {
+                            try { localStorage.removeItem('recentlyViewed'); } catch { /* ignore */ }
+                          }
+                        }}
+                        className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-700/50"
+                        aria-label="Clear recently viewed products"
+                      >
+                        Clear
+                      </button>
+                      <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-transform ${recentlyViewedCollapsed ? '' : 'rotate-180'}`} />
+                    </div>
                   </button>
                   {!recentlyViewedCollapsed && (
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
@@ -1347,18 +1403,24 @@ export default function GiftCardCatalog() {
                     <div>
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2">Quick Buy — tap a denomination</h3>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                        {selectedProduct.denominations.map((denom: number, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              setPurchaseInitialAmount(String(denom));
-                              setShowPurchaseModal(true);
-                            }}
-                            className="bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-slate-600 hover:border-indigo-500"
-                          >
-                            {selectedProduct.currency} {denom}
-                          </button>
-                        ))}
+                        {selectedProduct.denominations.map((denom: number, idx: number) => {
+                          const tokenEst = selectedProduct.currency ? estimateTokenCost(denom, selectedProduct.currency) : null;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setPurchaseInitialAmount(String(denom));
+                                setShowPurchaseModal(true);
+                              }}
+                              className="bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-slate-600 hover:border-indigo-500"
+                            >
+                              {selectedProduct.currency} {denom}
+                              {tokenEst && (
+                                <span className="block text-[9px] sm:text-[10px] font-normal opacity-60">≈ {tokenEst} {NETWORKS[selectedNetwork]?.tokenSymbol}</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1556,7 +1618,10 @@ export default function GiftCardCatalog() {
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                    <span className="hidden sm:inline">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></span>
+                    <span className="sm:hidden">{tokenSymbol} <span className="text-slate-500 font-mono">{address.slice(0, 6)}…{address.slice(-4)}</span></span>
+                  </p>
                   <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
                     {balanceLoading ? (
                       <span className="inline-block w-20 h-5 bg-slate-700 rounded animate-pulse" />
