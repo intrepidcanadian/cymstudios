@@ -112,7 +112,7 @@ function countryCodeToFlag(code: string | undefined | null): string {
 
 /** M26b: Map of country names to ISO 3166-1 alpha-2 codes for flag lookup */
 const COUNTRY_CODE_MAP: Record<string, string> = {
-  'United States': 'US', 'United Kingdom': 'GB', 'Canada': 'CA', 'Australia': 'AU',
+  'United States': 'US', 'United States of America': 'US', 'United Kingdom': 'GB', 'Canada': 'CA', 'Australia': 'AU',
   'Germany': 'DE', 'France': 'FR', 'Italy': 'IT', 'Spain': 'ES', 'Netherlands': 'NL',
   'Belgium': 'BE', 'Austria': 'AT', 'Switzerland': 'CH', 'Sweden': 'SE', 'Norway': 'NO',
   'Denmark': 'DK', 'Finland': 'FI', 'Ireland': 'IE', 'Portugal': 'PT', 'Poland': 'PL',
