@@ -132,16 +132,27 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
 
   // Auto-refresh with exponential backoff when there are pending/processing orders
   // Starts at 30s, doubles each cycle (30s → 60s → 120s), caps at 5 min, stops after 30 min total
+  // Pauses when tab is hidden (visibility API) to reduce server load
   const hasPendingOrders = orders.some((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'pending_review');
   const pollIntervalRef = useRef(30_000);
   const pollStartRef = useRef<number | null>(null);
+  const [tabVisible, setTabVisible] = useState(true);
   const MAX_POLL_DURATION_MS = 30 * 60_000; // 30 minutes max polling
   const MAX_POLL_INTERVAL_MS = 5 * 60_000; // cap at 5 min between polls
 
+  // Track tab visibility — pause polling when hidden
   useEffect(() => {
-    if (!hasPendingOrders) {
-      pollIntervalRef.current = 30_000; // reset for next time
-      pollStartRef.current = null;
+    const handleVisibility = () => setTabVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!hasPendingOrders || !tabVisible) {
+      if (!hasPendingOrders) {
+        pollIntervalRef.current = 30_000; // reset for next time
+        pollStartRef.current = null;
+      }
       return;
     }
     if (!pollStartRef.current) pollStartRef.current = Date.now();
@@ -157,7 +168,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
     };
     const timer = schedule();
     return () => { if (timer) clearTimeout(timer); };
-  }, [hasPendingOrders, fetchOrders, orders]);
+  }, [hasPendingOrders, fetchOrders, orders, tabVisible]);
 
   const parseRefundInfo = (errorMessage?: string): { refunded: boolean; manualRefundNeeded: boolean } => {
     if (!errorMessage) return { refunded: false, manualRefundNeeded: false };

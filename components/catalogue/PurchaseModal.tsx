@@ -475,9 +475,10 @@ export default function PurchaseModal({
     }
 
     // M31: Maximum order value guard — limits exposure per transaction
-    const orderPrice = parseFloat(amount);
-    if (!isNaN(orderPrice) && orderPrice > MAX_ORDER_USD) {
-      setError(`Maximum order value is $${MAX_ORDER_USD.toLocaleString()} per transaction. Please reduce the amount or split into multiple orders.`);
+    // Use usdcAmount (USD equivalent) for non-USD currencies to enforce the USD cap accurately
+    const orderUsdEquivalent = usdcAmount ? parseFloat(usdcAmount) : parseFloat(amount);
+    if (!isNaN(orderUsdEquivalent) && orderUsdEquivalent > MAX_ORDER_USD) {
+      setError(`Maximum order value is $${MAX_ORDER_USD.toLocaleString()} USD per transaction. Your order is ~$${orderUsdEquivalent.toFixed(0)} USD equivalent. Please reduce the amount or split into multiple orders.`);
       return;
     }
 

@@ -71,7 +71,8 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
   const [voucherCopied, setVoucherCopied] = useState(false);
   const [pollingExpired, setPollingExpired] = useState(false);
   const [manualChecking, setManualChecking] = useState(false);
-  const [pollsRemaining, setPollsRemaining] = useState(40);
+  const [pollsRemaining, setPollsRemaining] = useState(0);
+  const [pollSecondsLeft, setPollSecondsLeft] = useState(0);
   const pollCountRef = useRef(0);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -105,10 +106,16 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
-  const MAX_POLLS = 40; // Stop polling after ~3.3 minutes (40 × 5s)
+  // Progressive polling: 5s intervals for first 2 min, then 10s intervals up to ~8 min total
+  // Reduces server load while still giving timely updates during the critical window
+  const MAX_POLL_DURATION_MS = 8 * 60_000; // 8 minutes total
+  const FAST_INTERVAL_MS = 5_000; // 5s for first 2 minutes
+  const SLOW_INTERVAL_MS = 10_000; // 10s after 2 minutes
+  const SLOW_THRESHOLD_MS = 2 * 60_000; // switch to slow after 2 min
 
   useEffect(() => {
     let cancelled = false;
+    const startTime = Date.now();
     pollCountRef.current = 0;
 
     const fetchOrderStatus = async () => {
@@ -142,29 +149,36 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
     // Initial fetch
     fetchOrderStatus();
 
-    // Poll for updates every 5 seconds, only while status is pending/processing
-    // and only up to MAX_POLLS times to avoid hammering the server
-    const interval = setInterval(() => {
-      pollCountRef.current += 1;
-      setPollsRemaining(MAX_POLLS - pollCountRef.current);
-      if (pollCountRef.current >= MAX_POLLS) {
-        clearInterval(interval);
+    // Progressive polling with backoff
+    let timer: ReturnType<typeof setTimeout>;
+    const schedulePoll = () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= MAX_POLL_DURATION_MS) {
         setPollingExpired(true);
+        setPollSecondsLeft(0);
         return;
       }
-      // Read the latest order status from the DOM-stable ref pattern:
-      // We use a functional form to check current state without needing it as a dependency
-      setOrder((current) => {
-        if (current?.status === 'processing' || current?.status === 'pending') {
-          fetchOrderStatus();
-        }
-        return current; // don't change state
-      });
-    }, 5000);
+      const interval = elapsed < SLOW_THRESHOLD_MS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS;
+      const remaining = Math.max(0, MAX_POLL_DURATION_MS - elapsed);
+      setPollSecondsLeft(Math.ceil(remaining / 1000));
+
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        pollCountRef.current += 1;
+        setOrder((current) => {
+          if (current?.status === 'processing' || current?.status === 'pending') {
+            fetchOrderStatus();
+          }
+          return current;
+        });
+        schedulePoll();
+      }, interval);
+    };
+    schedulePoll();
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timer);
     };
   }, [orderId, orderToken]);
 
@@ -355,8 +369,11 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                   </p>
                   <p className="text-xs text-yellow-400">
                     Your payment was received successfully. The gift card provider experienced a timeout,
-                    so our team is verifying your order. You will receive your voucher at{' '}
-                    <strong className="text-yellow-200">{order.user_email}</strong> once confirmed.
+                    so we are automatically verifying your order. Most orders resolve within <strong className="text-yellow-200">5–15 minutes</strong>.
+                    If not resolved within 24 hours, an automatic refund will be issued to your wallet.
+                  </p>
+                  <p className="text-xs text-yellow-400 mt-1">
+                    Your voucher will be sent to <strong className="text-yellow-200">{order.user_email}</strong> once confirmed.
                     If you need help, contact <strong>info@ginsengswap.com</strong> with your order ID.
                   </p>
                   <button
@@ -379,9 +396,9 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                     Voucher details will be sent to <strong className="text-blue-200">{order.user_email}</strong> shortly.
                     This usually takes 1-5 minutes.
                   </p>
-                  {!pollingExpired && pollsRemaining > 0 && (
+                  {!pollingExpired && pollSecondsLeft > 0 && (
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Auto-checking for {Math.ceil(pollsRemaining * 5 / 60)}:{String((pollsRemaining * 5) % 60).padStart(2, '0')} more
+                      Auto-checking for {Math.floor(pollSecondsLeft / 60)}:{String(pollSecondsLeft % 60).padStart(2, '0')} more
                     </p>
                   )}
                   {pollingExpired && (

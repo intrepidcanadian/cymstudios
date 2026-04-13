@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
-import { getUsdcAmount, getUsdcAmountFresh } from '@/lib/exchange-rates';
+import { getUsdcAmount, getUsdcAmountFresh, convertToUsd } from '@/lib/exchange-rates';
 import { generateOrderToken } from '@/lib/auth-token';
 import { sendOrderDelayedEmail, sendOrderCompletedAlert } from '@/lib/email';
 import { logger } from '@/lib/logger';
@@ -165,13 +165,26 @@ export async function POST(request: NextRequest) {
     }
 
     // M31: Maximum order value ceiling — limits exposure per transaction (merchant protection)
+    // Convert non-USD currencies to USD equivalent before checking cap
     const MAX_ORDER_VALUE_USD = 5000;
-    if (typeof price === 'number' && price > MAX_ORDER_VALUE_USD) {
-      logger.warn(`[Purchase] Order value ${price} ${currency || 'USD'} exceeds maximum ${MAX_ORDER_VALUE_USD}`);
-      return NextResponse.json(
-        { success: false, error: `Maximum order value is $${MAX_ORDER_VALUE_USD} USD per transaction. Please reduce the amount or split into multiple orders.` },
-        { status: 400 }
-      );
+    if (typeof price === 'number') {
+      const effectiveCurr = currency || 'USD';
+      let priceInUsd = price;
+      if (effectiveCurr !== 'USD' && effectiveCurr !== 'USDC') {
+        try {
+          priceInUsd = await convertToUsd(price, effectiveCurr);
+        } catch {
+          // If conversion fails, fall back to raw price comparison (conservative)
+          priceInUsd = price;
+        }
+      }
+      if (priceInUsd > MAX_ORDER_VALUE_USD) {
+        logger.warn(`[Purchase] Order value ${price} ${effectiveCurr} (~$${priceInUsd.toFixed(0)} USD) exceeds maximum $${MAX_ORDER_VALUE_USD}`);
+        return NextResponse.json(
+          { success: false, error: `Maximum order value is $${MAX_ORDER_VALUE_USD} USD per transaction. Your order of ${price} ${effectiveCurr} exceeds this limit. Please reduce the amount or split into multiple orders.` },
+          { status: 400 }
+        );
+      }
     }
 
     // CRITICAL: Validate purchase will succeed BEFORE processing payment
