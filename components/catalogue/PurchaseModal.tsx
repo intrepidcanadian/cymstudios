@@ -121,14 +121,26 @@ export default function PurchaseModal({
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
-  const [verifiedEmails, setVerifiedEmails] = useState<Set<string>>(() => {
+  // L10: Store verified emails with timestamps — re-verify after 30 days
+  const VERIFIED_EMAIL_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const [verifiedEmails, setVerifiedEmails] = useState<Map<string, number>>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('verifiedEmails');
-        return saved ? new Set(JSON.parse(saved)) : new Set();
-      } catch { return new Set(); }
+        if (!saved) return new Map();
+        const parsed = JSON.parse(saved);
+        // Migration: old format was string[] → convert to Record<string, number>
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, number>();
+          parsed.forEach((e: string) => map.set(e, Date.now()));
+          localStorage.setItem('verifiedEmails', JSON.stringify(Object.fromEntries(map)));
+          return map;
+        }
+        // New format: Record<email, timestamp>
+        return new Map(Object.entries(parsed as Record<string, number>));
+      } catch { return new Map(); }
     }
-    return new Set();
+    return new Map();
   });
 
   // Tick every second while on OTP step to keep cooldown countdown live
@@ -139,14 +151,20 @@ export default function PurchaseModal({
     return () => clearInterval(interval);
   }, [step, otpSentAt]);
 
-  const isEmailVerified = (e: string) => verifiedEmails.has(e.toLowerCase().trim());
+  const isEmailVerified = (e: string) => {
+    const key = e.toLowerCase().trim();
+    const verifiedAt = verifiedEmails.get(key);
+    if (!verifiedAt) return false;
+    // Re-verify if older than 30 days
+    return (Date.now() - verifiedAt) < VERIFIED_EMAIL_MAX_AGE_MS;
+  };
 
   const persistVerifiedEmail = useCallback((e: string) => {
     setVerifiedEmails((prev) => {
-      const next = new Set(prev);
-      next.add(e.toLowerCase().trim());
+      const next = new Map(prev);
+      next.set(e.toLowerCase().trim(), Date.now());
       if (typeof window !== 'undefined') {
-        localStorage.setItem('verifiedEmails', JSON.stringify(Array.from(next)));
+        try { localStorage.setItem('verifiedEmails', JSON.stringify(Object.fromEntries(next))); } catch { /* ignore */ }
       }
       return next;
     });

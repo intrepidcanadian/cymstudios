@@ -101,6 +101,42 @@ function EmptySearchState({
   );
 }
 
+/** M26b: Convert ISO country code to emoji flag (e.g. "US" → "🇺🇸") */
+function countryCodeToFlag(code: string | undefined | null): string {
+  if (!code || code.length !== 2) return '';
+  const upper = code.toUpperCase();
+  const first = 0x1F1E6 + upper.charCodeAt(0) - 65;
+  const second = 0x1F1E6 + upper.charCodeAt(1) - 65;
+  return String.fromCodePoint(first, second);
+}
+
+/** M26b: Map of country names to ISO 3166-1 alpha-2 codes for flag lookup */
+const COUNTRY_CODE_MAP: Record<string, string> = {
+  'United States': 'US', 'United Kingdom': 'GB', 'Canada': 'CA', 'Australia': 'AU',
+  'Germany': 'DE', 'France': 'FR', 'Italy': 'IT', 'Spain': 'ES', 'Netherlands': 'NL',
+  'Belgium': 'BE', 'Austria': 'AT', 'Switzerland': 'CH', 'Sweden': 'SE', 'Norway': 'NO',
+  'Denmark': 'DK', 'Finland': 'FI', 'Ireland': 'IE', 'Portugal': 'PT', 'Poland': 'PL',
+  'Czech Republic': 'CZ', 'Greece': 'GR', 'Hungary': 'HU', 'Romania': 'RO',
+  'Japan': 'JP', 'South Korea': 'KR', 'China': 'CN', 'Hong Kong': 'HK', 'Taiwan': 'TW',
+  'Singapore': 'SG', 'Malaysia': 'MY', 'Thailand': 'TH', 'Philippines': 'PH',
+  'India': 'IN', 'Indonesia': 'ID', 'Vietnam': 'VN', 'Turkey': 'TR', 'Türkiye': 'TR',
+  'South Africa': 'ZA', 'Nigeria': 'NG', 'Kenya': 'KE', 'Egypt': 'EG', 'Ghana': 'GH',
+  'Brazil': 'BR', 'Mexico': 'MX', 'Argentina': 'AR', 'Colombia': 'CO', 'Chile': 'CL',
+  'Peru': 'PE', 'Saudi Arabia': 'SA', 'United Arab Emirates': 'AE', 'Qatar': 'QA',
+  'Kuwait': 'KW', 'Bahrain': 'BH', 'Oman': 'OM', 'Israel': 'IL', 'New Zealand': 'NZ',
+  'Luxembourg': 'LU', 'Croatia': 'HR', 'Slovakia': 'SK', 'Slovenia': 'SI', 'Bulgaria': 'BG',
+  'Serbia': 'RS', 'Ukraine': 'UA', 'Russia': 'RU', 'Pakistan': 'PK', 'Bangladesh': 'BD',
+  'Sri Lanka': 'LK', 'Nepal': 'NP', 'Costa Rica': 'CR', 'Panama': 'PA', 'Jamaica': 'JM',
+  'Global': '🌍', 'European Union': 'EU',
+};
+
+function getCountryFlag(countryName: string | undefined | null): string {
+  if (!countryName) return '';
+  if (countryName === 'Global') return '🌍';
+  const code = COUNTRY_CODE_MAP[countryName];
+  return code ? countryCodeToFlag(code) : '';
+}
+
 /** Memoized product card — avoids re-render when filter/sort changes but this card's data hasn't */
 const ProductCard = memo(function ProductCard({
   product,
@@ -202,6 +238,9 @@ const ProductCard = memo(function ProductCard({
 
         {/* Country & Currency */}
         <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700 cursor-pointer" onClick={() => onSelect(product)}>
+          {getCountryFlag(product.country_name) && (
+            <span className="flex-shrink-0" aria-hidden="true">{getCountryFlag(product.country_name)}</span>
+          )}
           <span className="font-medium truncate">{product.currency} · {product.country_name}</span>
         </div>
 
@@ -796,7 +835,7 @@ export default function GiftCardCatalog() {
         >
           <option value="all">All Countries</option>
           {availableCountries.map(country => (
-            <option key={country} value={country}>{country}</option>
+            <option key={country} value={country}>{getCountryFlag(country)} {country}</option>
           ))}
         </select>
       </div>
@@ -1166,6 +1205,7 @@ export default function GiftCardCatalog() {
                   )}
                   {countryFilter !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                      {getCountryFlag(countryFilter) && <span aria-hidden="true">{getCountryFlag(countryFilter)}</span>}
                       {countryFilter}
                       <button onClick={() => setCountryFilter('all')} className="ml-0.5 hover:text-white" aria-label={`Remove ${countryFilter} filter`}><X className="w-3 h-3" /></button>
                     </span>
@@ -1277,7 +1317,10 @@ export default function GiftCardCatalog() {
                             </div>
                           )}
 
-                          <p className="text-xs text-slate-400 mb-3">{product.currency} · {product.country_name}</p>
+                          <p className="text-xs text-slate-400 mb-3">
+                            {getCountryFlag(product.country_name) && <span className="mr-0.5" aria-hidden="true">{getCountryFlag(product.country_name)}</span>}
+                            {product.currency} · {product.country_name}
+                          </p>
 
                           <button
                             onClick={() => setSelectedProduct(product)}
@@ -1404,7 +1447,10 @@ export default function GiftCardCatalog() {
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Country</h3>
-                      <p className="text-sm sm:text-base text-slate-100">{selectedProduct.country_name}</p>
+                      <p className="text-sm sm:text-base text-slate-100">
+                        {getCountryFlag(selectedProduct.country_name) && <span className="mr-1" aria-hidden="true">{getCountryFlag(selectedProduct.country_name)}</span>}
+                        {selectedProduct.country_name}
+                      </p>
                     </div>
                     <div>
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Currency</h3>
