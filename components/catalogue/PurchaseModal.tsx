@@ -18,6 +18,7 @@ interface PurchaseModalProps {
   onRefreshBalance?: () => void;
   initialAmount?: string;
   facilitatorHealthy?: boolean;
+  facilitatorHealthReason?: string;
 }
 
 interface UserProfile {
@@ -76,6 +77,7 @@ export default function PurchaseModal({
   onRefreshBalance,
   initialAmount,
   facilitatorHealthy = true,
+  facilitatorHealthReason,
 }: PurchaseModalProps) {
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -969,8 +971,10 @@ export default function PurchaseModal({
                   <span className="text-red-400 mt-0.5 flex-shrink-0">⚠</span>
                   <div>
                     <p className="text-xs text-red-400/90 mb-2">
-                      {networkConfig?.name} settlement is temporarily unavailable due to low facilitator gas.
-                      Please switch to another network to continue your purchase.
+                      {facilitatorHealthReason === 'rpc_unreachable'
+                        ? `${networkConfig?.name} network RPC is unreachable. Transactions cannot be settled on this network right now.`
+                        : `${networkConfig?.name} settlement is temporarily unavailable due to low facilitator gas.`}
+                      {' '}Please switch to another network to continue your purchase.
                     </p>
                     <div className="flex gap-2">
                       {Object.entries(NETWORKS).filter(([k]) => k !== selectedNetwork).map(([key, net]) => (
@@ -1086,7 +1090,7 @@ export default function PurchaseModal({
               </button>
               <button
                 type="button"
-                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); }}
+                onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); setDuplicateWarning(null); }}
                 disabled={loading}
                 className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
               >
@@ -1562,7 +1566,9 @@ export default function PurchaseModal({
               <div className="flex items-start gap-2">
                 <span className="text-amber-400 mt-0.5 flex-shrink-0">⚠</span>
                 <p className="text-xs text-amber-400/90">
-                  {networkConfig?.name} settlement may be delayed due to low facilitator gas. Consider switching to another network for faster processing.
+                  {facilitatorHealthReason === 'rpc_unreachable'
+                    ? `${networkConfig?.name} network RPC is unreachable. Consider switching to another network.`
+                    : `${networkConfig?.name} settlement may be delayed due to low facilitator gas. Consider switching to another network for faster processing.`}
                 </p>
               </div>
             </div>

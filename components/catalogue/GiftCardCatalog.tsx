@@ -425,6 +425,7 @@ export default function GiftCardCatalog() {
 
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
   const [facilitatorHealth, setFacilitatorHealth] = useState<Record<string, boolean>>({});
+  const [facilitatorHealthReason, setFacilitatorHealthReason] = useState<Record<string, string>>({});
   const [facilitatorHealthLoaded, setFacilitatorHealthLoaded] = useState(false);
   useEffect(() => {
     const checkHealth = async () => {
@@ -433,10 +434,13 @@ export default function GiftCardCatalog() {
         const data = await resp.json();
         if (data.networks) {
           const health: Record<string, boolean> = {};
-          for (const [key, val] of Object.entries(data.networks) as [string, { healthy: boolean }][]) {
+          const reasons: Record<string, string> = {};
+          for (const [key, val] of Object.entries(data.networks) as [string, { healthy: boolean; reason?: string }][]) {
             health[key] = val.healthy;
+            if (val.reason) reasons[key] = val.reason;
           }
           setFacilitatorHealth(health);
+          setFacilitatorHealthReason(reasons);
           setFacilitatorHealthLoaded(true);
         }
       } catch {
@@ -1285,7 +1289,7 @@ export default function GiftCardCatalog() {
                       <div className="p-2.5 sm:p-4 border-t border-slate-700 space-y-2 sm:space-y-3">
                         <div className="h-4 bg-slate-700 rounded w-3/4" />
                         <div className="h-3 bg-slate-700 rounded w-1/2 hidden sm:block" />
-                        <div className="flex gap-1.5 hidden sm:flex">
+                        <div className="hidden sm:flex gap-1.5">
                           <div className="h-6 bg-slate-700 rounded w-16" />
                           <div className="h-6 bg-slate-700 rounded w-16" />
                         </div>
@@ -1372,7 +1376,7 @@ export default function GiftCardCatalog() {
                   <button
                     onClick={() => setSelectedProduct(null)}
                     aria-label="Close"
-                    className="p-2 hover:bg-slate-700 rounded-lg transition-colors -mr-2"
+                    className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors -mr-2"
                   >
                     <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" />
                   </button>
@@ -1567,6 +1571,7 @@ export default function GiftCardCatalog() {
             onRefreshBalance={refetchBalance}
             initialAmount={purchaseInitialAmount}
             facilitatorHealthy={selectedNetworkHealthy}
+            facilitatorHealthReason={facilitatorHealthReason[selectedNetwork]}
             onClose={() => {
               setShowPurchaseModal(false);
               setPurchaseInitialAmount('');
@@ -1679,10 +1684,18 @@ export default function GiftCardCatalog() {
                 return (
                   <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help" role="status" aria-label="Facilitator gas low warning">
                     <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                    <span className="hidden sm:inline text-[10px] text-amber-300 font-medium whitespace-nowrap">Facilitator: Gas low</span>
+                    <span className="hidden sm:inline text-[10px] text-amber-300 font-medium whitespace-nowrap">
+                      {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network: RPC issue' : 'Facilitator: Gas low'}
+                    </span>
                     <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs text-slate-300 w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                      <p className="font-semibold text-amber-300 mb-1">Facilitator Gas Low</p>
-                      <p className="text-slate-400 leading-relaxed">The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.</p>
+                      <p className="font-semibold text-amber-300 mb-1">
+                        {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network RPC Unreachable' : 'Facilitator Gas Low'}
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        {Object.values(facilitatorHealthReason).includes('rpc_unreachable')
+                          ? 'One or more network RPCs are not responding. Transactions on affected networks may fail. Try switching to another network.'
+                          : 'The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.'}
+                      </p>
                     </div>
                   </div>
                 );
