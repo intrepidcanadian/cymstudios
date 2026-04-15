@@ -40,7 +40,7 @@ export interface NetworkConfig {
   nativeSymbol: string;
   /** Payment strategy: 'eip3009' for gasless transferWithAuthorization, 'direct' for approve+transferFrom */
   paymentStrategy: PaymentStrategy;
-  /** Minimum facilitator native token balance for settlement (network-specific — Ethereum needs more during congestion) */
+  /** Minimum facilitator native token balance for settlement (in native units) */
   minGasBalance: number;
 }
 
@@ -60,7 +60,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     explorerUrl: 'https://etherscan.io',
     nativeSymbol: 'ETH',
     paymentStrategy: 'eip3009',
-    minGasBalance: 0.005, // Ethereum gas is expensive — need more buffer
+    minGasBalance: 0.01, // 0.01 ETH floor
   },
   conflux: {
     name: 'Conflux eSpace',
@@ -77,7 +77,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     explorerUrl: 'https://evm.confluxscan.org',
     nativeSymbol: 'CFX',
     paymentStrategy: 'eip3009',
-    minGasBalance: 0.001, // Conflux gas is minimal
+    minGasBalance: 10, // 10 CFX floor
   },
 };
 

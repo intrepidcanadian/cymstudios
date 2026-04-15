@@ -21,11 +21,11 @@ export async function GET() {
       try {
         const provider = new ethers.JsonRpcProvider(net.rpcUrl);
         const balance = await provider.getBalance(FACILITATOR_ADDRESS);
-        const balanceEth = parseFloat(ethers.formatEther(balance));
+        const balanceNative = parseFloat(ethers.formatEther(balance));
         results[key] = {
-          healthy: balanceEth >= net.minGasBalance,
-          balance: balanceEth.toFixed(6),
-          ...(balanceEth < net.minGasBalance ? { reason: 'low_gas' } : {}),
+          healthy: balanceNative >= net.minGasBalance,
+          balance: balanceNative.toFixed(6),
+          ...(balanceNative < net.minGasBalance ? { reason: 'low_gas' } : {}),
         };
       } catch {
         results[key] = { healthy: false, reason: 'rpc_unreachable' };

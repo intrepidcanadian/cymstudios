@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
         
         <a href="/catalogue" className={styles.comingSoon}>
-          🎁 Rewards Catalogue <span className={styles.comingSoonBadge}>Live</span>
+          🏆 Tournament Prize Redemptions <span className={styles.comingSoonBadge}>Live</span>
         </a>
 
         <div className={styles.tabs}>

@@ -622,7 +622,7 @@ export async function POST(request: NextRequest) {
       const facilitator = new ethers.Wallet(FACILITATOR_PRIVATE_KEY!, provider);
       const tokenContract = new ethers.Contract(paymentNetworkConfig.tokenAddress, TOKEN_ABI, facilitator);
 
-      // M6: Pre-check facilitator has enough native token for gas before settlement (network-specific threshold)
+      // M6: Pre-check facilitator has enough native token for gas before settlement (native-unit floor)
       const facilitatorGasBalance = await provider.getBalance(facilitator.address);
       const minGasBalance = ethers.parseEther(paymentNetworkConfig.minGasBalance.toString());
       if (facilitatorGasBalance < minGasBalance) {

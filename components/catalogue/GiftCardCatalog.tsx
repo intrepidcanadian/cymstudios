@@ -1029,9 +1029,9 @@ export default function GiftCardCatalog() {
                 <div className="flex items-start gap-3">
                   <Shield className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-100 mb-1">Loyalty Reward Center</h3>
+                    <h3 className="text-sm font-semibold text-slate-100 mb-1">Tournament Prize Redemptions</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Rewards in this catalogue are intended exclusively for use for CYM Studio&apos;s <span className="text-slate-200 font-medium">Employee Rewards</span>, <span className="text-slate-200 font-medium">Loyalty Programs</span>, and <span className="text-slate-200 font-medium">Sales Incentive Programs</span>. All redemptions must comply with your organization&apos;s program guidelines.
+                      Tournament winners can redeem gift cards using <span className="text-slate-200 font-medium">prize tokens awarded</span> from CYM Studio&apos;s <span className="text-slate-200 font-medium">Tournaments</span>, <span className="text-slate-200 font-medium">Competitions</span>, and <span className="text-slate-200 font-medium">Player Reward Programs</span>. All redemptions must comply with the official tournament rules.
                     </p>
                   </div>
                 </div>

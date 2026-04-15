@@ -1,8 +1,8 @@
 import GiftCardCatalog from '@/components/catalogue/GiftCardCatalog';
 
 export const metadata = {
-  title: 'Loyalty Reward Center - CYM Studio',
-  description: 'Browse and redeem loyalty rewards from 600+ brands with digital USDC or USDT0 tokens.',
+  title: 'Tournament Prize Redemptions - CYM Studio',
+  description: 'Tournament winners can redeem gift cards from 600+ brands using prize tokens awarded — pay with USDC or USDT0.',
 };
 
 export default function CataloguePage() {
