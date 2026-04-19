@@ -1,46 +1,23 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "CYM Rewards",
-  "description": "Redeem USDC or USDT0 tokens for gift cards from 300+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Features interactive MCP App catalog UI, brand search, country/currency filtering, and instant voucher delivery via email. Pricing: Card value + 1.5% service fee (applied to all currencies).",
+  "description": "Redeem USDC or USDT0 tokens for gift cards from 300+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Purchase requires an in-browser x402 signature; agents can discover brands, look up orders, and hand off to the catalogue UI for gasless checkout.",
   "image": "https://cymstudio.app/cym.png",
   "services": [
     {
       "name": "MCP",
       "endpoint": "https://cymstudio.app/api/mcp/rewards",
       "version": "2024-11-05",
-      "capabilities": ["tools", "resources"],
+      "capabilities": ["tools"],
       "skills": [
         "search_giftcards",
         "get_brand_details",
         "list_countries",
         "list_currencies",
-        "purchase_giftcard",
-        "check_order_status",
         "search_mastercard",
         "get_mastercard_details",
-        "list_mastercard_countries",
-        "list_mastercard_currencies",
-        "purchase_mastercard",
-        "check_mastercard_order"
-      ],
-      "ui_resources": [
-        {
-          "uri": "ui://cymstudio/rewards-catalog",
-          "name": "rewards_catalog",
-          "mimeType": "text/html;profile=mcp-app",
-          "description": "Interactive rewards catalog with brand browsing, denomination selection, FX conversion preview, and checkout redirect."
-        }
-      ]
-    },
-    {
-      "name": "A2A",
-      "endpoint": "https://cymstudio.app/.well-known/gift-cards/agent-card.json",
-      "version": "0.2.1",
-      "skills": [
-        "gift_card_search",
-        "gift_card_redemption",
-        "brand_catalog",
-        "order_tracking"
+        "check_order_status",
+        "redirect_to_checkout"
       ]
     },
     {
