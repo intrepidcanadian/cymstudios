@@ -9,16 +9,27 @@ One-line description: Gasless gift-card redemptions paid in USDT0 on Conflux eSp
 
 ## Overview
 
-CYM Rewards is a tournament prize redemption catalogue. Tournament winners, competition participants, and player-reward-program members use the gift cards they earn — across 300+ brands, 3 countries, and 3 currencies — paid in **USDT0 on Conflux eSpace** (or USDC on Ethereum mainnet).
+CYM Rewards is a tournament prize redemption catalogue. Tournament winners, competition participants, and player-reward-program members use the gift cards they earn — across 300+ brands, 3 countries, and 3 currencies (USD / CAD / HKD) — paid in **USDT0 on Conflux eSpace** (or USDC on Ethereum mainnet).
+
+**Three ways in, one checkout:**
+
+| Surface | Path | Who uses it |
+|---|---|---|
+| Visual catalogue | [`/catalogue`](https://cymstudio.app/catalogue) | Humans browsing and filtering brands, signing with their own wallet |
+| AI concierge | [`/chat`](https://cymstudio.app/chat) | Humans in natural language — Kimi (Moonshot) dispatches to our MCP |
+| MCP server | [`/api/mcp/rewards`](https://cymstudio.app/agents) | External AI agents with their own wallets, programmatically |
+
+All three land in the same `/api/purchase` endpoint, same x402 settlement on Conflux eSpace / Ethereum, same xRemit fulfillment — the only difference is who holds the signing key.
 
 What's different:
 
 - **Gasless at the user level.** Buyers sign an EIP-3009 `transferWithAuthorization` off-chain. A facilitator wallet submits the on-chain transaction and pays all CFX gas. A prize-winner with zero native CFX in their wallet can still redeem a $50 Amazon gift card.
 - **Multi-chain from day one.** Same UX on Conflux eSpace (USDT0) and Ethereum mainnet (USDC). Users pick whichever network holds their stablecoin.
+- **Agent-native, not agent-adjacent.** A native MCP JSON-RPC 2.0 server (12 tools) lets AI agents with their own wallets complete the full loop — discover → quote → sign EIP-3009 → settle → receive voucher — with no human and no browser. The chat concierge at `/chat` is itself a live demo of this surface.
 - **Real fulfillment.** Integrates xRemit's B2B gift-card API with HMAC-signed webhooks, auto-refund on provider failure, email OTP verification, and a $1–$5,000 per-order bound.
-- **A2A discoverable.** Publishes ERC-8004 agent-registration JSON so LLM agents and MCP-compatible clients can find and use the catalogue programmatically.
+- **A2A discoverable.** Publishes ERC-8004 agent-registration JSON (agent ID 22628 on Ethereum mainnet) so LLM agents and MCP-compatible clients can find and use the catalogue programmatically.
 
-Live at [cymstudio.app/catalogue](https://cymstudio.app/catalogue).
+Live at [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · Chat at [cymstudio.app/chat](https://cymstudio.app/chat) · Agent docs at [cymstudio.app/agents](https://cymstudio.app/agents).
 
 ## 📸 Screenshots
 
@@ -65,23 +76,33 @@ How blockchain helps: stablecoins are the right payout rail (instant, global, no
 
 ## 💡 Solution
 
-A checkout flow where a user:
+**User-wallet flow** (catalogue + chat concierge):
 
-1. Lands on the catalogue with USDT0 in their wallet and no CFX at all.
-2. Picks a brand (e.g. Amazon US, $50).
+1. User lands on `/catalogue` (or asks the `/chat` concierge) with USDT0 in their wallet and no CFX at all.
+2. Picks a brand (e.g. Amazon US, $50). In chat, a product card is rendered inline by the `search_giftcards` MCP tool call.
 3. Connects their wallet via Reown AppKit.
-4. Signs an **EIP-3009 transferWithAuthorization** for `50 USDT0` to the facilitator (off-chain signature, zero gas).
-5. The facilitator validates, pays CFX gas, submits the `transferWithAuthorization` on Conflux eSpace, waits for confirmation, calls xRemit to procure the gift card, and delivers the voucher code via email — all within ~60 seconds.
+4. Signs an **EIP-3009 `transferWithAuthorization`** for `50 USDT0` to the facilitator (off-chain signature, zero gas).
+5. The facilitator validates, pays CFX gas, submits on Conflux eSpace, waits for confirmation, calls xRemit to procure the gift card, and delivers the voucher via email — all within ~60 seconds.
+
+**Agent-wallet flow** (external AI agents, via MCP):
+
+1. Agent calls `verify_email_start` + `verify_email_complete` (OTP sent to the agent operator's email, 30-day window).
+2. Agent calls `get_purchase_quote` — server returns x402 payment requirements plus the EIP-712 domain + types.
+3. Agent's server-side wallet signs `transferWithAuthorization` programmatically using `viem` / `ethers`.
+4. Agent calls `submit_purchase` with the signed authorization envelope.
+5. Same `/api/purchase` endpoint, same settlement, same voucher — returned in the tool response.
 
 Key features:
 
 - **Gasless UX**: buyer holds only USDT0 and never needs CFX
 - **Multi-chain**: identical flow on Conflux eSpace (USDT0) and Ethereum mainnet (USDC), selected via a network switcher
+- **Agent-native MCP**: 12-tool JSON-RPC 2.0 server at `/api/mcp/rewards` covering discovery, email verification, quote, and purchase — usable by any MCP host (Claude Desktop, custom agents, server wallets)
+- **Chat concierge**: Kimi (Moonshot `kimi-k2-0711-preview`) with native tool-calling dispatches every user turn to the same MCP, so the chat is a live reference implementation
 - **Email OTP verification** (30-day re-verification) to prevent voucher theft
 - **Idempotency guard** on EIP-3009 nonces to prevent double-settlement
 - **Auto-refund** when the gift-card provider fails to fulfill
 - **Overpayment tolerance** (5%) with `pending_review` fallback — handles user typos gracefully
-- **Agent-discoverable** via ERC-8004 `.well-known/gift-cards/agent-registration.json`
+- **Agent-discoverable** via ERC-8004 `.well-known/gift-cards/agent-registration.json` (agent ID 22628)
 
 Benefits:
 
@@ -119,6 +140,7 @@ Benefits:
 
 - [x] **Reown AppKit + WalletConnect** — Wallet onboarding. Supports browser wallets (MetaMask, Fluent), mobile wallets, and WalletConnect v2.
 - [x] **xRemit** — Gift-card fulfillment partner (300+ brands, 64 countries, multi-currency). HMAC-signed webhooks; auto-refund on provider failure.
+- [x] **Moonshot AI (Kimi)** — `kimi-k2-0711-preview` powers the `/chat` concierge with native tool-calling against our MCP server.
 - [x] **Resend** — Email delivery for OTP verification and voucher codes.
 - [x] **Supabase** — Order ledger, email verification, idempotency tracking.
 
@@ -129,6 +151,10 @@ Benefits:
 - **Gasless USDT0 checkout** — EIP-3009 `transferWithAuthorization`, facilitator pays CFX
 - **Network switcher** — Conflux eSpace (USDT0) or Ethereum mainnet (USDC), one click
 - **300+ brand catalogue** — with per-country/per-currency filtering, search, favorites, recently-viewed
+- **AI chat concierge** at `/chat` — Kimi-powered natural-language browsing; every turn dispatches to the same MCP tools an external agent would call, rendering product cards and quote cards inline
+- **Native MCP server** at `/api/mcp/rewards` — 12 tools (JSON-RPC 2.0): `search_giftcards`, `get_brand_details`, `list_countries`, `list_currencies`, `search_mastercard`, `get_mastercard_details`, `check_order_status`, `redirect_to_checkout`, `verify_email_start`, `verify_email_complete`, `get_purchase_quote`, `submit_purchase`
+- **Agent-initiated purchases** — external agents with their own wallets complete the full EIP-3009 signing + x402 settlement loop programmatically via `get_purchase_quote` + `submit_purchase`
+- **MCP integration docs** at `/agents` — copy-pasteable curl, Python, Claude Desktop config, and `viem` signing examples for third-party integrators
 - **Instant delivery** — Voucher codes emailed within ~60 seconds of confirmed payment
 - **Email OTP verification** — 30-day re-verification window to prevent voucher theft
 - **Order history** — Live status polling with exponential backoff and tab-focus reset
@@ -166,6 +192,11 @@ Benefits:
 - **Email**: Resend with React Email templates
 - **Sanitization**: DOMPurify for provider HTML
 
+### AI & Agent surface
+- **Chat model**: Kimi (Moonshot `kimi-k2-0711-preview`) with native tool-calling
+- **MCP server**: JSON-RPC 2.0 over HTTPS at `/api/mcp/rewards`, 12 tools across discovery, email verification, and x402 quote + purchase
+- **Integration docs**: `/agents` route with curl, Python, Claude Desktop config, and EIP-3009 signing examples
+
 ### Blockchain
 - **Networks**: Conflux eSpace (primary), Ethereum mainnet
 - **Token standards**: ERC-20 with EIP-3009 extension (USDT0, USDC)
@@ -179,32 +210,72 @@ Benefits:
 
 ## 🏗️ Architecture
 
+Three entry surfaces → one MCP tool surface → one x402 settlement endpoint → one on-chain transaction per purchase.
+
 ```
-┌───────────────────┐      ┌──────────────────────┐      ┌────────────────────────┐
-│  Next.js (UI)     │      │  Next.js (API)       │      │  Conflux eSpace        │
-│                   │◄────►│                      │◄────►│  USDT0                 │
-│  Reown + wagmi    │ HTTPS│  Purchase route      │      │  transferWithAuth      │
-│  EIP-3009 signer  │      │  Facilitator signer  │      │                        │
-└─────────┬─────────┘      └──────────┬───────────┘      └────────────────────────┘
-          │                           │
-          │                           │ service-role                   ┌──────────────┐
-          │                           ├────────────────────────────────►  Supabase    │
-          │                           │    orders / nonces / emails    │  (Postgres)  │
-          │                           │                                └──────────────┘
-          │                           │
-          │                           │ HMAC webhooks                  ┌──────────────┐
-          │                           └────────────────────────────────►  xRemit API  │
-          │                                                            │  (voucher)   │
-          ▼                                                            └──────┬───────┘
-   ┌──────────────┐                                                           │
-   │  User email  │◄──────────────────── voucher delivery ───────────────────┘
-   │  (Resend)    │
-   └──────────────┘
+┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
+│  /catalogue          │   │  /chat               │   │  AI agent (external) │
+│                      │   │                      │   │                      │
+│  Reown + wagmi       │   │  Kimi (Moonshot)     │   │  Any MCP client      │
+│  EIP-3009 signer     │   │  + tool-use loop     │   │  (Claude Desktop,    │
+│  PurchaseModal       │   │  /api/chat           │   │  custom agents,      │
+│                      │   │                      │   │  server wallets)     │
+└──────────┬───────────┘   └──────────┬───────────┘   └──────────┬───────────┘
+           │                          │                          │
+           │                          │ tools/call               │ tools/call
+           │                          ▼                          ▼
+           │              ┌─────────────────────────────────────────────────┐
+           │              │  /api/mcp/rewards — native MCP JSON-RPC 2.0     │
+           │              │                                                 │
+           │              │  Discovery:   search_giftcards, get_brand_...   │
+           │              │               search_mastercard, list_countries │
+           │              │               list_currencies                   │
+           │              │                                                 │
+           │              │  Agent buy:   get_purchase_quote, submit_purch. │
+           │              │               verify_email_start, ..._complete  │
+           │              │                                                 │
+           │              │  Orders:      check_order_status                │
+           │              │               redirect_to_checkout              │
+           │              └─────────────────────────┬───────────────────────┘
+           │                                        │
+           │  user-wallet click-through             │  agent-wallet submit_purchase
+           ▼                                        ▼
+           ┌─────────────────────────────────────────────────────────────────┐
+           │  /api/purchase — single x402 settlement endpoint                │
+           │                                                                 │
+           │  Email OTP · nonce idempotency · $1–$5k bounds · 5% overpay    │
+           │  ceiling · facilitator gas health check · 90s settlement TO    │
+           └────────────────────────────┬────────────────────────────────────┘
+                                        │
+          ┌─────────────────────────────┼─────────────────────────────┐
+          │                             │                             │
+          ▼                             ▼                             ▼
+   ┌──────────────┐              ┌──────────────┐              ┌──────────────┐
+   │ Conflux /    │              │ xRemit       │              │ Resend       │
+   │ Ethereum     │              │ gift-card    │              │ voucher      │
+   │ facilitator  │              │ provider     │              │ email        │
+   │ submits tx   │              │ HMAC webhook │              │ delivery     │
+   └──────┬───────┘              └──────┬───────┘              └──────┬───────┘
+          │                             │                             │
+          │ orders / nonces / emails    │                             │
+          └──────────┬──────────────────┴─────────────────────────────┘
+                     ▼
+              ┌──────────────┐
+              │  Supabase    │
+              │  (Postgres)  │
+              └──────────────┘
 ```
 
-**End-to-end flow:**
+**Two signing models, one pipeline:**
 
-1. User browses catalogue, picks brand + denomination
+- **User-wallet flow** (catalogue + chat): browser signs EIP-3009 via Reown/wagmi → `/api/purchase` → facilitator settles. Chat adds natural-language discovery on top; the signing UX is identical to the catalogue.
+- **Agent-wallet flow** (MCP purchase tools): a server-side wallet signs EIP-3009 programmatically → `submit_purchase` → `/api/purchase` → same facilitator settlement. No browser, no human.
+
+Both paths produce the same `orders` row, the same on-chain `transferWithAuthorization` event, the same xRemit voucher procurement, and the same email delivery. The only divergence is who held the key that signed.
+
+**End-to-end flow (user-wallet path):**
+
+1. User browses catalogue (or asks the chat concierge, which calls `search_giftcards` under the hood)
 2. Email OTP verification (if not in 30-day window)
 3. User signs EIP-3009 `transferWithAuthorization` — this is the only wallet action
 4. Facilitator validates signature + payment params, checks gas balance, submits tx on Conflux eSpace, waits for 1 confirmation
@@ -343,20 +414,31 @@ POST /api/email/verify-otp           Verify OTP code
 GET  /api/exchange-rate?from=CAD     FX rate (stablecoin-supported currencies)
 GET  /api/facilitator-health         Live gas balance per network
 POST /api/webhook/xremit             xRemit voucher delivery (HMAC)
+POST /api/chat                       Kimi chat/completions + MCP tool dispatch loop
 ```
 
 ### ERC-8004 agent discovery
 
 ```
-GET /.well-known/gift-cards/agent-registration.json
+GET /.well-known/gift-cards/agent-registration.json   Agent ID 22628 (Ethereum mainnet)
 GET /.well-known/gift-cards/agent-card.json
 ```
 
 ### MCP agent surface
 
 ```
-POST /api/mcp/rewards                MCP protocol endpoint for AI agents
+POST /api/mcp/rewards                Native MCP JSON-RPC 2.0 server (12 tools)
 ```
+
+Tool inventory:
+
+| Category | Tools |
+|---|---|
+| Discovery | `search_giftcards`, `get_brand_details`, `list_countries`, `list_currencies`, `search_mastercard`, `get_mastercard_details` |
+| Agent purchase | `verify_email_start`, `verify_email_complete`, `get_purchase_quote`, `submit_purchase` |
+| Orders | `check_order_status`, `redirect_to_checkout` |
+
+See [`/agents`](https://cymstudio.app/agents) for the full integration guide — curl, Python, Claude Desktop MCP config, and `viem` EIP-3009 signing examples.
 
 ## 🔒 Security
 
@@ -387,14 +469,18 @@ POST /api/mcp/rewards                MCP protocol endpoint for AI agents
 - [x] USDC gasless payments on Ethereum mainnet
 - [x] 300+ brand catalogue with xRemit fulfillment
 - [x] Email OTP + idempotency + auto-refund
-- [x] ERC-8004 agent discovery
+- [x] ERC-8004 agent discovery (agent ID 22628)
+- [x] Native MCP JSON-RPC 2.0 server with 12 tools
+- [x] Agent-initiated x402 purchases via `get_purchase_quote` + `submit_purchase`
+- [x] Kimi-powered chat concierge (`/chat`) dispatching to our MCP
+- [x] MCP integration guide at `/agents`
+- [x] Prepaid Mastercard rail (USD/CAD)
 - [x] Live at cymstudio.app/catalogue
 
 ### Phase 2 (Post-Hackathon — Q2 2026)
 - [ ] Embeddable widget for tournament organizers
 - [ ] AxCNH as second Conflux-native stablecoin
 - [ ] Conflux Core Space support
-- [ ] MCP client reference implementation
 - [ ] First 3 tournament partnerships live
 
 ### Phase 3 (Q3 2026)
