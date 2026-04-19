@@ -32,7 +32,11 @@ echo "==> Installing dependencies..."
 npm ci --production=false
 
 echo "==> Building..."
-npm run build
+# --max-old-space-size=1792: Next 14 production build needs ~1.5GB heap.
+#   Vultr's 1.9GB tier OOMs at Node's default heap limit otherwise.
+# --dns-result-order=ipv4first: next/font/google fetches fonts at build time;
+#   IPv6 resolves on Vultr but connections stall, causing font-download failures.
+NODE_OPTIONS="--max-old-space-size=1792 --dns-result-order=ipv4first" npm run build
 
 echo "==> Restarting app..."
 pm2 restart cymstudio --update-env || pm2 start ecosystem.config.js
