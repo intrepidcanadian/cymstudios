@@ -67,6 +67,10 @@ The AI video-production portfolio for CYM Studio — the operating entity behind
   </tr>
 </table>
 
+**Proof of settlement.** 25 HKD Pacific Coffee → 3.24 USDT0 on Conflux eSpace → voucher in email. 18 seconds from signature to "Completed" (ordered 1:58:18, completed 1:58:36).
+
+![Completed order](demo/OrderCompletion.png)
+
 ### AI concierge — [`/chat`](https://cymstudio.app/chat)
 
 Natural-language browsing powered by Kimi. Every user turn routes through the same MCP server an external agent would call — so the chat is a live demo of the agent integration.
