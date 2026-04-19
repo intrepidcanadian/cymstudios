@@ -12,7 +12,7 @@ import type { ChatMessage, ToolCall, QuoteCardState } from './types'
 import styles from '@/app/chat/chat.module.css'
 
 const STARTER_PROMPTS = [
-  'Find me Starbucks gift cards',
+  'Find me Pacific Coffee gift cards',
   'What brands do you have for Hong Kong?',
   'List all supported currencies',
   'I want to buy a $50 US gift card',
@@ -75,46 +75,61 @@ export default function ChatInterface() {
     }
   }, [messages, loading])
 
-  const handleQuotePurchase = useCallback(async (quote: QuoteCardState) => {
-    if (!isConnected) {
-      await openAppKit()
-      return
-    }
-    // Fetch the product details synchronously so PurchaseModal has a full BrandProduct.
-    try {
-      const res = await fetch(`/api/mcp/rewards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'tools/call',
-          params: { name: 'get_brand_details', arguments: { product_id: quote.product_id } },
-          id: 1,
-        }),
-      })
-      const body = await res.json()
-      const text = body?.result?.content?.[0]?.text || '{}'
-      const detail = JSON.parse(text)
-      const product: BrandProduct = {
-        product_id: Number(quote.product_id),
-        brand_name: detail.brand || 'Brand',
-        country_name: detail.country || null,
-        currency: detail.currency || null,
-        product_image: detail.image || null,
-        value_restrictions: detail.value_restrictions || null,
-        denominations: detail.denominations || null,
-        product_description: detail.description || null,
-        terms_and_conditions: detail.terms_and_conditions || null,
-        how_to_use: detail.how_to_use || null,
-        expiry_and_validity: detail.expiry_and_validity || null,
+  // Fetch full brand details and open the purchase modal. Shared between
+  // "click a product card" and "click Review & pay on a quote card".
+  const openPurchaseFor = useCallback(
+    async (productId: number, denomination?: number, network?: string) => {
+      if (!isConnected) {
+        await openAppKit()
+        return
       }
-      setSelectedProduct(product)
-      setInitialAmount(String(quote.denomination))
-      setSelectedNetwork(quote.network || DEFAULT_NETWORK)
-    } catch (err) {
-      setError('Failed to load product details for checkout.')
-    }
-  }, [isConnected, openAppKit])
+      try {
+        const res = await fetch(`/api/mcp/rewards`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: { name: 'get_brand_details', arguments: { product_id: productId } },
+            id: 1,
+          }),
+        })
+        const body = await res.json()
+        const text = body?.result?.content?.[0]?.text || '{}'
+        const start = text.search(/[\[{]/)
+        const detail = start >= 0 ? JSON.parse(text.slice(start)) : {}
+        const product: BrandProduct = {
+          product_id: Number(productId),
+          brand_name: detail.brand || 'Brand',
+          country_name: detail.country || null,
+          currency: detail.currency || null,
+          product_image: detail.image || null,
+          value_restrictions: detail.value_restrictions || null,
+          denominations: detail.denominations || null,
+          product_description: detail.description || null,
+          terms_and_conditions: detail.terms_and_conditions || null,
+          how_to_use: detail.how_to_use || null,
+          expiry_and_validity: detail.expiry_and_validity || null,
+        }
+        setSelectedProduct(product)
+        setInitialAmount(denomination !== undefined ? String(denomination) : undefined)
+        setSelectedNetwork(network || DEFAULT_NETWORK)
+      } catch (err) {
+        setError('Failed to load product details for checkout.')
+      }
+    },
+    [isConnected, openAppKit]
+  )
+
+  const handleQuotePurchase = useCallback(
+    (quote: QuoteCardState) => openPurchaseFor(quote.product_id, quote.denomination, quote.network),
+    [openPurchaseFor]
+  )
+
+  const handleProductSelect = useCallback(
+    (productId: number, denomination?: number) => openPurchaseFor(productId, denomination),
+    [openPurchaseFor]
+  )
 
   const handlePurchaseComplete = useCallback((orderId: string, email: string, orderToken: string, tx?: string) => {
     setSelectedProduct(null)
@@ -166,6 +181,7 @@ export default function ChatInterface() {
           messages={messages}
           loading={loading}
           onQuotePurchase={handleQuotePurchase}
+          onProductSelect={handleProductSelect}
         />
 
         {error && <div className={styles.error}>{error}</div>}

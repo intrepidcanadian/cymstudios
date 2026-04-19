@@ -7,9 +7,10 @@ interface Props {
   messages: ChatMessage[]
   loading: boolean
   onQuotePurchase: (quote: QuoteCardState) => void
+  onProductSelect: (productId: number, denomination?: number) => void
 }
 
-export default function ChatMessages({ messages, loading, onQuotePurchase }: Props) {
+export default function ChatMessages({ messages, loading, onQuotePurchase, onProductSelect }: Props) {
   return (
     <section className={styles.messages}>
       {messages.map((m, i) => (
@@ -21,7 +22,11 @@ export default function ChatMessages({ messages, loading, onQuotePurchase }: Pro
           <div>
             {m.content ? <div className={styles.messageBody}>{m.content}</div> : null}
             {m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0 ? (
-              <ToolCallsRenderer toolCalls={m.toolCalls} onQuotePurchase={onQuotePurchase} />
+              <ToolCallsRenderer
+                toolCalls={m.toolCalls}
+                onQuotePurchase={onQuotePurchase}
+                onProductSelect={onProductSelect}
+              />
             ) : null}
           </div>
         </article>
@@ -34,14 +39,21 @@ export default function ChatMessages({ messages, loading, onQuotePurchase }: Pro
 function ToolCallsRenderer({
   toolCalls,
   onQuotePurchase,
+  onProductSelect,
 }: {
   toolCalls: ToolCall[]
   onQuotePurchase: (q: QuoteCardState) => void
+  onProductSelect: (productId: number, denomination?: number) => void
 }) {
   return (
     <>
       {toolCalls.map((call, idx) => (
-        <ToolCallCard key={idx} call={call} onQuotePurchase={onQuotePurchase} />
+        <ToolCallCard
+          key={idx}
+          call={call}
+          onQuotePurchase={onQuotePurchase}
+          onProductSelect={onProductSelect}
+        />
       ))}
     </>
   )
@@ -50,18 +62,20 @@ function ToolCallsRenderer({
 function ToolCallCard({
   call,
   onQuotePurchase,
+  onProductSelect,
 }: {
   call: ToolCall
   onQuotePurchase: (q: QuoteCardState) => void
+  onProductSelect: (productId: number, denomination?: number) => void
 }) {
   // Rich renderers per tool; everything else falls back to a code block.
   switch (call.name) {
     case 'search_giftcards':
     case 'search_mastercard':
-      return <ProductGrid call={call} />
+      return <ProductGrid call={call} onProductSelect={onProductSelect} />
     case 'get_brand_details':
     case 'get_mastercard_details':
-      return <BrandDetail call={call} />
+      return <BrandDetail call={call} onProductSelect={onProductSelect} />
     case 'list_countries':
     case 'list_currencies':
       return <ListBlock call={call} />
@@ -85,7 +99,13 @@ function extractJson(text: string): any | null {
   }
 }
 
-function ProductGrid({ call }: { call: ToolCall }) {
+function ProductGrid({
+  call,
+  onProductSelect,
+}: {
+  call: ToolCall
+  onProductSelect: (productId: number, denomination?: number) => void
+}) {
   const parsed = extractJson(call.result)
   const rows: ProductRow[] = Array.isArray(parsed) ? parsed : []
   if (rows.length === 0) return <RawBlock call={call} label="TOOL · no results" />
@@ -96,23 +116,35 @@ function ProductGrid({ call }: { call: ToolCall }) {
         TOOL · {call.name} — {rows.length} result{rows.length === 1 ? '' : 's'}
       </div>
       <div className={styles.productGrid}>
-        {rows.map((row, i) => (
-          <div key={`${row.product_id}-${i}`} className={styles.productCard}>
-            <div className={styles.productCardThumb}>
-              {row.image ? <img src={row.image} alt={row.brand} loading="lazy" /> : null}
-            </div>
-            <div>
-              <div className={styles.productCardBrand}>{row.brand}</div>
-              <div className={styles.productCardMeta}>
-                {row.country}
-                {row.currency ? ` · ${row.currency}` : ''}
+        {rows.map((row, i) => {
+          // If the product has a single fixed denomination, pre-select it;
+          // otherwise let the user pick inside the purchase modal.
+          const denom = Array.isArray(row.denominations) && row.denominations.length === 1
+            ? row.denominations[0]
+            : undefined
+          return (
+            <button
+              type="button"
+              key={`${row.product_id}-${i}`}
+              className={styles.productCard}
+              onClick={() => onProductSelect(row.product_id, denom)}
+              aria-label={`Redeem ${row.brand}`}
+            >
+              <div className={styles.productCardThumb}>
+                {row.image ? <img src={row.image} alt={row.brand} loading="lazy" /> : null}
               </div>
-              <div className={styles.productCardMeta}>
-                {formatDenominations(row)}
+              <div>
+                <div className={styles.productCardBrand}>{row.brand}</div>
+                <div className={styles.productCardMeta}>
+                  {row.country}
+                  {row.currency ? ` · ${row.currency}` : ''}
+                </div>
+                <div className={styles.productCardMeta}>{formatDenominations(row)}</div>
               </div>
-            </div>
-          </div>
-        ))}
+              <div className={styles.productCardCta}>Redeem →</div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -133,22 +165,46 @@ function formatDenominations(row: ProductRow): string {
   return '—'
 }
 
-function BrandDetail({ call }: { call: ToolCall }) {
+function BrandDetail({
+  call,
+  onProductSelect,
+}: {
+  call: ToolCall
+  onProductSelect: (productId: number, denomination?: number) => void
+}) {
   const parsed = extractJson(call.result)
-  if (!parsed) return <RawBlock call={call} />
+  if (!parsed || !parsed.product_id) return <RawBlock call={call} />
+
+  const denoms: number[] = Array.isArray(parsed.denominations) ? parsed.denominations : []
+  const singleDenom = denoms.length === 1 ? denoms[0] : undefined
+
   return (
     <div className={styles.toolBlock}>
       <div className={styles.toolBlockLabel}>TOOL · {call.name}</div>
-      <div className={styles.productCard} style={{ cursor: 'default' }}>
-        <div className={styles.productCardThumb}>
+      <div className={styles.brandDetail}>
+        <div className={styles.brandDetailArt}>
           {parsed.image ? <img src={parsed.image} alt={parsed.brand} loading="lazy" /> : null}
         </div>
-        <div>
+        <div className={styles.brandDetailBody}>
           <div className={styles.productCardBrand}>{parsed.brand}</div>
           <div className={styles.productCardMeta}>
             {parsed.country} · {parsed.currency}
           </div>
-          {parsed.denominations || parsed.value_restrictions ? (
+          {denoms.length > 1 ? (
+            <div className={styles.brandDetailChips}>
+              {denoms.slice(0, 10).map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  className={styles.brandDetailChip}
+                  onClick={() => onProductSelect(parsed.product_id, d)}
+                  aria-label={`Redeem ${parsed.brand} for ${parsed.currency} ${d}`}
+                >
+                  {parsed.currency} {d}
+                </button>
+              ))}
+            </div>
+          ) : parsed.value_restrictions ? (
             <div className={styles.productCardMeta}>
               {formatDenominations({
                 product_id: parsed.product_id,
@@ -160,6 +216,13 @@ function BrandDetail({ call }: { call: ToolCall }) {
               })}
             </div>
           ) : null}
+          <button
+            type="button"
+            className={styles.brandDetailBtn}
+            onClick={() => onProductSelect(parsed.product_id, singleDenom)}
+          >
+            Redeem {singleDenom ? `${parsed.currency} ${singleDenom}` : parsed.brand} →
+          </button>
         </div>
       </div>
     </div>
