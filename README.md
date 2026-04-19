@@ -17,7 +17,15 @@ This repo is a submission for the [Conflux Global Hackfest 2026](https://github.
 
 **Team:** Tony Lau / Pulse520 · **Focus area:** Payments and Stablecoins · **Submission date:** 2026-04-20
 
-See [`submission/README.md`](submission/README.md) for the full hackathon submission document (problem statement, go-to-market plan, demo script, roadmap, etc.).
+> 📄 **For judges & deeper reads** → [`submission/README.md`](submission/README.md) is the canonical hackathon spec and has substantially more detail than this file:
+>
+> - Problem statement & target users (tournament organizers, prize programs, esports winners)
+> - Full solution walkthrough + key features
+> - Go-to-market plan, milestones, ecosystem fit
+> - Conflux integration checklist (eSpace, gas sponsorship, EIP-3009, ERC-8004)
+> - Technology stack breakdown, merchant protection, roadmap, demo script
+>
+> Also mirrored on the Hackfest repo at [`conflux-fans/global-hackfest-2026` PR #6](https://github.com/conflux-fans/global-hackfest-2026/pull/6) → [`projects/cym-rewards/`](https://github.com/conflux-fans/global-hackfest-2026/blob/main/projects/cym-rewards/README.md).
 
 ## What's in the repo
 
