@@ -39,13 +39,13 @@ const TOOLS: Tool[] = [
   {
     name: 'search_giftcards',
     description:
-      'Search gift cards from 300+ brands across the US, Canada, Hong Kong, and UK. Filter by brand name, country, or currency (USD/CAD/HKD/GBP). Returns brand, country, currency, available denominations, and an image URL.',
+      'Search gift cards across the CYM Rewards catalogue. Filter by brand name, country, or currency. Call list_countries and list_currencies first if you need to know what is actually available — availability changes as the catalogue syncs. Returns brand, country, currency, available denominations, and an image URL.',
     inputSchema: {
       type: 'object',
       properties: {
-        brand: { type: 'string', description: 'Substring match against brand name (e.g. "Amazon", "Starbucks").' },
-        country: { type: 'string', description: 'Country name or ISO code (e.g. "United States", "US", "Hong Kong", "HK", "Canada", "CA", "United Kingdom", "GB").' },
-        currency: { type: 'string', description: `Currency code. One of: ${SUPPORTED_CURRENCIES.join(', ')}.` },
+        brand: { type: 'string', description: 'Substring match against brand name (e.g. "Starbucks").' },
+        country: { type: 'string', description: 'Country name or ISO code. Call list_countries to see what is available.' },
+        currency: { type: 'string', description: 'Currency code (e.g. USD, CAD, HKD). Call list_currencies to see what is available.' },
         limit: { type: 'number', description: 'Max results (default 20, max 50).' },
       },
     },
@@ -326,7 +326,10 @@ async function listCurrencies(): Promise<string> {
     .in('currency', SUPPORTED_CURRENCIES)
   if (error) throw new Error(`Query failed: ${error.message}`)
   const currencies = Array.from(new Set((data || []).map((r: any) => r.currency).filter(Boolean))).sort()
-  return JSON.stringify({ currencies, supported: SUPPORTED_CURRENCIES }, null, 2)
+  // Only return currencies that have products right now. The server-side
+  // allowlist (SUPPORTED_CURRENCIES) is an upper bound — not something to
+  // advertise to users who can't actually find matching cards.
+  return JSON.stringify({ currencies, count: currencies.length }, null, 2)
 }
 
 async function searchMastercard(args: Record<string, any>): Promise<string> {
