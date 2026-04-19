@@ -7,8 +7,6 @@ Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winner
 [![Hackathon](https://img.shields.io/badge/Global%20Hackfest%202026-green)](https://github.com/conflux-fans/global-hackfest-2026)
 [![USDT0](https://img.shields.io/badge/pays%20with-USDT0-green)](https://evm.confluxscan.org/address/0xaf37e8b6c9ed7f6318979f56fc287d76c30847ff)
 
-![CYM Studio](public/cym.png)
-
 > **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
 
 ## 🏆 Global Hackfest 2026
@@ -335,4 +333,6 @@ Copyright © 2026 CYM Studio. All rights reserved.
 
 ---
 
-**Built for Global Hackfest 2026 · Best USDT0 integration**
+<p align="center">
+  <img src="public/cym.png" alt="CYM Studio" width="160" />
+</p>
