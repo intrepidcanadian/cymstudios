@@ -3,6 +3,7 @@
   "name": "CYM Rewards",
   "description": "Redeem USDC or USDT0 tokens for gift cards across a multi-country, multi-currency catalogue (300+ brands). Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0) with real-time FX conversion to a stablecoin amount. Also offers Mastercard Prepaid cards. Current country and currency availability changes as brands are synced — call list_countries and list_currencies for the live set. Agents can discover brands, verify an email (30-day cache), lock an x402 quote, sign an EIP-3009 TransferWithAuthorization with their own wallet, and receive a voucher end-to-end.",
   "image": "https://cymstudio.app/cym.png",
+  "external_url": "https://cymstudio.app",
   "services": [
     {
       "name": "MCP",
