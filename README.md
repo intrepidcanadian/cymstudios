@@ -1,18 +1,101 @@
-# CYM Studio
+# CYM Studio — Tournament Prize Redemptions on Conflux eSpace
 
-The [cymstudio.app](https://cymstudio.app) website. An AI video production portfolio paired with a tournament prize redemption catalogue where winners convert prize tokens into digital gift cards across 300+ brands.
+Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winners convert prize tokens into real-world gift cards across 300+ brands without ever holding native gas.
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Conflux](https://img.shields.io/badge/built%20on-Conflux%20eSpace-blue)](https://confluxnetwork.org)
+[![Hackathon](https://img.shields.io/badge/Global%20Hackfest%202026-green)](https://github.com/conflux-fans/global-hackfest-2026)
+[![USDT0](https://img.shields.io/badge/pays%20with-USDT0-green)](https://evm.confluxscan.org/address/0xaf37e8b6c9ed7f6318979f56fc287d76c30847ff)
 
 ![CYM Studio](public/cym.png)
 
-## Two experiences
+> **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
 
-**1 · Editorial showreel** (`/`)
-Dark, editorial landing with a canvas particle field, serif + mono typography, and a six-card asymmetric grid of featured Starcraft tournament broadcasts. Includes a floating "neural" side navigator, live world clocks (CET / EST / KST), and a four-option accent theme switcher (ember, cyan, lime, magenta) that persists in `localStorage`.
+## 🏆 Global Hackfest 2026
 
-**2 · Tournament Prize Redemptions** (`/catalogue`)
-A gift card catalogue of 300+ brands. Winners redeem prize tokens for vouchers, paying with USDC on Ethereum or USDT0 on Conflux eSpace via the [x402 payment protocol](https://x402.org). Settlement is gasless via EIP-3009 `transferWithAuthorization` — a shared facilitator wallet pays the native gas so buyers never need ETH or CFX of their own.
+This repo is a submission for the [Conflux Global Hackfest 2026](https://github.com/conflux-fans/global-hackfest-2026), targeting the **Best USDT0 integration** category.
 
-The two pages share a common design system (Instrument Serif display, Inter body, JetBrains Mono accents, OKLCH editorial palette). Picking a theme on the landing carries into the catalogue.
+**The pitch:** Tournament organizers pay winners in stablecoins, then winners get stuck — off-ramps are slow, fiat gift-card services need CFX for gas. This project closes the last mile: a winner with **USDT0 on Conflux eSpace and zero CFX** can redeem a real Amazon / Apple / Pacific Coffee card in three clicks, paid entirely in USDT0. A shared x402 facilitator covers every gas fee.
+
+**Team:** Tony Lau / Pulse520 · **Focus area:** Payments and Stablecoins · **Submission date:** 2026-04-20
+
+See [`submission/README.md`](submission/README.md) for the full hackathon submission document (problem statement, go-to-market plan, demo script, roadmap, etc.).
+
+## What's in the repo
+
+Three user-facing surfaces, one shared x402 payment pipeline, and a native MCP server so AI agents can reach the same infrastructure programmatically.
+
+| Surface | Path | Purpose |
+|---|---|---|
+| Editorial showreel | `/` | AI video-production portfolio for CYM Studio — the operating entity behind the rewards program |
+| Tournament Prize Redemptions | `/catalogue` | 300+ brand catalogue with wallet-signed USDT0 / USDC checkout |
+| AI concierge | `/chat` | Natural-language chat powered by Kimi (Moonshot), tools resolved via our own MCP |
+| Agent docs | `/agents` | MCP integration guide for third-party AI agents |
+| MCP endpoint | `/api/mcp/rewards` | JSON-RPC 2.0 server — 12 tools for discovery, email verification, x402 quote + purchase |
+| ERC-8004 registration | `/.well-known/gift-cards/agent-registration.json` | Agent-registry entry (agent ID 22628, Ethereum mainnet) |
+
+## Why Conflux eSpace
+
+- **USDT0 is the default.** Native Tether on Conflux eSpace is a first-class citizen — live contract at [`0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff`](https://evm.confluxscan.org/address/0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff).
+- **Gasless by design.** EIP-3009 `transferWithAuthorization` lets a shared facilitator ([`0xc10561…a4Ee`](https://evm.confluxscan.org/address/0xc10561C1c0d718B3D362df9D510A1b4e4331a4Ee)) submit transfers on behalf of users. The facilitator pays CFX; the buyer only ever touches USDT0.
+- **Same UX, two rails.** The same checkout works on Ethereum mainnet (USDC) for users whose stablecoins live there. Conflux eSpace is the default because USDT0 + the facilitator gas sponsorship make it the cheapest and smoothest path.
+- **Agent-native.** An AI agent with its own USDT0-funded wallet can discover and buy gift cards via MCP with no human in the loop — see `get_purchase_quote` + `submit_purchase` tools.
+
+## Architecture
+
+Three user-facing entry points (catalogue, chat, MCP) all land in the same x402 purchase pipeline. One codebase, one security model, one on-chain settlement path.
+
+```
+┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│  /catalogue          │    │  /chat               │    │  AI agent (external) │
+│                      │    │                      │    │                      │
+│  Visual browse +     │    │  Kimi (Moonshot)     │    │  Any MCP client      │
+│  filters +           │    │  + tool-use loop     │    │  (Claude Desktop,    │
+│  PurchaseModal       │    │  /api/chat           │    │  custom agents,      │
+│                      │    │                      │    │  server wallets)     │
+└──────────┬───────────┘    └──────────┬───────────┘    └──────────┬───────────┘
+           │                           │                           │
+           │                           │ tools/call                │ tools/call
+           │                           ▼                           ▼
+           │                 ┌─────────────────────────────────────────────────┐
+           │                 │  /api/mcp/rewards — native MCP JSON-RPC 2.0     │
+           │                 │                                                 │
+           │                 │  Discovery:     search_giftcards, get_brand_... │
+           │                 │                 list_countries, list_currencies │
+           │                 │                                                 │
+           │                 │  Agent purchase (server-side wallet):           │
+           │                 │    get_purchase_quote, submit_purchase          │
+           │                 │    verify_email_start, verify_email_complete    │
+           │                 │                                                 │
+           │                 │  Order lookup:  check_order_status              │
+           │                 │                 redirect_to_checkout            │
+           │                 └─────────────────────────┬───────────────────────┘
+           │                                           │
+           │    user-wallet click-through              │ agent-wallet submit_purchase
+           │    opens PurchaseModal                    │ posts signed envelope
+           ▼                                           ▼
+           ┌─────────────────────────────────────────────────────────────────────┐
+           │  /api/purchase — single x402 settlement endpoint                    │
+           │                                                                     │
+           │  Email OTP gate · idempotency on nonce · order bounds ($1–$5k)     │
+           │  Overpayment ceiling (5%) · facilitator gas health pre-check       │
+           └──────────────────────────────────┬──────────────────────────────────┘
+                                              │
+                                              ▼
+              ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+              │ Conflux /     │   │ xRemit        │   │ Resend        │
+              │ Ethereum      │   │ gift-card     │   │ voucher       │
+              │ facilitator   │   │ provider      │   │ email         │
+              │ submits tx    │   │ (HMAC webhook)│   │ delivery      │
+              └───────────────┘   └───────────────┘   └───────────────┘
+```
+
+**Two signing models, one pipeline:**
+
+- **User-wallet flow** (catalogue + chat): browser signs EIP-3009 via Reown/wagmi → `/api/purchase` → facilitator settles. Chat adds natural-language discovery on top; the signing UX is identical to the catalogue.
+- **Agent-wallet flow** (MCP purchase tools): server-side wallet signs EIP-3009 programmatically → `submit_purchase` → `/api/purchase` → same facilitator settlement. No browser, no human.
+
+Both paths produce the same `orders` row, the same on-chain `transferWithAuthorization` event, the same xRemit voucher procurement, the same email delivery. The only divergence is who held the key that signed.
 
 ## Tech stack
 
@@ -20,7 +103,9 @@ The two pages share a common design system (Instrument Serif display, Inter body
 - **Styling** — Tailwind CSS + CSS Modules, `next/font/google` (Instrument Serif · Inter · JetBrains Mono)
 - **Wallets** — Reown AppKit, wagmi, viem, ethers v6
 - **Payments** — x402 protocol with gasless EIP-3009 settlement
-- **Provider** — xRemit (gift card fulfillment, HMAC-signed webhooks)
+- **Provider** — xRemit (gift-card fulfillment, HMAC-signed webhooks)
+- **AI** — Kimi (Moonshot's `kimi-k2-0711-preview`) with native tool-calling
+- **MCP** — JSON-RPC 2.0 over HTTPS at `/api/mcp/rewards` (12 tools)
 - **Backend** — Supabase (Postgres + service role), Next.js API routes
 - **Email** — Resend (OTP verification, 30-day re-verification window)
 - **Sanitization** — DOMPurify for provider HTML
@@ -30,11 +115,11 @@ The two pages share a common design system (Instrument Serif display, Inter body
 
 | Network           | Chain ID | Token | Strategy          | Minimum facilitator gas |
 |-------------------|----------|-------|-------------------|-------------------------|
-| Ethereum mainnet  | 1        | USDC  | EIP-3009 gasless  | 0.01 ETH                |
 | Conflux eSpace    | 1030     | USDT0 | EIP-3009 gasless  | 10 CFX                  |
+| Ethereum mainnet  | 1        | USDC  | EIP-3009 gasless  | 0.01 ETH                |
 
-Facilitator address (shared across chains): `0xc10561C1c0d718B3D362df9D510A1b4e4331a4Ee`
-Network + facilitator config lives in [`config/networks.ts`](config/networks.ts). The health endpoint at `/api/facilitator-health` reports live gas balances.
+Shared facilitator address across chains: `0xc10561C1c0d718B3D362df9D510A1b4e4331a4Ee`
+Network + facilitator config lives in [`config/networks.ts`](config/networks.ts). The health endpoint at [`/api/facilitator-health`](app/api/facilitator-health/route.ts) reports live gas balances.
 
 ## Merchant protection
 
@@ -49,6 +134,20 @@ Network + facilitator config lives in [`config/networks.ts`](config/networks.ts)
 - HMAC webhook signature verification on provider callbacks
 - x402 payment signature verification server-side
 
+## Agent-initiated purchases (MCP)
+
+Any AI agent with its own wallet can complete the full purchase loop via the MCP — five tool calls, zero UI.
+
+```
+1.  verify_email_start        → OTP sent
+2.  verify_email_complete     → email verified for 30 days
+3.  get_purchase_quote        → x402 payment requirements + EIP-712 domain + types
+4.  [ agent wallet signs EIP-3009 TransferWithAuthorization ]
+5.  submit_purchase           → order_id + voucher
+```
+
+Full integration guide (curl, Python, Claude Desktop config, EIP-3009 signing with `viem`): [`/agents`](https://cymstudio.app/agents) or the route source at [`app/agents/page.tsx`](app/agents/page.tsx).
+
 ## Project layout
 
 ```
@@ -56,9 +155,13 @@ app/
   page.tsx                  Editorial showreel (landing)
   page.module.css           Landing palette + sections
   catalogue/                Tournament Prize Redemptions
+  chat/                     Kimi-powered conversational concierge
+  agents/                   MCP integration docs for developers
   onramp/                   OSL Pay fiat onramp (optional)
   api/
     brands/                 Gift card catalogue sync
+    chat/                   Kimi chat/completions + MCP tool dispatch loop
+    mcp/rewards/            Native MCP JSON-RPC 2.0 server (12 tools)
     purchase/               x402 payment + order creation
     webhook/                xRemit fulfillment callback
     orders/                 Order status polling
@@ -68,13 +171,11 @@ app/
     mastercards/            Virtual Mastercard catalogue
     sync-brands/            Admin brand refresh
     newsletter/             Newsletter signup
-    mcp/                    MCP agent endpoints (ERC-8004)
     cron/                   Scheduled tasks
 components/
-  landing/                  ParticleField, NeuralNav, ShowreelGrid,
-                            LandingModal, TopBar, useTheme, videos
-  catalogue/                GiftCardCatalog, PurchaseModal,
-                            OrderHistoryList, CatalogueRoot, ...
+  landing/                  ParticleField, NeuralNav, ShowreelGrid, TopBar
+  catalogue/                GiftCardCatalog, PurchaseModal, CatalogueRoot
+  chat/                     ChatInterface, ChatMessages, types
   onramp/                   OSL Pay integration UI
   _archive/                 Retired components kept for git history
 config/
@@ -88,10 +189,15 @@ lib/
   email.ts                  Resend email templates
   rate-limit.ts             Sliding-window rate limiter
   exchange-rates.ts         FX lookup with cache
+public/.well-known/
+  gift-cards/
+    agent-registration.json  ERC-8004 registration document
 deploy/
   setup-vps.sh              Vultr VPS provisioning
   nginx.conf                Nginx reverse-proxy config
   deploy.sh                 Deploy script (pull + build + PM2 restart)
+submission/
+  README.md                 Full Global Hackfest 2026 submission doc
 ```
 
 ## Quickstart
@@ -137,6 +243,10 @@ API_LAYER_KEY=
 # Reown AppKit
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 
+# Kimi (Moonshot AI) — powers /chat
+KIMI_API_KEY=
+# Optional: KIMI_BASE_URL, KIMI_MODEL
+
 # App URL (webhook callbacks)
 NEXT_PUBLIC_API_URL=https://cymstudio.app
 ```
@@ -153,7 +263,10 @@ bash deploy/setup-vps.sh
 bash deploy/deploy.sh root@<vps-ip>
 
 # Or on the VPS directly
-cd /var/www/cymstudio && git pull origin main && npm run build && pm2 restart cymstudio --update-env
+cd /var/www/cymstudio
+git pull origin main
+NODE_OPTIONS="--max-old-space-size=1792 --dns-result-order=ipv4first" npm run build
+pm2 restart cymstudio --update-env
 ```
 
 ## Database
@@ -162,7 +275,7 @@ Schema is managed against the live Supabase project via the dashboard SQL editor
 
 ## About CYM Studio
 
-CYM Studio builds AI ads for e-commerce brands — built on a pipeline forged in live broadcast. Generative tools let us move faster and take bigger swings; the cut, the hook and the grade are still hand-made. Proud clients include **Bombastic Starleague** and various Starcraft: Brood War tournament organizers.
+CYM Studio builds AI ads for e-commerce brands — built on a pipeline forged in live broadcast. Generative tools let us move faster and take bigger swings; the cut, the hook and the grade are still hand-made. Proud clients include **Bombastic Starleague** and various Starcraft: Brood War tournament organizers. The Tournament Prize Redemptions catalogue was designed as the official redemption surface for these events.
 
 ## Featured work
 
@@ -176,7 +289,12 @@ CYM Studio builds AI ads for e-commerce brands — built on a pipeline forged in
 ## Contact
 
 Email: [tony.lau@cymadvisory.com](mailto:tony.lau@cymadvisory.com)
+GitHub: [intrepidcanadian/cymstudios](https://github.com/intrepidcanadian/cymstudios)
 
 ## License
 
 Copyright © 2026 CYM Studio. All rights reserved.
+
+---
+
+**Built for Global Hackfest 2026 · Best USDT0 integration**
