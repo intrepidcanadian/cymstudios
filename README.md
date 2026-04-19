@@ -34,6 +34,44 @@ Three user-facing surfaces, one shared x402 payment pipeline, and a native MCP s
 | MCP endpoint | `/api/mcp/rewards` | JSON-RPC 2.0 server — 12 tools for discovery, email verification, x402 quote + purchase |
 | ERC-8004 registration | `/.well-known/gift-cards/agent-registration.json` | Agent-registry entry (agent ID 22628, Ethereum mainnet) |
 
+## Tour
+
+### Editorial showreel — [`/`](https://cymstudio.app)
+
+The AI video-production portfolio for CYM Studio — the operating entity behind the rewards program.
+
+![Landing page](demo/LandingPage.png)
+
+![Selected films](demo/Films.png)
+
+![What we build / About](demo/Description.png)
+
+### Tournament Prize Redemptions — [`/catalogue`](https://cymstudio.app/catalogue)
+
+300+ brand catalogue, filterable by country and currency. Connected wallets see live USDT0 / USDC balances in the sidebar.
+
+![Catalogue](demo/Catalogue.png)
+
+**Gasless checkout.** Pick a network, confirm the token breakdown (reward value, FX, service fee), enter email for voucher delivery, and sign one EIP-3009 authorization — the facilitator pays the CFX/ETH gas.
+
+<table>
+  <tr>
+    <td width="50%"><img src="demo/PurchaseModal.png" alt="Purchase modal — network + token calculation" /></td>
+    <td width="50%"><img src="demo/Redemption.png" alt="Purchase modal — email + review & redeem" /></td>
+  </tr>
+</table>
+
+### AI concierge — [`/chat`](https://cymstudio.app/chat)
+
+Natural-language browsing powered by Kimi. Every user turn routes through the same MCP server an external agent would call — so the chat is a live demo of the agent integration.
+
+<table>
+  <tr>
+    <td width="50%"><img src="demo/MCPForX402.png" alt="Chat landing" /></td>
+    <td width="50%"><img src="demo/RedemptionEndpoint.png" alt="Chat — MCP tool call result" /></td>
+  </tr>
+</table>
+
 ## Why Conflux eSpace
 
 - **USDT0 is the default.** Native Tether on Conflux eSpace is a first-class citizen — live contract at [`0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff`](https://evm.confluxscan.org/address/0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff).
