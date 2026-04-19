@@ -274,7 +274,23 @@ async function searchGiftcards(args: Record<string, any>): Promise<string> {
     return `No gift cards matched your filters. Try broader terms or call list_countries / list_currencies to see what's available.`
   }
 
-  return `Found ${results.length} gift card${results.length === 1 ? '' : 's'}.\n\n${JSON.stringify(results, null, 2)}`
+  // Lead with a terse per-product summary so the LLM has a salient place to
+  // copy product_id from. Product IDs are long integers (e.g. 14000003689)
+  // and models sometimes invent short ones if they only see the JSON body.
+  const summary = results
+    .map(r => `- ${r.brand} (${r.country}, ${r.currency}) — product_id=${r.product_id}`)
+    .join('\n')
+
+  return [
+    `Found ${results.length} gift card${results.length === 1 ? '' : 's'}.`,
+    ``,
+    summary,
+    ``,
+    `IMPORTANT: product_id values are 14-digit integers. Copy them exactly from the list above when calling get_brand_details, get_purchase_quote, etc. Do NOT invent shorter numbers.`,
+    ``,
+    `Full JSON:`,
+    JSON.stringify(results, null, 2),
+  ].join('\n')
 }
 
 async function getBrandDetails(args: Record<string, any>): Promise<string> {
@@ -288,7 +304,9 @@ async function getBrandDetails(args: Record<string, any>): Promise<string> {
     .eq('product_id', id)
     .single()
 
-  if (error || !data) return `Brand ${id} not found.`
+  if (error || !data) {
+    return `Brand ${id} not found. Product IDs are 14-digit integers (e.g. 14000003689); if you are calling get_brand_details right after search_giftcards, copy the exact product_id from the search result — do not invent or shorten it.`
+  }
 
   const payload = {
     product_id: data.product_id,
