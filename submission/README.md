@@ -33,6 +33,8 @@ Live at [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · Chat at [c
 
 🎬 **Watch the videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) (what CYM Rewards is) · [Builder intro](https://youtu.be/xy3z2ZAp6aU) (who's behind it)
 
+📈 **Tracked in Electric Capital's [Open Dev Data](https://github.com/electric-capital/open-dev-data)** under the Conflux ecosystem — see [PR #2836](https://github.com/electric-capital/open-dev-data/pull/2836).
+
 ## 📸 Screenshots
 
 <table>
