@@ -170,12 +170,12 @@ export default function Home() {
               Let&apos;s make it <em>move.</em>
             </h2>
             <div>
-              <a className={styles.cta} href="mailto:tony.lau@pulse520.ai?subject=AI%20ad%20project">
+              <a className={styles.cta} href="mailto:tony.lau@cymadvisory.com?subject=AI%20ad%20project">
                 <span>Pitch your product</span>
                 <span className={styles.ctaArrow}>→</span>
               </a>
               <div className={styles.contactSub}>
-                <span>tony.lau@pulse520.ai</span>
+                <span>tony.lau@cymadvisory.com</span>
                 <span>Response &lt; 24h</span>
               </div>
             </div>

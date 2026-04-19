@@ -124,7 +124,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className={styles.contactInfo}>
               <div className={styles.contactItem}>
                 <strong>Email:</strong>
-                <a href="mailto:tony.lau@pulse520.ai">tony.lau@pulse520.ai</a>
+                <a href="mailto:tony.lau@cymadvisory.com">tony.lau@cymadvisory.com</a>
               </div>
             </div>
             <p>We look forward to hearing from you and discussing how we can bring your vision to life with AI-powered video production!</p>

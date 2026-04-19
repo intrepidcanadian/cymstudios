@@ -175,7 +175,7 @@ CYM Studio builds AI ads for e-commerce brands — built on a pipeline forged in
 
 ## Contact
 
-Email: [tony.lau@pulse520.ai](mailto:tony.lau@pulse520.ai)
+Email: [tony.lau@cymadvisory.com](mailto:tony.lau@cymadvisory.com)
 
 ## License
 

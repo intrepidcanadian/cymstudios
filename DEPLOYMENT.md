@@ -120,7 +120,7 @@ Vercel automatically provides:
 
 - [Vercel Documentation](https://vercel.com/docs)
 - [Next.js Documentation](https://nextjs.org/docs)
-- Contact: tony.lau@pulse520.ai
+- Contact: tony.lau@cymadvisory.com
 
 ---
 
