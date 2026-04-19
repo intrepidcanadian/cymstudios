@@ -1,107 +1,192 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import CSS3DVideoScene from '@/components/CSS3DVideoScene'
-import Sidebar from '@/components/Sidebar'
-import VideoModal from '@/components/VideoModal'
-import WorldClocks from '@/components/WorldClocks'
+import { useCallback, useState } from 'react'
 import Footer from '@/components/Footer'
+import ParticleField from '@/components/landing/ParticleField'
+import TopBar from '@/components/landing/TopBar'
+import ShowreelGrid from '@/components/landing/ShowreelGrid'
+import NeuralNav from '@/components/landing/NeuralNav'
+import LandingModal from '@/components/landing/LandingModal'
+import { useTheme } from '@/components/landing/useTheme'
+import { VIDEOS } from '@/components/landing/videos'
 import styles from './page.module.css'
 
-const VIDEOS = [
-  {
-    id: 'TpDAeRkc9gk',
-    description: 'BSL Season 22 Intro'
-  },
-  {
-    id: 'NTiKNaKZAF8',
-    description: '2025 2v2 Random Starcraft Brood War Tournament ($500 Prize Pool)'
-  },
-  {
-    id: 'Q82c39DQoJc',
-    description: 'Season 3 Bombastic Starleague 2v2 Tournament ($1,000 Prize Pool)'
-  },
-  {
-    id: '9RJzUTqOm5M',
-    description: 'Bombastic Starleague Qualifications Season 3'
-  },
-  {
-    id: 's-l4dQm7-uc',
-    description: '2023 2v2 Shield Battery Tournament ($500 Prize Pool)'
-  },
-  {
-    id: 'B0BGMrKSYWw',
-    description: 'BSL Starleague 22 - RO32 Week 2'
-  }
-]
-
 export default function Home() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [videoModalOpen, setVideoModalOpen] = useState(false)
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const [isMobile, setIsMobile] = useState(false)
+  const [theme, setTheme] = useTheme('ember')
+  const [modalIndex, setModalIndex] = useState<number | null>(null)
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window)
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const handleVideoTrigger = (videoId: string, description: string) => {
-    // Find the index of the triggered video
-    const index = VIDEOS.findIndex(v => v.id === videoId)
-    if (index !== -1) {
-      setCurrentVideoIndex(index)
-      setVideoModalOpen(true)
-    }
-  }
-
-  const handleNavigate = (index: number) => {
-    setCurrentVideoIndex(index)
-  }
+  const openModal = useCallback((i: number) => setModalIndex(i), [])
+  const closeModal = useCallback(() => setModalIndex(null), [])
 
   return (
-    <main className={styles.container}>
-      <CSS3DVideoScene videos={VIDEOS} onVideoClick={handleVideoTrigger} />
-      
-      <WorldClocks />
-      
-      <div className={styles.instructions}>
-        <p><strong>Drag</strong>: Rotate Camera • <strong>Click Video</strong>: Watch Fullscreen</p>
+    <div className={styles.container} data-theme={theme}>
+      <ParticleField className={styles.field} />
+      <div className={styles.grain} aria-hidden="true" />
+
+      <div className={styles.frame} aria-hidden="true">
+        <div className={styles.edgeT} />
+        <div className={styles.edgeB} />
+        <div className={styles.edgeL} />
+        <div className={styles.edgeR} />
       </div>
-      
-      <button 
-        className={styles.sidebarToggle}
-        onClick={() => setSidebarOpen(true)}
-      >
-        <span>☰</span> Menu
-      </button>
-      
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-      />
-      
-      <VideoModal 
-        isOpen={videoModalOpen}
-        videos={VIDEOS}
-        currentIndex={currentVideoIndex}
-        onClose={() => setVideoModalOpen(false)}
-        onNavigate={handleNavigate}
-      />
-      
-      <div 
-        className={`${styles.overlay} ${sidebarOpen ? styles.active : ''}`}
-        onClick={() => setSidebarOpen(false)}
-      />
-      
-      <Footer />
-    </main>
+
+      <main className={styles.main}>
+        <TopBar theme={theme} onThemeChange={setTheme} />
+
+        {/* Hero */}
+        <section className={styles.hero}>
+          <div>
+            <div className={styles.heroEyebrow}>Showreel — 2023 / 2026</div>
+            <h1 className={styles.heroTitle}>
+              AI ads <em>that sell</em>
+              <br />
+              <span className={styles.slash}>/</span> broadcast <em>craft</em>
+            </h1>
+          </div>
+          <div>
+            <p className={styles.heroLede}>
+              We help e-commerce brands turn product into film — AI-native ad pipelines, tested against the same craft
+              we use for live tournament broadcast. Six films from the archive, with new commercial work shipping now.
+            </p>
+            <div className={styles.heroMeta}>
+              <div>
+                <div className={styles.heroMetaK}>Archive</div>
+                <div className={styles.heroMetaV}>2023 — Present</div>
+              </div>
+              <div>
+                <div className={styles.heroMetaK}>Focus</div>
+                <div className={styles.heroMetaV}>AI ads · e-commerce</div>
+              </div>
+              <div>
+                <div className={styles.heroMetaK}>Status</div>
+                <div className={`${styles.heroMetaV} ${styles.heroMetaLive}`}>● Online</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Work */}
+        <div className={styles.sectionHead} id="work">
+          <span className={styles.sectionIdx}>01 / WORK</span>
+          <h2 className={styles.sectionTitle}>Selected films</h2>
+          <span className={styles.sectionRhs}>06 pieces &nbsp;—&nbsp; scroll ↓</span>
+        </div>
+        <ShowreelGrid videos={VIDEOS} onOpen={openModal} />
+
+        {/* Capabilities */}
+        <div className={styles.sectionHead} id="process">
+          <span className={styles.sectionIdx}>02 / CAPABILITIES</span>
+          <h2 className={styles.sectionTitle}>What we build</h2>
+          <span className={styles.sectionRhs}>pipeline → broadcast</span>
+        </div>
+        <section className={styles.caps}>
+          <div className={styles.cap}>
+            <div className={styles.capNum}>A · 01</div>
+            <div className={styles.capName}>AI ads for e-commerce</div>
+            <div className={styles.capDesc}>
+              Hero spots, UGC-style cutdowns, platform-native variants for Meta, TikTok, YouTube. Generative workflows
+              tuned for conversion, not gimmick.
+            </div>
+          </div>
+          <div className={styles.cap}>
+            <div className={styles.capNum}>A · 02</div>
+            <div className={styles.capName}>Product film &amp; launch</div>
+            <div className={styles.capDesc}>
+              Brand films and launch spots that pair AI-generated scenes with real product footage — broadcast quality
+              at indie speed.
+            </div>
+          </div>
+          <div className={styles.cap}>
+            <div className={styles.capNum}>A · 03</div>
+            <div className={styles.capName}>Broadcast packaging</div>
+            <div className={styles.capDesc}>
+              Opening sequences, lower thirds, caster graphics, transitions. Design systems for live tournaments and
+              events.
+            </div>
+          </div>
+          <div className={styles.cap}>
+            <div className={styles.capNum}>A · 04</div>
+            <div className={styles.capName}>Event coverage &amp; social</div>
+            <div className={styles.capDesc}>
+              Multi-day tournament archives — highlights, recap films, sponsor cutdowns, short-form built for the feed.
+            </div>
+          </div>
+        </section>
+
+        {/* About */}
+        <div className={styles.sectionHead} id="about">
+          <span className={styles.sectionIdx}>03 / STUDIO</span>
+          <h2 className={styles.sectionTitle}>About</h2>
+          <span className={styles.sectionRhs}>est. 2023 &nbsp;—&nbsp; toronto / remote</span>
+        </div>
+        <section className={styles.about}>
+          <div>
+            <div className={styles.aboutLabel}>A note from the desk</div>
+          </div>
+          <div>
+            <p className={styles.aboutBody}>
+              We help e-commerce brands ship <em>ad creative that converts</em> — built with an AI-native pipeline forged
+              in live broadcast. Generative tools let us move faster and take bigger swings. The cut, the hook and the
+              grade are still hand-made.
+            </p>
+            <div className={styles.aboutStats}>
+              <div>
+                <div className={styles.aboutStatN}>06</div>
+                <div className={styles.aboutStatL}>films in reel</div>
+              </div>
+              <div>
+                <div className={styles.aboutStatN}>17hr+</div>
+                <div className={styles.aboutStatL}>broadcast runtime</div>
+              </div>
+              <div>
+                <div className={styles.aboutStatN}>2023</div>
+                <div className={styles.aboutStatL}>founded</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Clients */}
+        <div className={styles.sectionHead}>
+          <span className={styles.sectionIdx}>04 / TRUSTED BY</span>
+          <h2 className={styles.sectionTitle}>Clients</h2>
+          <span className={styles.sectionRhs}>leagues &nbsp;·&nbsp; teams &nbsp;·&nbsp; sponsors</span>
+        </div>
+        <section className={styles.clients}>
+          <div className={styles.clientsRow}>
+            <div className={styles.client}>Bombastic Starleague S22 · 1v1</div>
+            <div className={styles.client}>Bombastic Starleague S3 · 2v2</div>
+            <div className={styles.client}>2023 2v2 Random Tournament</div>
+            <div className={styles.client}>2025 2v2 Random Tournament</div>
+          </div>
+        </section>
+
+        {/* Contact */}
+        <section className={styles.contact} id="contact">
+          <div className={styles.contactRow}>
+            <h2 className={styles.contactTitle}>
+              Got a product?
+              <br />
+              Let&apos;s make it <em>move.</em>
+            </h2>
+            <div>
+              <a className={styles.cta} href="mailto:tony.lau@pulse520.ai?subject=AI%20ad%20project">
+                <span>Pitch your product</span>
+                <span className={styles.ctaArrow}>→</span>
+              </a>
+              <div className={styles.contactSub}>
+                <span>tony.lau@pulse520.ai</span>
+                <span>Response &lt; 24h</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </main>
+
+      <NeuralNav videos={VIDEOS} activeIndex={modalIndex} onSelect={openModal} />
+      <LandingModal videos={VIDEOS} currentIndex={modalIndex} onClose={closeModal} onNavigate={openModal} />
+    </div>
   )
 }
-

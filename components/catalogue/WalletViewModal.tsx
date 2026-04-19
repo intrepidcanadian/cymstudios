@@ -50,26 +50,26 @@ export default function WalletViewModal({
       onClick={onClose}
     >
       <div
-        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden"
+        className="bg-canvas-soft/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-line overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset'
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+        <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ember to-purple-600 flex items-center justify-center">
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-100">My Wallet</h3>
-              <p className="text-xs text-slate-400">{userEmail}</p>
+              <h3 className="text-lg font-semibold text-ink">My Wallet</h3>
+              <p className="text-xs text-ink-dim">{userEmail}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-canvas-lift/50 hover:bg-canvas-lift text-ink-dim hover:text-ink transition-all"
           >
             <X className="w-4 h-4" />
           </button>
@@ -77,27 +77,27 @@ export default function WalletViewModal({
 
         {/* Wallet Address */}
         <div className="px-5 pt-5">
-          <div className="flex items-center gap-2 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
-            <span className="font-mono text-sm text-slate-300 flex-1 truncate">{truncatedAddress}</span>
+          <div className="flex items-center gap-2 p-3 bg-canvas-lift/50 rounded-xl border border-line-strong">
+            <span className="font-mono text-sm text-ink-dim flex-1 truncate">{truncatedAddress}</span>
             <button
               onClick={copyAddress}
-              className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:bg-canvas-lift hover:border-ember transition-colors"
               title="Copy full address"
             >
               {copied ? (
                 <Check className="w-4 h-4 text-green-400" />
               ) : (
-                <Copy className="w-4 h-4 text-slate-300" />
+                <Copy className="w-4 h-4 text-ink-dim" />
               )}
             </button>
             <a
               href={`${network.explorerUrl}/address/${walletAddress}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 hover:border-indigo-500 transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:bg-canvas-lift hover:border-ember transition-colors"
               title={`View on ${network.name} explorer`}
             >
-              <ExternalLink className="w-4 h-4 text-slate-300" />
+              <ExternalLink className="w-4 h-4 text-ink-dim" />
             </a>
           </div>
         </div>
@@ -105,17 +105,17 @@ export default function WalletViewModal({
         {/* Balances */}
         <div className="px-5 pt-4 space-y-3">
           {/* Stablecoin Balance */}
-          <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700">
+          <div className="p-4 bg-canvas-lift/30 rounded-xl border border-line">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-xs">$</span>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">{network.tokenSymbol}</p>
-                  <p className="text-lg font-bold text-slate-100">
+                  <p className="text-xs text-ink-dim">{network.tokenSymbol}</p>
+                  <p className="text-lg font-bold text-ink">
                     {balanceLoading ? (
-                      <span className="text-slate-500">Loading...</span>
+                      <span className="text-ink-mute">Loading...</span>
                     ) : usdcBalance !== null ? (
                       parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     ) : (
@@ -124,22 +124,22 @@ export default function WalletViewModal({
                   </p>
                 </div>
               </div>
-              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">{network.name}</span>
+              <span className="text-xs text-ink-mute bg-canvas-lift px-2 py-1 rounded-md">{network.name}</span>
             </div>
           </div>
 
           {/* Native Token Balance */}
-          <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700">
+          <div className="p-4 bg-canvas-lift/30 rounded-xl border border-line">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-canvas-lift flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-sm">{network.nativeSymbol.charAt(0)}</span>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400">{network.nativeSymbol}</p>
-                  <p className="text-lg font-bold text-slate-100">
+                  <p className="text-xs text-ink-dim">{network.nativeSymbol}</p>
+                  <p className="text-lg font-bold text-ink">
                     {balanceLoading ? (
-                      <span className="text-slate-500">Loading...</span>
+                      <span className="text-ink-mute">Loading...</span>
                     ) : ethBalance !== null ? (
                       parseFloat(ethBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
                     ) : (
@@ -148,7 +148,7 @@ export default function WalletViewModal({
                   </p>
                 </div>
               </div>
-              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded-md">{network.name}</span>
+              <span className="text-xs text-ink-mute bg-canvas-lift px-2 py-1 rounded-md">{network.name}</span>
             </div>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function WalletViewModal({
                 onClose();
                 onOpenSendModal('usdc');
               }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-ember to-ember hover:from-ember hover:to-ember text-white font-semibold rounded-xl transition-all shadow-lg"
             >
               <Send className="w-4 h-4" />
               Send {network.tokenSymbol}
@@ -171,7 +171,7 @@ export default function WalletViewModal({
                 onClose();
                 onOpenSendModal('eth');
               }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-semibold rounded-xl transition-all shadow-lg border border-slate-500"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-canvas-lift to-canvas-lift hover:from-canvas-lift hover:to-canvas-lift text-white font-semibold rounded-xl transition-all shadow-lg border border-line-strong"
             >
               <Send className="w-4 h-4" />
               Send {network.nativeSymbol}
@@ -180,7 +180,7 @@ export default function WalletViewModal({
 
           <button
             onClick={onExportWallet}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600"
+            className="w-full flex items-center gap-3 px-4 py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong"
           >
             <Download className="w-4 h-4" />
             Export Wallet
@@ -189,7 +189,7 @@ export default function WalletViewModal({
           <button
             onClick={onRefreshBalance}
             disabled={balanceLoading}
-            className="w-full text-center text-xs text-slate-500 hover:text-slate-300 py-2 transition-colors disabled:opacity-50"
+            className="w-full text-center text-xs text-ink-mute hover:text-ink-dim py-2 transition-colors disabled:opacity-50"
           >
             {balanceLoading ? 'Refreshing...' : 'Refresh Balances'}
           </button>

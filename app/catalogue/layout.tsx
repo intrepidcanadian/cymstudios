@@ -1,4 +1,5 @@
 import Providers from '../providers';
+import CatalogueRoot from '@/components/catalogue/CatalogueRoot';
 
 export default function CatalogueLayout({
   children,
@@ -7,8 +8,8 @@ export default function CatalogueLayout({
 }) {
   return (
     <Providers>
-      <div className="dark" style={{ minHeight: '100vh', background: '#0f172a' }}>
-        {children}
+      <div className="dark">
+        <CatalogueRoot>{children}</CatalogueRoot>
       </div>
     </Providers>
   );

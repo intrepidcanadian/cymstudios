@@ -6,7 +6,7 @@ import { Package, AlertCircle, RefreshCw, ArrowUpDown, CreditCard, Gift } from '
 /** Order image with React-based fallback instead of hiding via style.display */
 function OrderImage({ image, name }: { image?: string; name: string }) {
   const [error, setError] = useState(false);
-  if (!image || error) return <Package className="w-6 h-6 text-slate-400" />;
+  if (!image || error) return <Package className="w-6 h-6 text-ink-dim" />;
   return (
     <img
       src={image}
@@ -239,9 +239,9 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
     return (
       <div className="text-center py-20">
         <div className="relative inline-flex">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-700 border-t-indigo-500" />
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-line border-t-ember" />
         </div>
-        <p className="text-slate-400 mt-6 font-medium">Loading orders...</p>
+        <p className="text-ink-dim mt-6 font-medium">Loading orders...</p>
       </div>
     );
   }
@@ -249,10 +249,10 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   if (error === 'no_lookup') {
     return (
       <div className="text-center py-20">
-        <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-slate-100 mb-2">Connect wallet to view orders</h3>
-        <p className="text-slate-400 mb-2">Connect the same wallet you used for your purchase.</p>
-        <p className="text-xs text-slate-500">Orders are matched by wallet address and email. If you purchased on a different device, connect the same wallet or use the same email to see your history.</p>
+        <Package className="w-16 h-16 text-ink-mute mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-ink mb-2">Connect wallet to view orders</h3>
+        <p className="text-ink-dim mb-2">Connect the same wallet you used for your purchase.</p>
+        <p className="text-xs text-ink-mute">Orders are matched by wallet address and email. If you purchased on a different device, connect the same wallet or use the same email to see your history.</p>
       </div>
     );
   }
@@ -261,11 +261,11 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
     return (
       <div className="text-center py-20">
         <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
-        <p className="text-slate-400 mb-6">{error}</p>
+        <h3 className="text-xl font-bold text-ink mb-2">Something went wrong</h3>
+        <p className="text-ink-dim mb-6">{error}</p>
         <button
           onClick={() => fetchOrders()}
-          className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+          className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           Retry
@@ -277,9 +277,9 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
   if (orders.length === 0) {
     return (
       <div className="text-center py-20">
-        <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-slate-100 mb-2">No orders yet</h3>
-        <p className="text-slate-400">Your purchase history will appear here.</p>
+        <Package className="w-16 h-16 text-ink-mute mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-ink mb-2">No orders yet</h3>
+        <p className="text-ink-dim">Your purchase history will appear here.</p>
       </div>
     );
   }
@@ -294,11 +294,11 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
             if (f !== 'all' && count === 0) return null; // hide empty filter tabs
             const active = statusFilter === f;
             const colors: Record<StatusFilter, string> = {
-              all: active ? 'bg-slate-600 text-slate-100' : 'text-slate-400 hover:text-slate-200',
-              failed: active ? 'bg-red-900/60 text-red-300 border-red-700/50' : 'text-slate-400 hover:text-red-300',
-              pending_review: active ? 'bg-orange-900/60 text-orange-300 border-orange-700/50' : 'text-slate-400 hover:text-orange-300',
-              processing: active ? 'bg-blue-900/60 text-blue-300 border-blue-700/50' : 'text-slate-400 hover:text-blue-300',
-              completed: active ? 'bg-green-900/60 text-green-300 border-green-700/50' : 'text-slate-400 hover:text-green-300',
+              all: active ? 'bg-canvas-lift text-ink' : 'text-ink-dim hover:text-ink',
+              failed: active ? 'bg-red-900/60 text-red-300 border-red-700/50' : 'text-ink-dim hover:text-red-300',
+              pending_review: active ? 'bg-orange-900/60 text-orange-300 border-orange-700/50' : 'text-ink-dim hover:text-orange-300',
+              processing: active ? 'bg-blue-900/60 text-blue-300 border-blue-700/50' : 'text-ink-dim hover:text-blue-300',
+              completed: active ? 'bg-green-900/60 text-green-300 border-green-700/50' : 'text-ink-dim hover:text-green-300',
             };
             return (
               <button
@@ -317,7 +317,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSortBy(sortBy === 'date' ? 'status' : 'date')}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-ink-dim hover:text-ink transition-colors"
             aria-label={`Sort orders ${sortBy === 'date' ? 'by status' : 'by date'}`}
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
@@ -325,11 +325,11 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           </button>
           <div className="flex items-center gap-2">
             {lastUpdated && (
-              <span className="text-[10px] text-slate-500">{getRelativeTime(lastUpdated)}</span>
+              <span className="text-[10px] text-ink-mute">{getRelativeTime(lastUpdated)}</span>
             )}
             <button
               onClick={() => fetchOrders()}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-ink-dim hover:text-ink transition-colors"
               aria-label="Refresh order list"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -358,14 +358,14 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
         );
       })()}
 
-      <p className="text-sm text-slate-400 mb-3">
+      <p className="text-sm text-ink-dim mb-3">
         {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
         {statusFilter !== 'all' ? ` (${statusFilter})` : ''}
       </p>
 
       {filteredOrders.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-slate-400">No {statusFilter} orders found.</p>
+          <p className="text-ink-dim">No {statusFilter} orders found.</p>
         </div>
       ) : (
       <>
@@ -374,7 +374,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           <button
             key={order.order_id}
             onClick={() => onViewOrder(order.order_id, order.orderToken, resolvedEmail)}
-            className="text-left bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-200"
+            className="text-left bg-canvas-soft border border-line rounded-xl p-4 hover:border-line-strong hover:shadow-xl hover:shadow-ember/10 transition-all duration-200"
             aria-label={`View order: ${order.product_name || order.brand_name}, ${order.status}`}
           >
             <div className="flex items-start gap-3">
@@ -382,11 +382,11 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
               <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center">
                 <OrderImage image={order.product_image} name={order.brand_name} />
                 {/* Order type badge */}
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-slate-700 bg-slate-800" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border border-line bg-canvas-soft" title={order.brand_name.toLowerCase().includes('mastercard') ? 'Prepaid Mastercard' : 'Gift Card'}>
                   {order.brand_name.toLowerCase().includes('mastercard') ? (
                     <CreditCard className="w-2.5 h-2.5 text-orange-400" />
                   ) : (
-                    <Gift className="w-2.5 h-2.5 text-indigo-400" />
+                    <Gift className="w-2.5 h-2.5 text-ember" />
                   )}
                 </span>
               </div>
@@ -394,14 +394,14 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
               {/* Order Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold text-slate-100 text-sm truncate">
+                  <h3 className="font-semibold text-ink text-sm truncate">
                     {order.product_name || order.brand_name}
                   </h3>
                   {getStatusBadge(order.status, order.error_message)}
                 </div>
 
                 <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-base font-bold text-slate-100">
+                  <span className="text-base font-bold text-ink">
                     {order.voucher_currency || order.currency}{' '}
                     {(order.face_value || order.price).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -410,10 +410,10 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-ink-mute">
                   <span>{formatDate(order.created_at)}</span>
                   {order.payment_network && (
-                    <span className="px-1.5 py-0.5 bg-slate-700/50 rounded text-[10px] text-slate-400 uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 bg-canvas-lift/50 rounded text-[10px] text-ink-dim uppercase tracking-wider">
                       {order.payment_network === 'conflux' ? 'CFX' : 'ETH'}
                     </span>
                   )}
@@ -430,11 +430,11 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           <button
             onClick={() => fetchOrders(orders.length)}
             disabled={loadingMore}
-            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-lg transition-colors inline-flex items-center gap-2 text-sm disabled:opacity-50"
+            className="px-6 py-2 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-lg transition-colors inline-flex items-center gap-2 text-sm disabled:opacity-50"
           >
             {loadingMore ? (
               <>
-                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-slate-500 border-t-slate-200" />
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-line-strong border-t-ink" />
                 Loading...
               </>
             ) : (

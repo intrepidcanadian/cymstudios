@@ -15,6 +15,7 @@ import WalletViewModal from './WalletViewModal';
 import SendUsdcModal from './SendUsdcModal';
 import SendEthModal from './SendEthModal';
 import OrderHistoryList from './OrderHistoryList';
+import styles from './catalogue.module.css';
 
 /** M27: Simple fuzzy matching — suggests brand names similar to a mistyped search query */
 function suggestBrands(query: string, brandNames: string[], maxSuggestions = 3): string[] {
@@ -73,17 +74,17 @@ function EmptySearchState({
   const suggestions = searchQuery ? suggestBrands(searchQuery, allBrandNames) : [];
   return (
     <div className="text-center py-20">
-      <h3 className="text-xl font-bold text-slate-100 mb-2">No products found</h3>
-      <p className="text-slate-400 mb-4">Try adjusting your filters or search query</p>
+      <h3 className="text-xl font-bold text-ink mb-2">No products found</h3>
+      <p className="text-ink-dim mb-4">Try adjusting your filters or search query</p>
       {suggestions.length > 0 && (
         <div className="mb-6">
-          <p className="text-sm text-slate-400 mb-2">Did you mean:</p>
+          <p className="text-sm text-ink-dim mb-2">Did you mean:</p>
           <div className="flex flex-wrap justify-center gap-2">
             {suggestions.map(name => (
               <button
                 key={name}
                 onClick={() => onSelectSuggestion(name)}
-                className="px-3 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-sm text-indigo-300 hover:bg-indigo-800/50 hover:text-indigo-200 transition-colors"
+                className="px-3 py-1.5 bg-ember-soft border border-ember-soft rounded-full text-sm text-ember hover:bg-ember-soft hover:text-ember transition-colors"
               >
                 {name}
               </button>
@@ -93,7 +94,7 @@ function EmptySearchState({
       )}
       <button
         onClick={onClearFilters}
-        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+        className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
       >
         Clear All Filters
       </button>
@@ -153,7 +154,7 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <div
-      className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
+      className={`group relative bg-canvas-soft border border-line rounded-xl p-4 sm:p-5 hover:border-line-strong transition-all duration-300 ${styles.productCard}`}
     >
       {/* Like Button */}
       <button
@@ -162,40 +163,42 @@ const ProductCard = memo(function ProductCard({
           onToggleLike(String(product.product_id));
         }}
         aria-label={`${isLiked ? 'Unlike' : 'Like'} ${product.brand_name}`}
-        className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-900/80 flex items-center justify-center hover:bg-slate-900 transition-colors shadow-lg border border-slate-700"
+        className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-canvas/70 backdrop-blur flex items-center justify-center hover:bg-canvas transition-colors border border-line"
       >
         {isLiked ? (
           <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 fill-current" viewBox="0 0 24 24">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
           </svg>
         ) : (
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-ink-dim hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         )}
       </button>
 
-      {/* Product Image */}
-      <div className="relative h-36 sm:h-56 bg-white overflow-hidden cursor-pointer" onClick={() => onSelect(product)}>
-        {product.product_image && !imgError ? (
-          <img
-            src={product.product_image}
-            alt={product.brand_name}
-            loading="lazy"
-            className="w-full h-full object-contain p-3 sm:p-6 [@media(hover:hover)]:group-hover:scale-110 transition-transform duration-500"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-700" role="img" aria-label={product.brand_name}>
-            <span className="text-4xl sm:text-7xl text-slate-400">Reward</span>
-          </div>
-        )}
+      {/* Tilted gift-card art */}
+      <div className={`cursor-pointer ${styles.cardArtWrap}`} onClick={() => onSelect(product)}>
+        <div className={styles.cardArt} style={{ background: '#ffffff' }}>
+          {product.product_image && !imgError ? (
+            <img
+              src={product.product_image}
+              alt={product.brand_name}
+              loading="lazy"
+              style={{ objectFit: 'contain', padding: '14px' }}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-canvas-lift" role="img" aria-label={product.brand_name}>
+              <span className="text-4xl sm:text-7xl text-ink-dim">Reward</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Product Info */}
-      <div className="p-2.5 sm:p-4 border-t border-slate-700">
+      <div>
         <div className="mb-2 sm:mb-3 cursor-pointer" onClick={() => onSelect(product)}>
-          <h3 className="font-bold text-slate-100 text-xs sm:text-base mb-0.5 sm:mb-1.5 leading-tight line-clamp-2">
+          <h3 className="font-serif font-normal text-ink text-base sm:text-lg mb-0.5 sm:mb-1 leading-tight line-clamp-2 tracking-tight">
             {product.brand_name}
           </h3>
         </div>
@@ -205,24 +208,24 @@ const ProductCard = memo(function ProductCard({
           <div className="mb-2 sm:mb-3">
             <div className="flex flex-wrap gap-1 sm:gap-1.5">
               {product.denominations.slice(0, 2).map((denom: number, idx: number) => (
-                <span key={idx} className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
+                <span key={idx} className="text-[10px] sm:text-xs bg-canvas-lift text-ink-dim font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
                   {product.currency} {denom}
                 </span>
               ))}
               <span className="hidden sm:inline">
                 {product.denominations.length > 2 && product.denominations[2] && (
-                  <span className="text-xs bg-slate-700 text-slate-300 font-medium px-2.5 py-1 rounded-md">
+                  <span className="text-xs bg-canvas-lift text-ink-dim font-medium px-2.5 py-1 rounded-md">
                     {product.currency} {product.denominations[2]}
                   </span>
                 )}
               </span>
               {product.denominations.length > 2 && (
-                <span className="sm:hidden text-[10px] text-slate-500 px-1 py-0.5 font-medium">
+                <span className="sm:hidden text-[10px] text-ink-mute px-1 py-0.5 font-medium">
                   +{product.denominations.length - 2}
                 </span>
               )}
               {product.denominations.length > 3 && (
-                <span className="hidden sm:inline text-xs text-slate-500 px-2 py-1 font-medium">
+                <span className="hidden sm:inline text-xs text-ink-mute px-2 py-1 font-medium">
                   +{product.denominations.length - 3}
                 </span>
               )}
@@ -230,14 +233,14 @@ const ProductCard = memo(function ProductCard({
           </div>
         ) : product.value_restrictions ? (
           <div className="mb-2 sm:mb-3">
-            <span className="text-[10px] sm:text-xs bg-slate-700 text-slate-300 font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
+            <span className="text-[10px] sm:text-xs bg-canvas-lift text-ink-dim font-medium px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md">
               {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min}–{product.value_restrictions.maxVal || product.value_restrictions.max}
             </span>
           </div>
         ) : null}
 
         {/* Country & Currency */}
-        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-700 cursor-pointer" onClick={() => onSelect(product)}>
+        <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-ink-dim mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-line cursor-pointer" onClick={() => onSelect(product)}>
           {getCountryFlag(product.country_name) && (
             <span className="flex-shrink-0" aria-hidden="true">{getCountryFlag(product.country_name)}</span>
           )}
@@ -247,7 +250,7 @@ const ProductCard = memo(function ProductCard({
         {/* View Button */}
         <button
           onClick={() => onSelect(product)}
-          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-ember hover:bg-ember text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
           aria-label={`View and redeem ${product.brand_name}`}
         >
           <span className="sm:hidden">View</span>
@@ -279,20 +282,20 @@ function RecentlyViewedCard({ product, onSelect }: { product: BrandProduct; onSe
   return (
     <button
       onClick={() => onSelect(product)}
-      className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-500 transition-colors text-left"
+      className="bg-canvas-soft border border-line rounded-lg overflow-hidden hover:border-line-strong transition-colors text-left"
     >
       <div className="h-14 sm:h-20 bg-white overflow-hidden">
         {product.product_image && !imgError ? (
           <img src={product.product_image} alt={product.brand_name} loading="lazy" className="w-full h-full object-contain p-1.5 sm:p-2" onError={() => setImgError(true)} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-700" role="img" aria-label={product.brand_name}>
-            <span className="text-sm sm:text-lg text-slate-400">Reward</span>
+          <div className="w-full h-full flex items-center justify-center bg-canvas-lift" role="img" aria-label={product.brand_name}>
+            <span className="text-sm sm:text-lg text-ink-dim">Reward</span>
           </div>
         )}
       </div>
       <div className="p-1 sm:p-2">
-        <p className="text-[9px] sm:text-xs font-medium text-slate-200 truncate">{product.brand_name}</p>
-        <p className="text-[8px] sm:text-[10px] text-slate-400">{product.currency}</p>
+        <p className="text-[9px] sm:text-xs font-medium text-ink truncate">{product.brand_name}</p>
+        <p className="text-[8px] sm:text-[10px] text-ink-dim">{product.currency}</p>
       </div>
     </button>
   );
@@ -302,7 +305,7 @@ function RecentlyViewedCard({ product, onSelect }: { product: BrandProduct; onSe
 function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelect: () => void }) {
   const [imgError, setImgError] = useState(false);
   return (
-    <div className="relative h-40 sm:h-56 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden cursor-pointer flex items-center justify-center group" onClick={onSelect}>
+    <div className="relative h-40 sm:h-56 bg-gradient-to-br from-canvas to-canvas-soft overflow-hidden cursor-pointer flex items-center justify-center group" onClick={onSelect}>
       {product.product_image && !imgError ? (
         <img
           src={product.product_image}
@@ -314,7 +317,7 @@ function MastercardImage({ product, onSelect }: { product: BrandProduct; onSelec
       ) : (
         <div className="flex flex-col items-center gap-3" role="img" aria-label={product.brand_name}>
           <CreditCard className="w-16 h-16 text-orange-400" />
-          <span className="text-lg font-bold text-slate-300">Mastercard Prepaid</span>
+          <span className="text-lg font-bold text-ink-dim">Mastercard Prepaid</span>
         </div>
       )}
     </div>
@@ -753,12 +756,12 @@ export default function GiftCardCatalog() {
             aria-label="Search gift card brands"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-11 pr-9 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm text-slate-100 placeholder:text-slate-400 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+            className="w-full pl-11 pr-9 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm text-ink placeholder:text-ink-dim bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
           />
           {searchInput && searchInput !== searchQuery ? (
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-slate-500 border-t-indigo-400 rounded-full animate-spin" />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-line-strong border-t-ember rounded-full animate-spin" />
           ) : (
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           )}
@@ -766,7 +769,7 @@ export default function GiftCardCatalog() {
             <button
               type="button"
               onClick={() => { handleSearchChange(''); setSearchQuery(''); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-ink-dim hover:text-ink transition-colors"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -777,11 +780,11 @@ export default function GiftCardCatalog() {
 
       {/* Sort Order */}
       <div>
-        <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Sort</h3>
+        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Sort</h3>
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as 'default' | 'az' | 'za')}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm font-medium text-ink bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
         >
           <option value="default">Default</option>
           <option value="az">Name A–Z</option>
@@ -791,16 +794,16 @@ export default function GiftCardCatalog() {
 
       {/* Show Unique Brands Only Toggle */}
       <div>
-        <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-3 rounded-lg transition-colors border-2 border-slate-600">
+        <label className="flex items-center gap-3 cursor-pointer hover:bg-canvas-lift/50 p-3 rounded-lg transition-colors border-2 border-line-strong">
           <input
             type="checkbox"
             checked={showUniqueBrandsOnly}
             onChange={(e) => setShowUniqueBrandsOnly(e.target.checked)}
-            className="w-5 h-5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700"
+            className="w-5 h-5 text-ember border-line-strong rounded focus:ring-ember bg-canvas-lift"
           />
           <div className="flex-1">
-            <span className="text-sm font-bold text-slate-100 block">Show Unique Brands Only</span>
-            <span className="text-xs text-slate-400 block mt-1">
+            <span className="text-sm font-bold text-ink block">Show Unique Brands Only</span>
+            <span className="text-xs text-ink-dim block mt-1">
               {showUniqueBrandsOnly
                 ? `Showing 1 product per brand`
                 : `Showing all product variations`}
@@ -812,16 +815,16 @@ export default function GiftCardCatalog() {
       {/* Show Favorites Only Toggle */}
       {likedProducts.size > 0 && (
         <div>
-          <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-3 rounded-lg transition-colors border-2 border-slate-600">
+          <label className="flex items-center gap-3 cursor-pointer hover:bg-canvas-lift/50 p-3 rounded-lg transition-colors border-2 border-line-strong">
             <input
               type="checkbox"
               checked={showFavoritesOnly}
               onChange={(e) => setShowFavoritesOnly(e.target.checked)}
-              className="w-5 h-5 text-red-500 border-slate-500 rounded focus:ring-red-500 bg-slate-700"
+              className="w-5 h-5 text-red-500 border-line-strong rounded focus:ring-red-500 bg-canvas-lift"
             />
             <div className="flex-1">
-              <span className="text-sm font-bold text-slate-100 block">Favorites Only</span>
-              <span className="text-xs text-slate-400 block mt-1">Show {likedProducts.size} liked product{likedProducts.size !== 1 ? 's' : ''}</span>
+              <span className="text-sm font-bold text-ink block">Favorites Only</span>
+              <span className="text-xs text-ink-dim block mt-1">Show {likedProducts.size} liked product{likedProducts.size !== 1 ? 's' : ''}</span>
             </div>
           </label>
         </div>
@@ -829,11 +832,11 @@ export default function GiftCardCatalog() {
 
       {/* Country Filter */}
       <div>
-        <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Country</h3>
+        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Country</h3>
         <select
           value={countryFilter}
           onChange={(e) => setCountryFilter(e.target.value)}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm font-medium text-ink bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
         >
           <option value="all">All Countries</option>
           {availableCountries.map(country => (
@@ -844,11 +847,11 @@ export default function GiftCardCatalog() {
 
       {/* Currency Filter */}
       <div>
-        <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Currency</h3>
+        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Currency</h3>
         <select
           value={currencyFilter}
           onChange={(e) => setCurrencyFilter(e.target.value)}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-slate-600 rounded-lg text-sm font-medium text-slate-100 bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+          className="w-full px-4 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm font-medium text-ink bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
         >
           <option value="all">All Currencies</option>
           {availableCurrencies.map(currency => (
@@ -859,23 +862,23 @@ export default function GiftCardCatalog() {
 
       {/* Brands Filter */}
       <div>
-        <h3 className="text-base font-bold text-slate-100 mb-4 pb-3 border-b-2 border-slate-600">Brands</h3>
+        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Brands</h3>
         <div className="space-y-3 max-h-[300px] sm:max-h-[500px] overflow-y-auto pr-2">
           {(showAllBrands ? allUniqueBrands : allUniqueBrands.slice(0, 30)).map((brandName) => (
-            <label key={brandName} className="flex items-center gap-3 cursor-pointer hover:bg-slate-700/50 p-2 rounded-lg transition-colors">
+            <label key={brandName} className="flex items-center gap-3 cursor-pointer hover:bg-canvas-lift/50 p-2 rounded-lg transition-colors">
               <input
                 type="checkbox"
                 checked={selectedBrandFilters.includes(brandName)}
                 onChange={() => toggleBrandFilter(brandName)}
-                className="w-5 h-5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700"
+                className="w-5 h-5 text-ember border-line-strong rounded focus:ring-ember bg-canvas-lift"
               />
-              <span className="text-sm text-slate-200 font-medium">{brandName}</span>
+              <span className="text-sm text-ink font-medium">{brandName}</span>
             </label>
           ))}
           {allUniqueBrands.length > 30 && (
             <button
               onClick={() => setShowAllBrands(prev => !prev)}
-              className="text-sm text-indigo-400 hover:text-indigo-300 font-bold ml-2"
+              className="text-sm text-ember hover:text-ember font-bold ml-2"
             >
               {showAllBrands ? 'Show Less' : `View All (${allUniqueBrands.length})`}
             </button>
@@ -896,7 +899,7 @@ export default function GiftCardCatalog() {
             setShowFavoritesOnly(false);
             setSortOrder('default');
           }}
-          className="w-full px-5 py-3 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-bold rounded-lg transition-colors shadow-sm"
+          className="w-full px-5 py-3 min-h-[44px] bg-canvas-lift hover:bg-canvas-lift text-ink text-sm font-bold rounded-lg transition-colors shadow-sm"
         >
           Clear All Filters
         </button>
@@ -907,38 +910,38 @@ export default function GiftCardCatalog() {
   return (
     <>
       <div className="w-full max-w-[1920px] mx-auto">
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)] w-full bg-slate-900">
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)] w-full bg-canvas">
           {/* LEFT SIDEBAR - Filters (Hidden on mobile, shown on lg+) */}
-          <aside className="hidden lg:block w-80 bg-slate-800 border-r border-slate-700 overflow-y-auto flex-shrink-0 shadow-sm">
+          <aside className="hidden lg:block w-80 bg-canvas-soft border-r border-line overflow-y-auto flex-shrink-0 shadow-sm">
             <div className="p-8">
-              <Link href="/" className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium mb-6 text-sm">
+              <Link href="/" className="inline-flex items-center gap-1 text-ember hover:text-ember font-medium mb-6 text-sm">
                 &larr; CYM Studio
               </Link>
 
               {/* Wallet Auth Section */}
-              <div className="mb-6 p-3 rounded-lg border border-slate-700 bg-slate-800/50">
+              <div className="mb-6 p-3 rounded-lg border border-line bg-canvas-soft/50">
                 {!walletReady ? (
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <div className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center gap-2 text-xs text-ink-dim">
+                    <div className="w-3 h-3 border-2 border-line-strong border-t-transparent rounded-full animate-spin" />
                     Initializing...
                   </div>
                 ) : isConnected && address ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-ember flex items-center justify-center flex-shrink-0">
                         <Wallet className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <button
                           onClick={() => setShowWalletView(true)}
-                          className="text-xs font-medium text-slate-200 truncate hover:text-indigo-400 transition-colors cursor-pointer text-left w-full block"
+                          className="text-xs font-medium text-ink truncate hover:text-ember transition-colors cursor-pointer text-left w-full block"
                           title="View wallet details"
                         >
                           Connected
                         </button>
                         <button
                           onClick={() => setShowWalletView(true)}
-                          className="text-[10px] text-slate-400 hover:text-indigo-400 font-mono truncate transition-colors cursor-pointer text-left w-full block"
+                          className="text-[10px] text-ink-dim hover:text-ember font-mono truncate transition-colors cursor-pointer text-left w-full block"
                           title="View wallet details"
                         >
                           {address.slice(0, 6)}...{address.slice(-4)}
@@ -947,7 +950,7 @@ export default function GiftCardCatalog() {
                     </div>
                     <button
                       onClick={() => disconnect()}
-                      className="w-full flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 py-1.5 rounded hover:bg-slate-700/50 transition-colors"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs text-ink-dim hover:text-ink py-1.5 rounded hover:bg-canvas-lift/50 transition-colors"
                     >
                       <LogOut className="w-3 h-3" />
                       Disconnect
@@ -960,7 +963,7 @@ export default function GiftCardCatalog() {
                     )}
                     <button
                       onClick={() => open()}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-ember hover:bg-ember text-white text-sm font-semibold rounded-lg transition-colors"
                     >
                       <Wallet className="w-4 h-4" />
                       {walletTimedOut ? 'Reconnect Wallet' : 'Connect Wallet'}
@@ -988,20 +991,20 @@ export default function GiftCardCatalog() {
                 onClick={() => setShowMobileFilters(false)}
               />
               {/* Bottom Sheet */}
-              <div className="absolute bottom-0 left-0 right-0 bg-slate-800 rounded-t-2xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+              <div className="absolute bottom-0 left-0 right-0 bg-canvas-soft rounded-t-2xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
                 {/* Handle */}
                 <div className="flex justify-center py-3">
-                  <div className="w-12 h-1.5 bg-slate-600 rounded-full" />
+                  <div className="w-12 h-1.5 bg-canvas-lift rounded-full" />
                 </div>
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-700">
-                  <h3 className="text-lg font-bold text-slate-100">Filters</h3>
+                <div className="flex items-center justify-between px-4 pb-3 border-b border-line">
+                  <h3 className="text-lg font-bold text-ink">Filters</h3>
                   <button
                     onClick={() => setShowMobileFilters(false)}
-                    className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-canvas-lift rounded-lg transition-colors"
                     aria-label="Close filters"
                   >
-                    <X className="w-5 h-5 text-slate-300" />
+                    <X className="w-5 h-5 text-ink-dim" />
                   </button>
                 </div>
                 {/* Content */}
@@ -1009,10 +1012,10 @@ export default function GiftCardCatalog() {
                   {filterContent}
                 </div>
                 {/* Footer */}
-                <div className="p-4 border-t border-slate-700 bg-slate-800">
+                <div className="p-4 border-t border-line bg-canvas-soft">
                   <button
                     onClick={() => setShowMobileFilters(false)}
-                    className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors"
+                    className="w-full py-3 bg-ember hover:bg-ember text-white font-semibold rounded-lg transition-colors"
                   >
                     Show {filteredProducts.length} Results
                   </button>
@@ -1022,64 +1025,73 @@ export default function GiftCardCatalog() {
           )}
 
           {/* MAIN CONTENT AREA */}
-          <main ref={mainRef} className="flex-1 overflow-y-auto bg-slate-900">
+          <main ref={mainRef} className="flex-1 overflow-y-auto bg-canvas">
             <div className="p-4 sm:p-8 pb-20 sm:pb-24 w-full">
-              {/* Program Scope Notice */}
-              <div className="mb-4 sm:mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700">
-                <div className="flex items-start gap-3">
-                  <Shield className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-100 mb-1">Tournament Prize Redemptions</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Tournament winners can redeem gift cards using <span className="text-slate-200 font-medium">prize tokens awarded</span> from CYM Studio&apos;s <span className="text-slate-200 font-medium">Tournaments</span>, <span className="text-slate-200 font-medium">Competitions</span>, and <span className="text-slate-200 font-medium">Player Reward Programs</span>. All redemptions must comply with the official tournament rules.
-                    </p>
+              {/* Serif hero — Tournament Prize Redemptions */}
+              <section className={styles.heroSerif}>
+                <div>
+                  <div className={styles.heroCrumb}>
+                    <span>Tournament Prize Redemption</span>
+                    <span>·</span>
+                    <span>Season 22</span>
+                  </div>
+                  <h1 className={styles.heroTitle}>
+                    Turn your winnings<br />into something <em>real.</em>
+                  </h1>
+                  <p className={styles.heroLede}>
+                    Redeem prize tokens awarded from CYM Studio&apos;s Tournaments, Competitions, and Player Reward Programs
+                    for digital gift cards across ~{allUniqueBrands.length || 300} brands. All redemptions are final and subject to official tournament rules.
+                  </p>
+                </div>
+                <div className={styles.heroMeta}>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatN}>{allUniqueBrands.length || 0}</span>
+                    <span className={styles.heroStatL}>Brands</span>
+                  </div>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatN}>{availableCountries.length || 0}</span>
+                    <span className={styles.heroStatL}>Countries</span>
+                  </div>
+                  <div className={styles.heroStat}>
+                    <span className={styles.heroStatN}>{availableCurrencies.length || 0}</span>
+                    <span className={styles.heroStatL}>Currencies</span>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Tabs */}
-              <div className="flex items-center gap-1 mb-4 sm:mb-6 border-b border-slate-700 overflow-x-auto scrollbar-none -mx-4 sm:mx-0 px-4 sm:px-0">
-                <button
-                  onClick={() => { setActiveTab('giftcards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === 'giftcards'
-                      ? 'border-indigo-500 text-indigo-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Gift Cards
-                  {!loading && filteredProducts.length > 0 && (
-                    <span className="ml-1.5 text-xs font-normal opacity-60">({filteredProducts.length})</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => { setActiveTab('mastercards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-                    activeTab === 'mastercards'
-                      ? 'border-indigo-500 text-indigo-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4 flex-shrink-0" />
-                  Prepaid Mastercards
-                  {mastercardsFetched && mastercards.length > 0 && (
-                    <span className="text-xs font-normal opacity-60">({mastercards.length})</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => { setActiveTab('orders'); setHasNewOrders(false); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-                    activeTab === 'orders'
-                      ? 'border-indigo-500 text-indigo-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Clock className="w-4 h-4 flex-shrink-0" />
-                  My Orders
-                  {hasNewOrders && activeTab !== 'orders' && (
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-                  )}
-                </button>
+              {/* Pill tabs */}
+              <div className="mb-4 sm:mb-6 overflow-x-auto scrollbar-none -mx-4 sm:mx-0 px-4 sm:px-0">
+                <div className={styles.pillTabs}>
+                  <button
+                    onClick={() => { setActiveTab('giftcards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className={`${styles.pillTab} ${activeTab === 'giftcards' ? styles.pillTabActive : ''}`}
+                  >
+                    Gift Cards
+                    {!loading && filteredProducts.length > 0 && (
+                      <span className={styles.pillTabCount}>{filteredProducts.length}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('mastercards'); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className={`${styles.pillTab} ${activeTab === 'mastercards' ? styles.pillTabActive : ''}`}
+                  >
+                    <CreditCard className="w-4 h-4 flex-shrink-0" />
+                    Prepaid Mastercards
+                    {mastercardsFetched && mastercards.length > 0 && (
+                      <span className={styles.pillTabCount}>{mastercards.length}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('orders'); setHasNewOrders(false); mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className={`${styles.pillTab} ${activeTab === 'orders' ? styles.pillTabActive : ''}`}
+                  >
+                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    My Orders
+                    {hasNewOrders && activeTab !== 'orders' && (
+                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* M24: Recently Viewed Products — collapsible, above grid */}
@@ -1097,10 +1109,10 @@ export default function GiftCardCatalog() {
                     aria-expanded={!recentlyViewedCollapsed}
                     aria-label={`Recently viewed products (${recentlyViewed.length})`}
                   >
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-ink-dim uppercase tracking-wider flex items-center gap-2">
                       <Clock className="w-4 h-4" />
                       Recently Viewed
-                      <span className="text-xs font-normal normal-case text-slate-500">({recentlyViewed.length})</span>
+                      <span className="text-xs font-normal normal-case text-ink-mute">({recentlyViewed.length})</span>
                     </h3>
                     <div className="flex items-center gap-2">
                       <button
@@ -1111,12 +1123,12 @@ export default function GiftCardCatalog() {
                             try { localStorage.removeItem('recentlyViewed'); } catch { /* ignore */ }
                           }
                         }}
-                        className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-700/50"
+                        className="text-[10px] text-ink-mute hover:text-ink-dim transition-colors px-1.5 py-0.5 rounded hover:bg-canvas-lift/50"
                         aria-label="Clear recently viewed products"
                       >
                         Clear
                       </button>
-                      <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-transform ${recentlyViewedCollapsed ? '' : 'rotate-180'}`} />
+                      <ChevronDown className={`w-4 h-4 text-ink-mute group-hover:text-ink-dim transition-transform ${recentlyViewedCollapsed ? '' : 'rotate-180'}`} />
                     </div>
                   </button>
                   {!recentlyViewedCollapsed && (
@@ -1132,14 +1144,14 @@ export default function GiftCardCatalog() {
               {/* Top Bar */}
               <div className="flex items-center justify-between mb-4 sm:mb-8 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="hidden sm:block h-1 w-1 bg-indigo-500 rounded-full flex-shrink-0"></div>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-100 truncate">
+                  <div className="hidden sm:block h-1 w-1 bg-ember rounded-full flex-shrink-0"></div>
+                  <h2 className="font-serif font-normal text-2xl sm:text-3xl text-ink truncate tracking-tight">
                     {activeTab === 'orders' ? (
                       <>My Orders</>
                     ) : activeTab === 'giftcards' ? (
-                      <>All Products <span className="text-slate-400 font-normal text-sm sm:text-lg">({filteredProducts.length})</span></>
+                      <>All brands <span className="text-ink-mute font-normal text-base sm:text-xl">— {filteredProducts.length}</span></>
                     ) : (
-                      <>Prepaid Mastercards <span className="text-slate-400 font-normal text-sm sm:text-lg">({mastercards.length})</span></>
+                      <>Prepaid Mastercards <span className="text-ink-mute font-normal text-base sm:text-xl">— {mastercards.length}</span></>
                     )}
                   </h2>
                 </div>
@@ -1149,7 +1161,7 @@ export default function GiftCardCatalog() {
                     <select
                       value={sortOrder}
                       onChange={(e) => setSortOrder(e.target.value as 'default' | 'az' | 'za')}
-                      className="px-2 sm:px-3 py-2 min-h-[36px] text-[11px] sm:text-xs font-medium text-slate-300 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-slate-500 transition-colors"
+                      className="px-2 sm:px-3 py-2 min-h-[36px] text-[11px] sm:text-xs font-medium text-ink-dim bg-canvas-soft border border-line-strong rounded-lg focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
                       aria-label="Sort products"
                     >
                       <option value="default">Sort</option>
@@ -1162,7 +1174,7 @@ export default function GiftCardCatalog() {
                     {walletReady && !isConnected ? (
                       <button
                         onClick={() => open()}
-                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors"
                       >
                         <Wallet className="w-4 h-4" />
                         Connect
@@ -1170,9 +1182,9 @@ export default function GiftCardCatalog() {
                     ) : walletReady && isConnected ? (
                       <button
                         onClick={() => setShowWalletView(true)}
-                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition-colors border border-slate-600"
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-canvas-lift hover:bg-canvas-lift text-ink text-sm rounded-lg transition-colors border border-line-strong"
                       >
-                        <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-ember flex items-center justify-center">
                           <Wallet className="w-2.5 h-2.5 text-white" />
                         </div>
                       </button>
@@ -1182,12 +1194,12 @@ export default function GiftCardCatalog() {
                   {activeTab === 'giftcards' && (
                     <button
                       onClick={() => setShowMobileFilters(true)}
-                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                     >
                       <SlidersHorizontal className="w-4 h-4" />
                       Filters
                       {activeFilterCount > 0 && (
-                        <span className="bg-white text-indigo-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="bg-white text-ember text-xs font-bold px-1.5 py-0.5 rounded-full">
                           {activeFilterCount}
                         </span>
                       )}
@@ -1200,26 +1212,26 @@ export default function GiftCardCatalog() {
               {activeTab === 'giftcards' && activeFilterCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {searchQuery && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ember-soft border border-ember-soft rounded-full text-xs text-ember">
                       Search: &quot;{searchQuery}&quot;
                       <button onClick={() => { setSearchQuery(''); setSearchInput(''); }} className="ml-0.5 hover:text-white" aria-label="Remove search filter"><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {countryFilter !== 'all' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ember-soft border border-ember-soft rounded-full text-xs text-ember">
                       {getCountryFlag(countryFilter) && <span aria-hidden="true">{getCountryFlag(countryFilter)}</span>}
                       {countryFilter}
                       <button onClick={() => setCountryFilter('all')} className="ml-0.5 hover:text-white" aria-label={`Remove ${countryFilter} filter`}><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {currencyFilter !== 'all' && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-ember-soft border border-ember-soft rounded-full text-xs text-ember">
                       {currencyFilter}
                       <button onClick={() => setCurrencyFilter('all')} className="ml-0.5 hover:text-white" aria-label={`Remove ${currencyFilter} filter`}><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {selectedBrandFilters.map(brand => (
-                    <span key={brand} className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-xs text-indigo-300">
+                    <span key={brand} className="inline-flex items-center gap-1 px-2.5 py-1 bg-ember-soft border border-ember-soft rounded-full text-xs text-ember">
                       {brand}
                       <button onClick={() => toggleBrandFilter(brand)} className="ml-0.5 hover:text-white" aria-label={`Remove ${brand} filter`}><X className="w-3 h-3" /></button>
                     </span>
@@ -1233,7 +1245,7 @@ export default function GiftCardCatalog() {
                   {activeFilterCount > 1 && (
                     <button
                       onClick={() => { setSelectedBrandFilters([]); setCountryFilter('all'); setCurrencyFilter('all'); setSearchQuery(''); setSearchInput(''); setShowFavoritesOnly(false); setSortOrder('default'); }}
-                      className="text-xs text-slate-400 hover:text-slate-200 underline"
+                      className="text-xs text-ink-dim hover:text-ink underline"
                     >
                       Clear all
                     </button>
@@ -1265,14 +1277,14 @@ export default function GiftCardCatalog() {
                 loadingMastercards ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6" aria-busy="true" aria-label="Loading Mastercard products">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
-                        <div className="h-40 sm:h-56 bg-slate-700" />
-                        <div className="p-4 border-t border-slate-700 space-y-3">
-                          <div className="h-4 bg-slate-700 rounded w-3/4" />
-                          <div className="h-3 bg-slate-700 rounded w-1/3" />
-                          <div className="h-12 bg-slate-700 rounded-lg" />
-                          <div className="h-3 bg-slate-700 rounded w-2/3" />
-                          <div className="h-10 bg-slate-700 rounded-lg" />
+                      <div key={i} className="bg-canvas-soft border border-line rounded-xl overflow-hidden animate-pulse">
+                        <div className="h-40 sm:h-56 bg-canvas-lift" />
+                        <div className="p-4 border-t border-line space-y-3">
+                          <div className="h-4 bg-canvas-lift rounded w-3/4" />
+                          <div className="h-3 bg-canvas-lift rounded w-1/3" />
+                          <div className="h-12 bg-canvas-lift rounded-lg" />
+                          <div className="h-3 bg-canvas-lift rounded w-2/3" />
+                          <div className="h-10 bg-canvas-lift rounded-lg" />
                         </div>
                       </div>
                     ))}
@@ -1280,53 +1292,53 @@ export default function GiftCardCatalog() {
                 ) : mastercardFetchError ? (
                   <div className="text-center py-20">
                     <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
-                    <p className="text-slate-400 mb-6">{mastercardFetchError}</p>
+                    <h3 className="text-xl font-bold text-ink mb-2">Something went wrong</h3>
+                    <p className="text-ink-dim mb-6">{mastercardFetchError}</p>
                     <button
                       onClick={fetchMastercards}
-                      className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+                      className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
                     >
                       Try Again
                     </button>
                   </div>
                 ) : mastercards.length === 0 ? (
                   <div className="text-center py-20">
-                    <CreditCard className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-slate-100 mb-2">No Mastercard products available</h3>
-                    <p className="text-slate-400">Prepaid Mastercard products are not currently available in your region.</p>
+                    <CreditCard className="w-16 h-16 text-ink-mute mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-ink mb-2">No Mastercard products available</h3>
+                    <p className="text-ink-dim">Prepaid Mastercard products are not currently available in your region.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                     {mastercards.map((product) => (
                       <div
                         key={product.product_id}
-                        className="group relative bg-slate-800 border border-slate-700 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-slate-600 transition-all duration-300"
+                        className="group relative bg-canvas-soft border border-line rounded-xl overflow-hidden hover:shadow-xl hover:shadow-ember/10 hover:border-line-strong transition-all duration-300"
                       >
                         {/* Product Image */}
                         <MastercardImage product={product} onSelect={() => setSelectedProduct(product)} />
 
                         {/* Product Info */}
-                        <div className="p-4 border-t border-slate-700">
-                          <h3 className="font-bold text-slate-100 text-base mb-1">{product.brand_name}</h3>
+                        <div className="p-4 border-t border-line">
+                          <h3 className="font-bold text-ink text-base mb-1">{product.brand_name}</h3>
 
                           {/* Value Range */}
                           {product.value_restrictions && (
-                            <div className="mb-3 p-2.5 bg-slate-700/50 rounded-lg">
-                              <p className="text-xs text-slate-400 mb-1">Value Range</p>
-                              <p className="text-sm font-semibold text-slate-100">
+                            <div className="mb-3 p-2.5 bg-canvas-lift/50 rounded-lg">
+                              <p className="text-xs text-ink-dim mb-1">Value Range</p>
+                              <p className="text-sm font-semibold text-ink">
                                 {product.currency} {product.value_restrictions.minVal || product.value_restrictions.min} - {product.value_restrictions.maxVal || product.value_restrictions.max}
                               </p>
                             </div>
                           )}
 
-                          <p className="text-xs text-slate-400 mb-3">
+                          <p className="text-xs text-ink-dim mb-3">
                             {getCountryFlag(product.country_name) && <span className="mr-0.5" aria-hidden="true">{getCountryFlag(product.country_name)}</span>}
                             {product.currency} · {product.country_name}
                           </p>
 
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-4 py-2.5 min-h-[40px] bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                            className="w-full px-4 py-2.5 min-h-[40px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                           >
                             View & Redeem
                           </button>
@@ -1338,17 +1350,17 @@ export default function GiftCardCatalog() {
               ) : loading ? (
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6" aria-busy="true" aria-label="Loading products">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden animate-pulse">
-                      <div className="h-36 sm:h-56 bg-slate-700" />
-                      <div className="p-2.5 sm:p-4 border-t border-slate-700 space-y-2 sm:space-y-3">
-                        <div className="h-4 bg-slate-700 rounded w-3/4" />
-                        <div className="h-3 bg-slate-700 rounded w-1/2 hidden sm:block" />
+                    <div key={i} className="bg-canvas-soft border border-line rounded-xl overflow-hidden animate-pulse">
+                      <div className="h-36 sm:h-56 bg-canvas-lift" />
+                      <div className="p-2.5 sm:p-4 border-t border-line space-y-2 sm:space-y-3">
+                        <div className="h-4 bg-canvas-lift rounded w-3/4" />
+                        <div className="h-3 bg-canvas-lift rounded w-1/2 hidden sm:block" />
                         <div className="hidden sm:flex gap-1.5">
-                          <div className="h-6 bg-slate-700 rounded w-16" />
-                          <div className="h-6 bg-slate-700 rounded w-16" />
+                          <div className="h-6 bg-canvas-lift rounded w-16" />
+                          <div className="h-6 bg-canvas-lift rounded w-16" />
                         </div>
-                        <div className="h-3 bg-slate-700 rounded w-2/3" />
-                        <div className="h-9 sm:h-10 bg-slate-700 rounded-lg" />
+                        <div className="h-3 bg-canvas-lift rounded w-2/3" />
+                        <div className="h-9 sm:h-10 bg-canvas-lift rounded-lg" />
                       </div>
                     </div>
                   ))}
@@ -1356,25 +1368,25 @@ export default function GiftCardCatalog() {
               ) : fetchError ? (
                 <div className="text-center py-20">
                   <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-slate-100 mb-2">Something went wrong</h3>
-                  <p className="text-slate-400 mb-6">{fetchError}</p>
+                  <h3 className="text-xl font-bold text-ink mb-2">Something went wrong</h3>
+                  <p className="text-ink-dim mb-6">{fetchError}</p>
                   <button
                     onClick={fetchBrands}
-                    className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+                    className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
                   >
                     Try Again
                   </button>
                 </div>
               ) : filteredProducts.length === 0 && showFavoritesOnly ? (
                 <div className="text-center py-20">
-                  <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-16 h-16 text-ink-mute mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <h3 className="text-xl font-bold text-slate-100 mb-2">No favorites match your filters</h3>
-                  <p className="text-slate-400 mb-6">Try removing country or currency filters, or browse all products to add more favorites.</p>
+                  <h3 className="text-xl font-bold text-ink mb-2">No favorites match your filters</h3>
+                  <p className="text-ink-dim mb-6">Try removing country or currency filters, or browse all products to add more favorites.</p>
                   <button
                     onClick={() => setShowFavoritesOnly(false)}
-                    className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors"
+                    className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
                   >
                     Show All Products
                   </button>
@@ -1411,7 +1423,7 @@ export default function GiftCardCatalog() {
             {showBackToTop && (
               <button
                 onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="fixed bottom-20 right-4 sm:right-8 z-30 w-10 h-10 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all"
+                className="fixed bottom-20 right-4 sm:right-8 z-30 w-10 h-10 bg-ember hover:bg-ember text-white rounded-full shadow-lg flex items-center justify-center transition-all"
                 aria-label="Back to top"
               >
                 <ArrowUp className="w-5 h-5" />
@@ -1423,16 +1435,16 @@ export default function GiftCardCatalog() {
         {/* Product Details Modal */}
         {selectedProduct && !showPurchaseModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedProduct(null)}>
-            <div ref={productDetailRef} role="dialog" aria-modal="true" aria-label={`${selectedProduct.brand_name} details`} className="bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div ref={productDetailRef} role="dialog" aria-modal="true" aria-label={`${selectedProduct.brand_name} details`} className="bg-canvas-soft rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto border border-line" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-slate-100">{selectedProduct.brand_name}</h2>
+                  <h2 className="font-serif font-normal text-2xl sm:text-3xl text-ink tracking-tight">{selectedProduct.brand_name}</h2>
                   <button
                     onClick={() => setSelectedProduct(null)}
                     aria-label="Close"
-                    className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-700 rounded-lg transition-colors -mr-2"
+                    className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-canvas-lift rounded-lg transition-colors -mr-2"
                   >
-                    <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-300" />
+                    <X className="w-5 h-5 sm:w-6 sm:h-6 text-ink-dim" />
                   </button>
                 </div>
 
@@ -1443,26 +1455,26 @@ export default function GiftCardCatalog() {
                 <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                   {/* Product Description */}
                   {selectedProduct.product_description && (
-                    <p className="text-sm text-slate-300 leading-relaxed">{selectedProduct.product_description}</p>
+                    <p className="text-sm text-ink-dim leading-relaxed">{selectedProduct.product_description}</p>
                   )}
 
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Country</h3>
-                      <p className="text-sm sm:text-base text-slate-100">
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-1">Country</h3>
+                      <p className="text-sm sm:text-base text-ink">
                         {getCountryFlag(selectedProduct.country_name) && <span className="mr-1" aria-hidden="true">{getCountryFlag(selectedProduct.country_name)}</span>}
                         {selectedProduct.country_name}
                       </p>
                     </div>
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Currency</h3>
-                      <p className="text-sm sm:text-base text-slate-100">{selectedProduct.currency}</p>
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-1">Currency</h3>
+                      <p className="text-sm sm:text-base text-ink">{selectedProduct.currency}</p>
                     </div>
                   </div>
 
                   {selectedProduct.denominations && Array.isArray(selectedProduct.denominations) && (
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2">Quick Buy — tap a denomination</h3>
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-2">Quick Buy — tap a denomination</h3>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {selectedProduct.denominations.map((denom: number, idx: number) => {
                           const tokenEst = selectedProduct.currency ? estimateTokenCost(denom, selectedProduct.currency) : null;
@@ -1473,7 +1485,7 @@ export default function GiftCardCatalog() {
                                 setPurchaseInitialAmount(String(denom));
                                 setShowPurchaseModal(true);
                               }}
-                              className="bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-slate-600 hover:border-indigo-500"
+                              className="bg-canvas-lift hover:bg-ember text-ink hover:text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors border border-line-strong hover:border-ember"
                             >
                               {selectedProduct.currency} {denom}
                               {tokenEst && (
@@ -1488,8 +1500,8 @@ export default function GiftCardCatalog() {
 
                   {selectedProduct.value_restrictions && (
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Value Range</h3>
-                      <p className="text-sm sm:text-base text-slate-100">
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-1">Value Range</h3>
+                      <p className="text-sm sm:text-base text-ink">
                         {selectedProduct.currency} {selectedProduct.value_restrictions.minVal || selectedProduct.value_restrictions.min} - {selectedProduct.value_restrictions.maxVal || selectedProduct.value_restrictions.max}
                       </p>
                     </div>
@@ -1498,30 +1510,30 @@ export default function GiftCardCatalog() {
                   {/* Expiry & Validity */}
                   {selectedProduct.expiry_and_validity && (
                     <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-1">Expiry & Validity</h3>
-                      <div className="text-sm text-slate-300 leading-relaxed prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.expiry_and_validity) }} />
+                      <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-1">Expiry & Validity</h3>
+                      <div className="text-sm text-ink-dim leading-relaxed prose-sm prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.expiry_and_validity) }} />
                     </div>
                   )}
 
                   {/* How to Use — collapsible */}
                   {selectedProduct.how_to_use && (
                     <details className="group">
-                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-300 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-ink-dim hover:text-ink-dim transition-colors">
                         How to Use
                         <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
                       </summary>
-                      <div className="mt-2 text-sm text-slate-300 leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.how_to_use) }} />
+                      <div className="mt-2 text-sm text-ink-dim leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.how_to_use) }} />
                     </details>
                   )}
 
                   {/* Terms & Conditions — collapsible */}
                   {selectedProduct.terms_and_conditions && (
                     <details className="group">
-                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-300 transition-colors">
+                      <summary className="flex items-center justify-between cursor-pointer text-xs sm:text-sm font-semibold text-ink-dim hover:text-ink-dim transition-colors">
                         Terms & Conditions
                         <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
                       </summary>
-                      <div className="mt-2 text-sm text-slate-300 leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.terms_and_conditions) }} />
+                      <div className="mt-2 text-sm text-ink-dim leading-relaxed prose-sm prose-invert max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedProduct.terms_and_conditions) }} />
                     </details>
                   )}
                 </div>
@@ -1531,7 +1543,7 @@ export default function GiftCardCatalog() {
                   <>
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Amount ({selectedProduct.currency})</label>
+                        <label className="block text-xs font-semibold text-ink-dim mb-1">Amount ({selectedProduct.currency})</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1546,7 +1558,7 @@ export default function GiftCardCatalog() {
                               setPurchaseInitialAmount(val.toFixed(2));
                             }
                           }}
-                          className="w-full px-3 py-2.5 border-2 border-slate-600 rounded-lg bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold"
+                          className="w-full px-3 py-2.5 border-2 border-line-strong rounded-lg bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none text-sm font-semibold"
                         />
                         {/* Real-time inline validation */}
                         {(() => {
@@ -1584,15 +1596,15 @@ export default function GiftCardCatalog() {
                           const maxVal = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
                           return (minVal && val < minVal) || (maxVal && val > maxVal) || false;
                         })()}
-                        className="px-5 py-2.5 min-h-[42px] bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
+                        className="px-5 py-2.5 min-h-[42px] bg-ember hover:bg-ember disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
                       >
                         Buy with {NETWORKS[selectedNetwork]?.tokenSymbol}
                       </button>
                     </div>
                     <div className="flex items-center gap-3 my-2">
-                      <div className="flex-1 h-px bg-slate-700" />
-                      <span className="text-xs text-slate-500 font-medium">or</span>
-                      <div className="flex-1 h-px bg-slate-700" />
+                      <div className="flex-1 h-px bg-canvas-lift" />
+                      <span className="text-xs text-ink-mute font-medium">or</span>
+                      <div className="flex-1 h-px bg-canvas-lift" />
                     </div>
                   </>
                 )}
@@ -1602,7 +1614,7 @@ export default function GiftCardCatalog() {
                     if (!purchaseInitialAmount) setPurchaseInitialAmount('');
                     setShowPurchaseModal(true);
                   }}
-                  className="w-full px-6 py-3 min-h-[48px] bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg transition-colors"
+                  className="w-full px-6 py-3 min-h-[48px] bg-ember hover:bg-ember text-white font-bold rounded-lg transition-colors"
                 >
                   Redeem with Tokens
                   <span className="block text-xs font-normal opacity-80 mt-0.5">
@@ -1666,41 +1678,39 @@ export default function GiftCardCatalog() {
       </div>
 
       {/* On-Ramp Footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-800/95 backdrop-blur-md border-t border-slate-700">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-canvas-soft/95 backdrop-blur-md border-t border-line">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
           {/* Left: USDC Balance (when authenticated) */}
           {isConnected && address ? (
             <>
-              {/* Left group: balance + send + networks */}
+              {/* Left group: balance pill + send + networks */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-xs">$</span>
-                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold bg-slate-700 text-slate-300 px-1 rounded border border-slate-600 leading-tight">
-                    {selectedNetwork === 'conflux' ? 'CFX' : 'ETH'}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                    <span className="hidden sm:inline">{tokenSymbol} Balance <span className="text-indigo-400">({NETWORKS[selectedNetwork]?.name})</span></span>
-                    <span className="sm:hidden">{tokenSymbol} <span className="text-slate-500 font-mono">{address.slice(0, 6)}…{address.slice(-4)}</span></span>
-                  </p>
-                  <p className="text-sm sm:text-base font-bold text-slate-100 truncate">
-                    {balanceLoading ? (
-                      <span className="inline-block w-20 h-5 bg-slate-700 rounded animate-pulse" />
-                    ) : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                  </p>
+                <div className={styles.balancePill}>
+                  <div>
+                    <div className={styles.balancePillLabel}>
+                      <span className="hidden sm:inline">{tokenSymbol} · {NETWORKS[selectedNetwork]?.name}</span>
+                      <span className="sm:hidden">{tokenSymbol}</span>
+                    </div>
+                    <div className={styles.balancePillAmount}>
+                      {balanceLoading ? (
+                        <span className="inline-block w-20 h-5 bg-canvas-lift rounded animate-pulse" />
+                      ) : usdcBalance !== null ? parseFloat(usdcBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                      <span className={styles.balancePillUnit}>{tokenSymbol}</span>
+                    </div>
+                  </div>
+                  <div className={styles.balancePillIcon}>◈</div>
                 </div>
                 {ethBalance !== null && ethBalance !== undefined && (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-slate-700/50 rounded-lg border border-slate-600 flex-shrink-0">
-                    <span className="text-[10px] text-slate-400">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
-                    <span className="text-xs font-semibold text-slate-200">
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-canvas-lift/50 rounded-lg border border-line-strong flex-shrink-0">
+                    <span className="text-[10px] text-ink-dim">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
+                    <span className="text-xs font-semibold text-ink">
                       {parseFloat(ethBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
                     </span>
                   </div>
                 )}
                 <button
                   onClick={() => setShowSendModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold rounded-lg transition-colors border border-indigo-500/30 flex-shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-ember/20 hover:bg-ember/30 text-ember text-xs font-semibold rounded-lg transition-colors border border-ember/30 flex-shrink-0"
                   title={`Send ${tokenSymbol}`}
                   aria-label={`Send ${tokenSymbol} tokens`}
                 >
@@ -1709,7 +1719,7 @@ export default function GiftCardCatalog() {
                 </button>
                 <button
                   onClick={() => setShowSendEthModal(true)}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition-colors border border-slate-600 flex-shrink-0"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-canvas-lift/50 hover:bg-canvas-lift text-ink-dim text-xs font-semibold rounded-lg transition-colors border border-line-strong flex-shrink-0"
                   title={`Send ${NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}`}
                   aria-label={`Send ${NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}`}
                 >
@@ -1717,8 +1727,8 @@ export default function GiftCardCatalog() {
                   Send {NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}
                 </button>
                 {/* Networks Supported — grouped switcher */}
-                <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/40 rounded-lg border border-slate-600 flex-shrink-0">
-                  <span className="hidden sm:inline text-[9px] text-slate-500 font-medium uppercase tracking-wider mr-1">Networks</span>
+                <div className="flex items-center gap-1 px-2 py-1 bg-canvas-lift/40 rounded-lg border border-line-strong flex-shrink-0">
+                  <span className="hidden sm:inline text-[9px] text-ink-mute font-medium uppercase tracking-wider mr-1">Networks</span>
                   {Object.entries(NETWORKS).map(([key, net]) => {
                     const shortLabel = key === 'ethereum' ? 'ETH' : 'CFX';
                     return (
@@ -1731,8 +1741,8 @@ export default function GiftCardCatalog() {
                         disabled={showPurchaseModal}
                         className={`px-2 py-1.5 sm:py-1 min-w-[40px] min-h-[36px] sm:min-h-0 text-[10px] font-bold rounded transition-colors ${
                           selectedNetwork === key
-                            ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40'
-                            : 'text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-500'
+                            ? 'bg-ember/30 text-ember border border-ember/40'
+                            : 'text-ink-dim hover:text-ink border border-transparent hover:border-line-strong'
                         } disabled:opacity-40 disabled:cursor-not-allowed`}
                         title={showPurchaseModal ? 'Network locked during checkout' : `Switch to ${net.name}`}
                         aria-label={`Switch to ${net.name} (${net.tokenSymbol})`}
@@ -1753,11 +1763,11 @@ export default function GiftCardCatalog() {
                     <span className="hidden sm:inline text-[10px] text-amber-300 font-medium whitespace-nowrap">
                       {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network: RPC issue' : 'Facilitator: Gas low'}
                     </span>
-                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl text-xs text-slate-300 w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-canvas-soft border border-line-strong rounded-lg shadow-xl text-xs text-ink-dim w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                       <p className="font-semibold text-amber-300 mb-1">
                         {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network RPC Unreachable' : 'Facilitator Gas Low'}
                       </p>
-                      <p className="text-slate-400 leading-relaxed">
+                      <p className="text-ink-dim leading-relaxed">
                         {Object.values(facilitatorHealthReason).includes('rpc_unreachable')
                           ? 'One or more network RPCs are not responding. Transactions on affected networks may fail. Try switching to another network.'
                           : 'The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.'}
@@ -1770,12 +1780,12 @@ export default function GiftCardCatalog() {
           ) : (
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2 min-w-0">
-                <Shield className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                <p className="text-xs text-slate-400 truncate">Connect a wallet to redeem gift cards with crypto</p>
+                <Shield className="w-4 h-4 text-ember flex-shrink-0" />
+                <p className="text-xs text-ink-dim truncate">Connect a wallet to redeem gift cards with crypto</p>
               </div>
               <button
                 onClick={() => open()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-4 py-2 bg-ember hover:bg-ember text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
               >
                 <Wallet className="w-3.5 h-3.5" />
                 Connect Wallet

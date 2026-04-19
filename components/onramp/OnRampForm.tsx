@@ -11,6 +11,7 @@ import { OslPayButton } from './OslPayButton';
 import { CryptoNetworkModal } from './CryptoNetworkModal';
 import { Wallet, CreditCard, Smartphone, Apple, Copy, Check, User, Clock, ChevronDown, Info } from 'lucide-react';
 import { OSL_PAY_CONFIG } from '@/config/oslPay';
+import { getBackendUrl } from '@/lib/onramp-auth';
 import { FIAT_CURRENCIES, getCurrencySymbol, getCurrencyLimits } from '@/config/fiatCurrencies';
 import { useAccount } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
@@ -103,7 +104,12 @@ export function OnRampForm({
   // Fetch supported cryptocurrencies from backend
   const fetchCryptoList = async () => {
     try {
-      const backendUrl = (process.env.NEXT_PUBLIC_SERVER_URL || 'https://gswap-server-04651a4e88ed.herokuapp.com').replace(/\/$/, '');
+      const backendUrl = getBackendUrl();
+      if (!backendUrl) {
+        // No onramp backend configured — fall back to local list
+        setAvailableCryptos(supportedCryptos);
+        return;
+      }
       const response = await fetch(`${backendUrl}/osl-pay/crypto-options`);
       const data = await response.json();
 
@@ -137,7 +143,12 @@ export function OnRampForm({
 
     try {
       setIsLoadingQuote(true);
-      const backendUrl = (process.env.NEXT_PUBLIC_SERVER_URL || 'https://gswap-server-04651a4e88ed.herokuapp.com').replace(/\/$/, '');
+      const backendUrl = getBackendUrl();
+      if (!backendUrl) {
+        // No onramp backend configured — can't fetch live quotes
+        setCurrentQuote(null);
+        return;
+      }
       const response = await fetch(`${backendUrl}/osl-pay/query-quote`, {
         method: 'POST',
         headers: {
@@ -560,10 +571,10 @@ export function OnRampForm({
         transition={{ duration: 0.4 }}
         className={`relative w-full max-w-md mx-auto ${className}`}
       >
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 shadow-lg">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-canvas-soft dark:to-canvas backdrop-blur-sm border border-slate-200/60 dark:border-line/60 shadow-lg">
           <div className="relative p-6 space-y-4">
             <div className="text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-r from-blue-500 to-ember flex items-center justify-center">
                 <User className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-foreground">
@@ -664,12 +675,12 @@ export function OnRampForm({
       transition={{ duration: 0.4 }}
       className={`relative w-full max-w-md mx-auto ${className}`}
     >
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 shadow-lg">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-canvas-soft dark:to-canvas backdrop-blur-sm border border-slate-200/60 dark:border-line/60 shadow-lg">
         <div className="relative p-5 space-y-4">
           {/* Compact Header */}
           <div className="text-center space-y-1">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-ember flex items-center justify-center">
                 <Wallet className="w-4 h-4 text-white" />
               </div>
             </div>
@@ -952,7 +963,7 @@ export function OnRampForm({
                       onClick={handleCopyAddress}
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      className="h-6 w-6 p-0 text-ink-mute hover:text-slate-700 dark:text-ink-dim dark:hover:text-ink"
                     >
                       {copiedAddress ? (
                         <Check className="w-3 h-3 text-green-600" />
@@ -1014,7 +1025,7 @@ export function OnRampForm({
                 <SelectContent>
                   <SelectItem value="ANY">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-ember flex items-center justify-center">
                         <span className="text-xs text-white font-bold">A</span>
                       </div>
                       Any method

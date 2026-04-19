@@ -22,10 +22,13 @@ export interface AuthResponse {
 }
 
 /**
- * Get the backend API URL
+ * Get the onramp backend API URL.
+ * Returns '' when NEXT_PUBLIC_SERVER_URL is not set — callers must check and
+ * degrade gracefully. We do NOT hardcode a fallback URL in the public repo.
  */
 export function getBackendUrl(): string {
-  return (process.env.NEXT_PUBLIC_SERVER_URL || 'https://gswap-server-04651a4e88ed.herokuapp.com').replace(/\/$/, '');
+  const url = process.env.NEXT_PUBLIC_SERVER_URL;
+  return url ? url.replace(/\/$/, '') : '';
 }
 
 /**
@@ -113,6 +116,12 @@ export function logout(): void {
 export async function syncWithPrivy(privyEmail: string, privyUserId: string): Promise<AuthResponse> {
   try {
     const backendUrl = getBackendUrl();
+    if (!backendUrl) {
+      return {
+        success: false,
+        error: 'Onramp backend not configured (NEXT_PUBLIC_SERVER_URL is unset)',
+      };
+    }
     const response = await fetch(`${backendUrl}/auth/privy-login`, {
       method: 'POST',
       headers: {

@@ -1,0 +1,242 @@
+/* =============================================================
+   Catalogue page — editorial palette + bespoke styling
+   Shares tokens with the landing (app/page.module.css) so the
+   ember/cyan/lime/magenta theme chosen on the landing carries here.
+   ============================================================= */
+
+.root {
+  --cat-bg: oklch(0.14 0.008 260);
+  --cat-bg-2: oklch(0.17 0.009 260);
+  --cat-bg-3: oklch(0.21 0.01 260);
+  --cat-fg: oklch(0.96 0.006 80);
+  --cat-fg-dim: oklch(0.7 0.01 80);
+  --cat-fg-mute: oklch(0.48 0.01 260);
+  --cat-line: oklch(0.22 0.01 260);
+  --cat-line-strong: oklch(0.28 0.012 260);
+  --cat-accent: oklch(0.74 0.18 50);
+  --cat-accent-soft: oklch(0.74 0.18 50 / 0.15);
+  --cat-accent-ink: oklch(0.22 0.06 50);
+
+  min-height: 100vh;
+  background: var(--cat-bg);
+  color: var(--cat-fg);
+}
+
+/* Shared themes with landing */
+.root[data-theme='ember']   { --cat-accent: oklch(0.74 0.18 50);  --cat-accent-soft: oklch(0.74 0.18 50 / 0.15);  --cat-accent-ink: oklch(0.22 0.06 50); }
+.root[data-theme='cyan']    { --cat-accent: oklch(0.78 0.14 220); --cat-accent-soft: oklch(0.78 0.14 220 / 0.15); --cat-accent-ink: oklch(0.22 0.06 220); }
+.root[data-theme='lime']    { --cat-accent: oklch(0.82 0.17 130); --cat-accent-soft: oklch(0.82 0.17 130 / 0.15); --cat-accent-ink: oklch(0.22 0.08 130); }
+.root[data-theme='magenta'] { --cat-accent: oklch(0.72 0.2 340);  --cat-accent-soft: oklch(0.72 0.2 340 / 0.15);  --cat-accent-ink: oklch(0.22 0.08 340); }
+
+/* =================== Serif hero =================== */
+.heroSerif {
+  padding: 48px 24px 28px;
+  border-bottom: 1px solid var(--cat-line);
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 48px;
+  align-items: end;
+}
+.heroCrumb {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--cat-fg-mute);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.heroCrumb::before {
+  content: '◆';
+  color: var(--cat-accent);
+}
+.heroTitle {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(36px, 4.8vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--cat-fg);
+}
+.heroTitle em {
+  font-style: italic;
+  color: var(--cat-accent);
+}
+.heroLede {
+  color: var(--cat-fg-dim);
+  max-width: 50ch;
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.heroMeta {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.heroStat { text-align: right; }
+.heroStatN {
+  font-family: var(--font-serif);
+  font-size: clamp(32px, 3.6vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  display: block;
+  color: var(--cat-fg);
+}
+.heroStatL {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--cat-fg-mute);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+@media (max-width: 768px) {
+  .heroSerif { grid-template-columns: 1fr; gap: 24px; padding: 32px 16px 20px; }
+  .heroMeta { justify-content: flex-start; gap: 24px; }
+  .heroStat { text-align: left; }
+}
+
+/* =================== Pill tabs / chips =================== */
+.pillTabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--cat-bg-2);
+  border: 1px solid var(--cat-line);
+  border-radius: 999px;
+  width: fit-content;
+}
+.pillTab {
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cat-fg-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+.pillTab:hover { color: var(--cat-fg); }
+.pillTabActive {
+  background: var(--cat-fg);
+  color: var(--cat-bg);
+}
+.pillTabActive:hover { color: var(--cat-bg); }
+.pillTabCount {
+  font-size: 11px;
+  color: var(--cat-fg-mute);
+  font-family: var(--font-mono);
+}
+.pillTabActive .pillTabCount { color: var(--cat-bg); opacity: 0.7; }
+
+/* =================== Tilted card art =================== */
+.cardArtWrap {
+  position: relative;
+  aspect-ratio: 1.586 / 1; /* credit-card ratio */
+  perspective: 900px;
+  margin-bottom: 12px;
+}
+.cardArtWrap::before {
+  content: '';
+  position: absolute;
+  inset: 8px -6px -8px 6px;
+  border-radius: 10px;
+  background: inherit;
+  opacity: 0.35;
+  filter: blur(1px);
+  transform: rotate(3deg);
+  z-index: 0;
+  pointer-events: none;
+}
+.cardArt {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--cat-bg-3), var(--cat-bg-2));
+  transform-style: preserve-3d;
+  transform: rotateX(6deg) rotateY(-8deg);
+  transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.1, 1), box-shadow 0.5s;
+  box-shadow:
+    0 20px 40px -20px rgba(0, 0, 0, 0.6),
+    0 4px 8px -4px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+.cardArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.productCard:hover .cardArt {
+  transform: rotateX(0deg) rotateY(0deg) scale(1.02);
+  box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7);
+}
+@media (max-width: 640px) {
+  .cardArt { transform: rotateX(3deg) rotateY(-4deg); }
+  .cardArtWrap::before { inset: 4px -3px -4px 3px; }
+}
+
+/* =================== Balance pill =================== */
+.balancePill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--cat-accent) 18%, transparent), transparent 60%),
+    var(--cat-bg-2);
+  border: 1px solid var(--cat-line-strong);
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.1, 1);
+  cursor: pointer;
+}
+.balancePill:hover { transform: translateY(-1px); }
+.balancePillLabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--cat-fg-mute);
+  text-transform: uppercase;
+}
+.balancePillAmount {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--cat-fg);
+}
+.balancePillUnit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cat-fg-mute);
+  letter-spacing: 0.15em;
+  margin-left: 4px;
+  vertical-align: 3px;
+}
+.balancePillIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--cat-accent);
+  color: var(--cat-accent-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 16px;
+}
+
+/* Utility: make the catalogue wrapper honour the palette for inputs/buttons */
+.root select,
+.root input[type='text'],
+.root input[type='search'] {
+  color-scheme: dark;
+}

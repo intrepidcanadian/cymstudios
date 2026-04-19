@@ -142,7 +142,7 @@ export function TransactionStatus({ status, orderId, orderToken, onBack }: Trans
       transition={{ duration: 0.4 }}
       className="relative w-full max-w-md mx-auto"
     >
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 backdrop-blur-sm border border-slate-200/60 dark:border-slate-700/60 shadow-lg">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-canvas-soft dark:to-canvas backdrop-blur-sm border border-slate-200/60 dark:border-line/60 shadow-lg">
         <div className="relative p-6 space-y-5">
           {/* Status Icon */}
           <div className="text-center space-y-3">
@@ -190,7 +190,7 @@ export function TransactionStatus({ status, orderId, orderToken, onBack }: Trans
           {/* Order Details */}
           {order && (
             <div className="space-y-3">
-              <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 divide-y divide-slate-200/60 dark:divide-slate-700/60">
+              <div className="rounded-lg border border-slate-200/60 dark:border-line/60 divide-y divide-slate-200/60 dark:divide-line/60">
                 {(order.product_name || order.brand_name) && (
                   <div className="flex justify-between items-center px-4 py-2.5">
                     <span className="text-xs text-muted-foreground">Product</span>
@@ -300,7 +300,7 @@ export function TransactionStatus({ status, orderId, orderToken, onBack }: Trans
 
               {/* How to Use */}
               {order.how_to_use && (
-                <div className="rounded-lg bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 p-4">
+                <div className="rounded-lg bg-slate-50/50 dark:bg-canvas-soft/50 border border-slate-200/60 dark:border-line/60 p-4">
                   <h4 className="text-xs font-semibold text-muted-foreground mb-2">How to Use</h4>
                   <p className="text-xs text-muted-foreground whitespace-pre-line">{order.how_to_use}</p>
                 </div>

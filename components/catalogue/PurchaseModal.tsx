@@ -789,24 +789,24 @@ export default function PurchaseModal({
         role="dialog"
         aria-modal="true"
         aria-label={`Purchase ${product.brand_name}`}
-        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-700 overflow-y-auto"
+        className="bg-canvas-soft/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-line overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
         }}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0">
+        <div className="flex items-center justify-between p-6 border-b border-line bg-canvas-soft/50 backdrop-blur-sm sticky top-0">
           <div>
-            <h3 className="text-2xl font-semibold text-slate-100">{product.brand_name}</h3>
-            <p className="text-sm text-slate-400 mt-1">
+            <h3 className="text-2xl font-semibold text-ink">{product.brand_name}</h3>
+            <p className="text-sm text-ink-dim mt-1">
               {product.country_name} · {product.currency}
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all backdrop-blur-sm"
+            className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-canvas-lift/50 hover:bg-canvas-lift text-ink-dim hover:text-ink transition-all backdrop-blur-sm"
           >
             ×
           </button>
@@ -817,16 +817,16 @@ export default function PurchaseModal({
 
         {/* Email Verification Step (M8) */}
         {step === 'verify-email' && (
-          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
-            <h4 className="text-lg font-semibold text-slate-100 mb-1">Verify your email</h4>
-            <p className="text-sm text-slate-400">
-              We sent a 6-digit verification code to <strong className="text-slate-200">{email}</strong>.
+          <div className="p-6 space-y-4 bg-canvas-soft/30 backdrop-blur-sm">
+            <h4 className="text-lg font-semibold text-ink mb-1">Verify your email</h4>
+            <p className="text-sm text-ink-dim">
+              We sent a 6-digit verification code to <strong className="text-ink">{email}</strong>.
               Enter it below to continue. Your voucher will be delivered to this address, so verifying it
               now protects you from typos.
             </p>
 
             <div>
-              <label htmlFor="otp-code" className="block text-sm font-medium text-slate-300 mb-1">
+              <label htmlFor="otp-code" className="block text-sm font-medium text-ink-dim mb-1">
                 Verification code
               </label>
               <input
@@ -839,7 +839,7 @@ export default function PurchaseModal({
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                 placeholder="123456"
-                className="w-full px-4 py-3 bg-slate-700/50 border-2 border-slate-600 rounded-xl text-slate-100 text-center font-mono text-2xl tracking-[0.5em] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full px-4 py-3 bg-canvas-lift/50 border-2 border-line-strong rounded-xl text-ink text-center font-mono text-2xl tracking-[0.5em] focus:outline-none focus:border-ember focus:ring-2 focus:ring-ember/20"
                 aria-label="6-digit verification code"
                 autoFocus
               />
@@ -856,7 +856,7 @@ export default function PurchaseModal({
                 type="button"
                 onClick={submitOtp}
                 disabled={otpVerifying || otpCode.length !== 6}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:from-ember hover:to-ember disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 {otpVerifying ? 'Verifying...' : 'Verify & Continue'}
               </button>
@@ -864,13 +864,13 @@ export default function PurchaseModal({
                 type="button"
                 onClick={() => { setStep('form'); setOtpError(null); setOtpCode(''); setConfirmEmail(''); }}
                 disabled={otpVerifying}
-                className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
+                className="px-6 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink hover:bg-canvas-lift hover:border-line-strong font-semibold shadow-sm transition-all disabled:opacity-50"
               >
                 Back
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
+            <div className="flex items-center justify-between text-xs text-ink-dim pt-2">
               <span>
                 {otpSentAt ? `Code sent ${Math.floor((Date.now() - otpSentAt) / 1000)}s ago` : 'Code sent'}
               </span>
@@ -878,7 +878,7 @@ export default function PurchaseModal({
                 type="button"
                 onClick={async () => { await requestOtp(); }}
                 disabled={otpSending || (otpSentAt !== null && Date.now() - otpSentAt < 60_000)}
-                className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 underline"
+                className="text-ember hover:text-ember disabled:opacity-50 underline"
               >
                 {otpSending
                   ? 'Sending...'
@@ -892,9 +892,9 @@ export default function PurchaseModal({
 
         {/* Confirmation Step */}
         {step === 'confirm' && (
-          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+          <div className="p-6 space-y-4 bg-canvas-soft/30 backdrop-blur-sm">
             <div className="flex items-center justify-between">
-              <h4 className="text-lg font-semibold text-slate-100">Confirm Purchase</h4>
+              <h4 className="text-lg font-semibold text-ink">Confirm Purchase</h4>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                 networkConfig?.paymentStrategy === 'eip3009'
                   ? 'bg-green-500/20 text-green-300 border border-green-500/30'
@@ -903,57 +903,57 @@ export default function PurchaseModal({
                 {networkConfig?.paymentStrategy === 'eip3009' ? 'Gasless' : 'Gas Required'}
               </span>
             </div>
-            <div className="space-y-2 p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+            <div className="space-y-2 p-4 bg-canvas-lift/50 rounded-xl border border-line-strong">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Product</span>
-                <span className="text-slate-100 font-medium">{product.brand_name}</span>
+                <span className="text-ink-dim">Product</span>
+                <span className="text-ink font-medium">{product.brand_name}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Reward Value</span>
-                <span className="text-slate-100 font-medium">{parseFloat(amount).toFixed(2)} {product.currency}</span>
+                <span className="text-ink-dim">Reward Value</span>
+                <span className="text-ink font-medium">{parseFloat(amount).toFixed(2)} {product.currency}</span>
               </div>
               {product.currency !== 'USD' && rawExchangeRate !== null && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Exchange Rate</span>
-                  <span className="text-slate-100 font-medium">1 {product.currency} = {rawExchangeRate.toFixed(4)} USD</span>
+                  <span className="text-ink-dim">Exchange Rate</span>
+                  <span className="text-ink font-medium">1 {product.currency} = {rawExchangeRate.toFixed(4)} USD</span>
                 </div>
               )}
               {product.currency === 'USD' && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Exchange Rate</span>
-                  <span className="text-slate-100 font-medium">1 USD = 1 {networkConfig?.tokenSymbol}</span>
+                  <span className="text-ink-dim">Exchange Rate</span>
+                  <span className="text-ink font-medium">1 USD = 1 {networkConfig?.tokenSymbol}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Service Fee</span>
-                <span className="text-slate-100 font-medium">{FX_FEE_PERCENT}%{product.currency === 'USD' ? '' : ` (${((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD)`}</span>
+                <span className="text-ink-dim">Service Fee</span>
+                <span className="text-ink font-medium">{FX_FEE_PERCENT}%{product.currency === 'USD' ? '' : ` (${((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD)`}</span>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-slate-600">
-                <span className="text-slate-400">You Pay</span>
-                <span className="text-indigo-300 font-bold">
+              <div className="flex justify-between text-sm pt-2 border-t border-line-strong">
+                <span className="text-ink-dim">You Pay</span>
+                <span className="text-ember font-bold">
                   {usdcAmount ? parseFloat(usdcAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : usdcAmount} {networkConfig?.tokenSymbol}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Network</span>
-                <span className="text-slate-100 font-medium inline-flex items-center gap-1.5">
+                <span className="text-ink-dim">Network</span>
+                <span className="text-ink font-medium inline-flex items-center gap-1.5">
                   {selectedNetwork === 'ethereum' && (
-                    <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 320 512" fill="currentColor"><path d="M311.9 260.8L160 353.6 8 260.8 160 0l151.9 260.8zM160 383.4L8 290.6 160 512l152-221.4-152 92.8z"/></svg>
+                    <svg className="w-3.5 h-3.5 text-ink-dim" viewBox="0 0 320 512" fill="currentColor"><path d="M311.9 260.8L160 353.6 8 260.8 160 0l151.9 260.8zM160 383.4L8 290.6 160 512l152-221.4-152 92.8z"/></svg>
                   )}
                   {selectedNetwork === 'conflux' && (
-                    <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M8 8h8l-4 8z"/></svg>
+                    <svg className="w-3.5 h-3.5 text-ink-dim" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M8 8h8l-4 8z"/></svg>
                   )}
                   {networkConfig?.name}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Email</span>
-                <span className="text-slate-100 font-medium">{email}</span>
+                <span className="text-ink-dim">Email</span>
+                <span className="text-ink font-medium">{email}</span>
               </div>
               {address && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Wallet</span>
-                  <span className="text-slate-100 font-mono text-xs">
+                  <span className="text-ink-dim">Wallet</span>
+                  <span className="text-ink font-mono text-xs">
                     {address.slice(0, 6)}...{address.slice(-4)}
                   </span>
                 </div>
@@ -1041,7 +1041,7 @@ export default function PurchaseModal({
 
             {/* Quote freshness indicator on confirm step */}
             {product.currency !== 'USD' && quoteCountdown !== null && !quoteStale && quoteCountdown <= 30 && (
-              <div className="bg-slate-700/50 border border-slate-600 text-slate-300 px-4 py-2 rounded-xl text-xs backdrop-blur-sm flex items-center justify-between">
+              <div className="bg-canvas-lift/50 border border-line-strong text-ink-dim px-4 py-2 rounded-xl text-xs backdrop-blur-sm flex items-center justify-between">
                 <span>Quote expires in</span>
                 <span className="font-mono font-semibold text-amber-300">
                   {Math.floor(quoteCountdown / 60)}:{String(quoteCountdown % 60).padStart(2, '0')}
@@ -1070,7 +1070,7 @@ export default function PurchaseModal({
                         key={key}
                         type="button"
                         onClick={() => { onNetworkChange(key); setError(null); setRpcFailedNetwork(null); }}
-                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-600"
+                        className="px-3 py-1.5 bg-canvas-lift hover:bg-canvas-lift text-ink text-xs font-semibold rounded-lg transition-colors border border-line-strong"
                       >
                         Switch to {net.name}
                       </button>
@@ -1082,7 +1082,7 @@ export default function PurchaseModal({
 
             {/* First-purchase terms acknowledgment — only shown until user accepts once */}
             {!termsAccepted && (
-              <label className="flex items-start gap-2.5 cursor-pointer p-3 bg-slate-700/30 rounded-xl border border-slate-600 hover:border-slate-500 transition-colors">
+              <label className="flex items-start gap-2.5 cursor-pointer p-3 bg-canvas-lift/30 rounded-xl border border-line-strong hover:border-line-strong transition-colors">
                 <input
                   type="checkbox"
                   checked={termsAccepted}
@@ -1092,16 +1092,16 @@ export default function PurchaseModal({
                       try { localStorage.setItem('termsAccepted', 'true'); } catch { /* ignore */ }
                     }
                   }}
-                  className="w-4 h-4 mt-0.5 text-indigo-600 border-slate-500 rounded focus:ring-indigo-500 bg-slate-700 flex-shrink-0"
+                  className="w-4 h-4 mt-0.5 text-ember border-line-strong rounded focus:ring-ember bg-canvas-lift flex-shrink-0"
                 />
-                <span className="text-xs text-slate-300 leading-relaxed">
-                  I understand that gift card purchases are <strong className="text-slate-200">final and non-refundable</strong> once the voucher has been issued. The voucher will be delivered to the email address provided.
+                <span className="text-xs text-ink-dim leading-relaxed">
+                  I understand that gift card purchases are <strong className="text-ink">final and non-refundable</strong> once the voucher has been issued. The voucher will be delivered to the email address provided.
                 </span>
               </label>
             )}
 
             {/* Sticky action buttons — always visible on mobile even when warnings push content */}
-            <div className="sticky bottom-0 bg-slate-800/95 backdrop-blur-sm pt-3 -mx-6 px-6 pb-1 sm:static sm:bg-transparent sm:backdrop-blur-none sm:pt-2 sm:mx-0 sm:px-0 sm:pb-0">
+            <div className="sticky bottom-0 bg-canvas-soft/95 backdrop-blur-sm pt-3 -mx-6 px-6 pb-1 sm:static sm:bg-transparent sm:backdrop-blur-none sm:pt-2 sm:mx-0 sm:px-0 sm:pb-0">
               <div className="flex gap-3">
                 <button
                   onClick={handleConfirmPurchase}
@@ -1114,20 +1114,20 @@ export default function PurchaseModal({
                   type="button"
                   onClick={() => { setStep('form'); setError(null); setQuoteRefreshed(false); setRpcFailedNetwork(null); setDuplicateWarning(null); }}
                   disabled={loading}
-                  className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
+                  className="px-6 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink hover:bg-canvas-lift hover:border-line-strong font-semibold shadow-sm transition-all disabled:opacity-50"
                 >
                   Back
                 </button>
               </div>
 
-              <div className="text-xs text-slate-400/80 text-center space-y-1 mt-2">
+              <div className="text-xs text-ink-dim/80 text-center space-y-1 mt-2">
                 <p>
                   {networkConfig?.paymentStrategy === 'eip3009'
                     ? `You will sign a gasless ${networkConfig?.tokenSymbol} authorization — no gas fees`
                     : `You will send an approval transaction on ${networkConfig?.name} (gas required)`
                   }
                 </p>
-                <p className="text-slate-500">
+                <p className="text-ink-mute">
                   Vouchers are typically delivered to your email within 2–5 minutes after payment confirms.
                 </p>
               </div>
@@ -1137,7 +1137,7 @@ export default function PurchaseModal({
 
         {/* Processing Step */}
         {step === 'processing' && (
-          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+          <div className="p-6 space-y-4 bg-canvas-soft/30 backdrop-blur-sm">
             <div className="text-center py-6">
               {/* Step-based progress indicator */}
               {(() => {
@@ -1162,8 +1162,8 @@ export default function PurchaseModal({
                       <div key={s.key} className="flex items-center gap-1">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                           i < currentIdx ? 'bg-green-500 text-white' :
-                          i === currentIdx ? 'bg-indigo-500 text-white animate-pulse' :
-                          'bg-slate-700 text-slate-500'
+                          i === currentIdx ? 'bg-ember text-white animate-pulse' :
+                          'bg-canvas-lift text-ink-mute'
                         }`}>
                           {i < currentIdx ? (
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -1172,10 +1172,10 @@ export default function PurchaseModal({
                           )}
                         </div>
                         <span className={`text-[10px] font-medium ${
-                          i <= currentIdx ? 'text-slate-200' : 'text-slate-500'
+                          i <= currentIdx ? 'text-ink' : 'text-ink-mute'
                         }`}>{s.label}</span>
                         {i < steps.length - 1 && (
-                          <div className={`w-4 sm:w-6 h-0.5 ${i < currentIdx ? 'bg-green-500' : 'bg-slate-700'}`} />
+                          <div className={`w-4 sm:w-6 h-0.5 ${i < currentIdx ? 'bg-green-500' : 'bg-canvas-lift'}`} />
                         )}
                       </div>
                     ))}
@@ -1183,14 +1183,14 @@ export default function PurchaseModal({
                 );
               })()}
               <div className="relative inline-flex mb-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-indigo-500" />
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-line border-t-ember" />
               </div>
-              <p className="text-lg font-semibold text-slate-100 mb-1">{paymentStep || 'Processing...'}</p>
+              <p className="text-lg font-semibold text-ink mb-1">{paymentStep || 'Processing...'}</p>
               {/* M22: Screen reader live region for payment progress */}
               <div role="status" aria-live="assertive" className="sr-only">
                 {paymentStep || 'Processing payment'}
               </div>
-              <p className="text-xs text-slate-400">Please keep this window open — you can track your order in My Orders if needed</p>
+              <p className="text-xs text-ink-dim">Please keep this window open — you can track your order in My Orders if needed</p>
 
               {showCloseWarning && (
                 <div className="mt-4 p-3 bg-yellow-900/40 border border-yellow-700/50 rounded-xl text-sm">
@@ -1205,7 +1205,7 @@ export default function PurchaseModal({
                     </button>
                     <button
                       onClick={() => setShowCloseWarning(false)}
-                      className="px-4 py-1.5 bg-slate-600 hover:bg-slate-500 text-slate-200 text-xs rounded-lg font-medium transition-colors"
+                      className="px-4 py-1.5 bg-canvas-lift hover:bg-canvas-lift text-ink text-xs rounded-lg font-medium transition-colors"
                     >
                       Keep Waiting
                     </button>
@@ -1218,44 +1218,44 @@ export default function PurchaseModal({
 
         {/* M25: Success Interstitial */}
         {step === 'success' && successData && (
-          <div className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm">
+          <div className="p-6 space-y-4 bg-canvas-soft/30 backdrop-blur-sm">
             <div className="text-center py-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500/40 mb-4">
                 <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h4 className="text-xl font-bold text-slate-100 mb-1">Payment Successful</h4>
-              <p className="text-sm text-slate-400 mb-4">Your voucher is being prepared</p>
-              <div className="space-y-1.5 text-sm text-left max-w-xs mx-auto bg-slate-700/50 rounded-xl p-4 border border-slate-600">
+              <h4 className="text-xl font-bold text-ink mb-1">Payment Successful</h4>
+              <p className="text-sm text-ink-dim mb-4">Your voucher is being prepared</p>
+              <div className="space-y-1.5 text-sm text-left max-w-xs mx-auto bg-canvas-lift/50 rounded-xl p-4 border border-line-strong">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Order</span>
-                  <span className="text-slate-200 font-mono text-xs">{successData.orderId.slice(0, 8)}...</span>
+                  <span className="text-ink-dim">Order</span>
+                  <span className="text-ink font-mono text-xs">{successData.orderId.slice(0, 8)}...</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Voucher to</span>
-                  <span className="text-slate-200 text-xs">{successData.email}</span>
+                  <span className="text-ink-dim">Voucher to</span>
+                  <span className="text-ink text-xs">{successData.email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Amount</span>
-                  <span className="text-slate-200">{parseFloat(amount).toFixed(2)} {product.currency}</span>
+                  <span className="text-ink-dim">Amount</span>
+                  <span className="text-ink">{parseFloat(amount).toFixed(2)} {product.currency}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Paid</span>
-                  <span className="text-slate-200">{usdcAmount} {networkConfig?.tokenSymbol}</span>
+                  <span className="text-ink-dim">Paid</span>
+                  <span className="text-ink">{usdcAmount} {networkConfig?.tokenSymbol}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Network</span>
-                  <span className="text-slate-200">{networkConfig?.name}</span>
+                  <span className="text-ink-dim">Network</span>
+                  <span className="text-ink">{networkConfig?.name}</span>
                 </div>
                 {successData.txHash && networkConfig?.explorerUrl && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Transaction</span>
+                    <span className="text-ink-dim">Transaction</span>
                     <a
                       href={`${networkConfig.explorerUrl}/tx/${successData.txHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-400 hover:text-indigo-300 text-xs font-mono transition-colors"
+                      className="text-ember hover:text-ember text-xs font-mono transition-colors"
                     >
                       {successData.txHash.slice(0, 10)}...
                     </a>
@@ -1263,16 +1263,16 @@ export default function PurchaseModal({
                 )}
               </div>
               <div role="status" aria-live="polite" className="sr-only">Payment successful. Your voucher is being prepared.</div>
-              <p className="text-xs text-slate-500 mt-4">Opening order status...</p>
+              <p className="text-xs text-ink-mute mt-4">Opening order status...</p>
             </div>
           </div>
         )}
 
         {/* Purchase Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-slate-800/30 backdrop-blur-sm" style={{ display: step === 'form' ? undefined : 'none' }} inert={step !== 'form' ? true : undefined}>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-canvas-soft/30 backdrop-blur-sm" style={{ display: step === 'form' ? undefined : 'none' }} inert={step !== 'form' ? true : undefined}>
           {/* Network Selection */}
           <div>
-            <label className="block text-sm font-bold text-slate-100 mb-2">
+            <label className="block text-sm font-bold text-ink mb-2">
               Payment Network
             </label>
             <div className="flex gap-2">
@@ -1284,8 +1284,8 @@ export default function PurchaseModal({
                   disabled={step !== 'form'}
                   className={`flex-1 py-3 px-4 rounded-xl font-semibold text-center transition-all ${
                     selectedNetwork === key
-                      ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg'
-                      : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:border-indigo-500/50'
+                      ? 'bg-gradient-to-r from-ember to-ember text-white shadow-lg'
+                      : 'bg-canvas-lift/50 text-ink-dim border border-line-strong hover:border-ember/50'
                   }`}
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -1309,14 +1309,14 @@ export default function PurchaseModal({
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="w-full py-2.5 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md"
+                  className="w-full py-2.5 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-ember text-white text-sm hover:from-purple-600 hover:to-ember transition-all shadow-md"
                 >
                   Connect Wallet
                 </button>
               </div>
             )}
             {walletReady && (
-              <p className="text-xs text-indigo-300 mt-2">
+              <p className="text-xs text-ember mt-2">
                 Pay with {networkConfig?.tokenSymbol} on {networkConfig?.name}
                 {networkConfig?.paymentStrategy === 'direct'
                   ? '. You\u2019ll approve a token transfer.'
@@ -1327,24 +1327,24 @@ export default function PurchaseModal({
             )}
             {walletReady && (
               <>
-                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-xl">
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-canvas-lift/50 border border-line-strong rounded-xl">
                   <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-white font-bold text-[10px]">$</span>
                   </div>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs text-slate-400">Available:</span>
+                    <span className="text-xs text-ink-dim">Available:</span>
                     {usdcBalance !== null && usdcBalance !== undefined ? (
                       <>
-                        <span className="text-sm font-bold text-slate-100">
+                        <span className="text-sm font-bold text-ink">
                           {parseFloat(usdcBalance).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
                         </span>
-                        <span className="text-xs text-slate-400">{networkConfig?.tokenSymbol}</span>
+                        <span className="text-xs text-ink-dim">{networkConfig?.tokenSymbol}</span>
                       </>
                     ) : (
-                      <span className="inline-block w-16 h-4 bg-slate-600 rounded animate-pulse" />
+                      <span className="inline-block w-16 h-4 bg-canvas-lift rounded animate-pulse" />
                     )}
                   </div>
                   {onRefreshBalance && (
@@ -1357,7 +1357,7 @@ export default function PurchaseModal({
                         setTimeout(() => setRefreshingBalance(false), 1500);
                       }}
                       disabled={refreshingBalance}
-                      className="ml-auto p-1 text-slate-400 hover:text-indigo-400 transition-colors rounded disabled:opacity-50"
+                      className="ml-auto p-1 text-ink-dim hover:text-ember transition-colors rounded disabled:opacity-50"
                       title="Refresh balance"
                     >
                       <svg className={`w-3.5 h-3.5${refreshingBalance ? ' animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1383,22 +1383,22 @@ export default function PurchaseModal({
 
           {/* Amount */}
           <div>
-            <label className="block text-sm font-bold text-slate-100 mb-2">
+            <label className="block text-sm font-bold text-ink mb-2">
               Amount ({product.currency})
               {amount && usdcAmount && (
-                <span className="ml-2 text-indigo-400 font-normal">
+                <span className="ml-2 text-ember font-normal">
                   = {usdcAmount} {networkConfig?.tokenSymbol} tokens
                 </span>
               )}
               {loadingQuote && (
-                <span className="ml-2 text-slate-400 font-normal">Calculating...</span>
+                <span className="ml-2 text-ink-dim font-normal">Calculating...</span>
               )}
             </label>
             {product.denominations && Array.isArray(product.denominations) && product.denominations.length > 0 ? (
               <select
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold shadow-sm"
                 disabled={loading}
                 required
               >
@@ -1433,12 +1433,12 @@ export default function PurchaseModal({
                     }
                   }}
                   placeholder={`${product.value_restrictions?.minVal || product.value_restrictions?.min || 1} - ${product.value_restrictions?.maxVal || product.value_restrictions?.max || 1000}`}
-                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
+                  className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold shadow-sm"
                   required
                   disabled={loading}
                 />
                 {product.value_restrictions && (
-                  <p className={`text-xs mt-1 ${amountValidation ? 'text-red-400' : 'text-slate-400'}`}>
+                  <p className={`text-xs mt-1 ${amountValidation ? 'text-red-400' : 'text-ink-dim'}`}>
                     {amountValidation || `Range: ${product.currency} ${product.value_restrictions.minVal || product.value_restrictions.min} – ${product.value_restrictions.maxVal || product.value_restrictions.max}`}
                   </p>
                 )}
@@ -1447,25 +1447,25 @@ export default function PurchaseModal({
 
             {/* Token Calculation Breakdown */}
             {amount && usdcAmount && exchangeRate !== null && (
-              <div className={`mt-3 p-3 rounded-xl text-xs space-y-1 ${quoteStale ? 'bg-yellow-900/30 border border-yellow-700/50' : 'bg-indigo-900/30 border border-indigo-700/50'}`}>
+              <div className={`mt-3 p-3 rounded-xl text-xs space-y-1 ${quoteStale ? 'bg-yellow-900/30 border border-yellow-700/50' : 'bg-ember-soft border border-ember-soft'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-indigo-300">Token Calculation</span>
+                  <span className="font-semibold text-ember">Token Calculation</span>
                   {quoteStale ? (
                     <span className="text-yellow-400 text-[10px] font-medium">Quote expired — will refresh on submit</span>
                   ) : quoteCountdown !== null && quoteCountdown <= 30 ? (
-                    <span className="text-slate-400 text-[10px] font-medium">
+                    <span className="text-ink-dim text-[10px] font-medium">
                       Expires in {Math.floor(quoteCountdown / 60)}:{String(quoteCountdown % 60).padStart(2, '0')}
                     </span>
                   ) : null}
                 </div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-ink-dim">
                   <span>Reward Value:</span>
                   <span className="font-mono">
                     {parseFloat(amount).toFixed(2)} {product.currency}
                   </span>
                 </div>
                 {product.currency !== 'USD' && rawExchangeRate !== null && (
-                  <div className="flex justify-between text-slate-300">
+                  <div className="flex justify-between text-ink-dim">
                     <span>Exchange Rate:</span>
                     <span className="font-mono">
                       1 {product.currency} = {rawExchangeRate.toFixed(4)} USD
@@ -1473,20 +1473,20 @@ export default function PurchaseModal({
                   </div>
                 )}
                 {product.currency !== 'USD' && rawExchangeRate !== null && (
-                  <div className="flex justify-between text-slate-300">
+                  <div className="flex justify-between text-ink-dim">
                     <span>USD Value:</span>
                     <span className="font-mono">
                       {(parseFloat(amount) * rawExchangeRate).toFixed(2)} USD
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-ink-dim">
                   <span>Service Fee ({FX_FEE_PERCENT}%):</span>
                   <span className="font-mono">
                     +{((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD
                   </span>
                 </div>
-                <div className="flex justify-between text-indigo-200 font-semibold pt-1 border-t border-indigo-700/50">
+                <div className="flex justify-between text-ember font-semibold pt-1 border-t border-ember-soft">
                   <span>Total {networkConfig?.tokenSymbol} Tokens:</span>
                   <span className="font-mono">
                     {usdcAmount} {networkConfig?.tokenSymbol}
@@ -1498,24 +1498,24 @@ export default function PurchaseModal({
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-bold text-slate-100 mb-2">
+            <label className="block text-sm font-bold text-ink mb-2">
               Email {isEmailVerified(email) ? (
                 <span className="text-green-400 text-xs font-medium inline-flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                   Verified
                 </span>
-              ) : userProfile.email ? <span className="text-slate-500 text-xs">Saved</span> : null}
+              ) : userProfile.email ? <span className="text-ink-mute text-xs">Saved</span> : null}
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
+              className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold shadow-sm"
               required
               disabled={loading}
             />
-            <p className="text-xs text-slate-400 mt-1">Voucher details will be sent to this email</p>
+            <p className="text-xs text-ink-dim mt-1">Voucher details will be sent to this email</p>
             {/* M12: Email domain typo suggestion */}
             {email && suggestEmailDomain(email) && (
               <button
@@ -1539,12 +1539,12 @@ export default function PurchaseModal({
                   value={confirmEmail}
                   onChange={(e) => setConfirmEmail(e.target.value)}
                   placeholder="Confirm email address"
-                  className={`w-full px-4 py-3 border-2 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none font-semibold shadow-sm ${
+                  className={`w-full px-4 py-3 border-2 rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember outline-none font-semibold shadow-sm ${
                     confirmEmail && confirmEmail.toLowerCase().trim() !== email.toLowerCase().trim()
                       ? 'border-red-500/60 focus:border-red-500'
                       : confirmEmail && confirmEmail.toLowerCase().trim() === email.toLowerCase().trim()
                         ? 'border-green-500/60 focus:border-green-500'
-                        : 'border-slate-600 focus:border-indigo-500'
+                        : 'border-line-strong focus:border-ember'
                   }`}
                   required
                   disabled={loading}
@@ -1573,24 +1573,24 @@ export default function PurchaseModal({
           {/* Name (Optional) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-bold text-slate-100 mb-2">First Name</label>
+              <label className="block text-sm font-bold text-ink mb-2">First Name</label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-100 mb-2">Last Name</label>
+              <label className="block text-sm font-bold text-ink mb-2">Last Name</label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold shadow-sm"
+                className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-dim focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold shadow-sm"
                 disabled={loading}
               />
             </div>
@@ -1620,7 +1620,7 @@ export default function PurchaseModal({
           {/* Actions */}
           {/* Disabled reason hint */}
           {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance || !!amountValidation) && (
-            <p className="text-xs text-slate-500 pt-1">
+            <p className="text-xs text-ink-mute pt-1">
               {!walletReady ? 'Connect your wallet to continue' :
                chainSwitching ? 'Switching network...' :
                !amount ? 'Select an amount' :
@@ -1635,7 +1635,7 @@ export default function PurchaseModal({
             <button
               type="submit"
               disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation}
-              className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:from-ember hover:to-ember disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               Review & Redeem
             </button>
@@ -1643,7 +1643,7 @@ export default function PurchaseModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-6 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-200 hover:bg-slate-600 hover:border-slate-500 font-semibold shadow-sm transition-all disabled:opacity-50"
+              className="px-6 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink hover:bg-canvas-lift hover:border-line-strong font-semibold shadow-sm transition-all disabled:opacity-50"
             >
               Cancel
             </button>
@@ -1651,28 +1651,28 @@ export default function PurchaseModal({
 
           {/* How It Works — 3-step flow guide, collapsible on mobile */}
           <details className="mt-4 group" open>
-            <summary className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl sm:rounded-b-none backdrop-blur-sm cursor-pointer list-none flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider">How it works</span>
-              <svg className="w-3.5 h-3.5 text-indigo-400 transition-transform group-open:rotate-180 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            <summary className="p-3 bg-ember/10 border border-ember/20 rounded-xl sm:rounded-b-none backdrop-blur-sm cursor-pointer list-none flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-ember uppercase tracking-wider">How it works</span>
+              <svg className="w-3.5 h-3.5 text-ember transition-transform group-open:rotate-180 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </summary>
-            <div className="p-3 pt-1 bg-indigo-500/10 border border-t-0 border-indigo-500/20 rounded-b-xl backdrop-blur-sm">
-              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+            <div className="p-3 pt-1 bg-ember/10 border border-t-0 border-ember/20 rounded-b-xl backdrop-blur-sm">
+              <div className="flex items-start gap-3 text-xs text-ember/80">
                 <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">1</div>
-                  <div className="w-px h-3 bg-indigo-500/20" />
+                  <div className="w-5 h-5 rounded-full bg-ember/30 flex items-center justify-center text-[9px] font-bold text-ember">1</div>
+                  <div className="w-px h-3 bg-ember/20" />
                 </div>
                 <p className="pt-0.5">Review your order and {networkConfig?.paymentStrategy === 'eip3009' ? 'sign a gasless authorization' : 'approve a token transfer'}</p>
               </div>
-              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+              <div className="flex items-start gap-3 text-xs text-ember/80">
                 <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">2</div>
-                  <div className="w-px h-3 bg-indigo-500/20" />
+                  <div className="w-5 h-5 rounded-full bg-ember/30 flex items-center justify-center text-[9px] font-bold text-ember">2</div>
+                  <div className="w-px h-3 bg-ember/20" />
                 </div>
                 <p className="pt-0.5">{networkConfig?.tokenSymbol} tokens are transferred on {networkConfig?.name}</p>
               </div>
-              <div className="flex items-start gap-3 text-xs text-indigo-300/80">
+              <div className="flex items-start gap-3 text-xs text-ember/80">
                 <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-bold text-indigo-300">3</div>
+                  <div className="w-5 h-5 rounded-full bg-ember/30 flex items-center justify-center text-[9px] font-bold text-ember">3</div>
                 </div>
                 <p className="pt-0.5">Voucher delivered to your email within 2–5 minutes</p>
               </div>

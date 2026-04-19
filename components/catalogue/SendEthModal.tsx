@@ -122,31 +122,31 @@ export default function SendEthModal({
       onClick={onClose}
     >
       <div
-        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden"
+        className="bg-canvas-soft/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md border border-line overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
         }}
       >
-        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+        <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-3">
             {step === 'confirm' && (
               <button
                 onClick={() => setStep('input')}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-canvas-lift/50 hover:bg-canvas-lift text-ink-dim transition-all"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-canvas-lift to-canvas-lift flex items-center justify-center">
               <Send className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-100">Send {nativeSymbol}</h3>
+            <h3 className="text-lg font-semibold text-ink">Send {nativeSymbol}</h3>
           </div>
           <button
             onClick={onClose}
             disabled={sending}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-slate-100 transition-all disabled:opacity-50"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-canvas-lift/50 hover:bg-canvas-lift text-ink-dim hover:text-ink transition-all disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -155,9 +155,9 @@ export default function SendEthModal({
         <div className="p-5">
           {step === 'input' && (
             <div className="space-y-4">
-              <div className="p-3 bg-slate-700/30 rounded-xl border border-slate-700">
-                <p className="text-xs text-slate-400">Available Balance</p>
-                <p className="text-lg font-bold text-slate-100">
+              <div className="p-3 bg-canvas-lift/30 rounded-xl border border-line">
+                <p className="text-xs text-ink-dim">Available Balance</p>
+                <p className="text-lg font-bold text-ink">
                   {currentBalance !== null
                     ? `${parseFloat(currentBalance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ${nativeSymbol}`
                     : `-- ${nativeSymbol}`}
@@ -165,18 +165,18 @@ export default function SendEthModal({
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">Recipient Address</label>
+                <label className="block text-sm font-bold text-ink mb-2">Recipient Address</label>
                 <input
                   type="text"
                   value={recipientAddress}
                   onChange={(e) => { setRecipientAddress(e.target.value); setError(null); }}
                   placeholder="0x..."
-                  className="w-full px-4 py-3 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm"
+                  className="w-full px-4 py-3 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-mute focus:ring-2 focus:ring-ember focus:border-ember outline-none font-mono text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-100 mb-2">Amount ({nativeSymbol})</label>
+                <label className="block text-sm font-bold text-ink mb-2">Amount ({nativeSymbol})</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -185,12 +185,12 @@ export default function SendEthModal({
                     value={amount}
                     onChange={(e) => { setAmount(e.target.value); setError(null); }}
                     placeholder="0.0000"
-                    className="w-full px-4 py-3 pr-16 border-2 border-slate-600 rounded-xl bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold"
+                    className="w-full px-4 py-3 pr-16 border-2 border-line-strong rounded-xl bg-canvas-lift text-ink placeholder:text-ink-mute focus:ring-2 focus:ring-ember focus:border-ember outline-none font-semibold"
                   />
                   {currentBalance !== null && parseFloat(currentBalance) > 0 && (
                     <button
                       onClick={() => setAmount(parseFloat(currentBalance).toFixed(6))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ember hover:text-ember font-semibold"
                     >
                       MAX
                     </button>
@@ -212,7 +212,7 @@ export default function SendEthModal({
               <button
                 onClick={handleContinue}
                 disabled={!recipientAddress || !amount}
-                className="w-full py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-gradient-to-r from-canvas-lift to-canvas-lift hover:from-canvas-lift hover:to-canvas-lift text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -221,18 +221,18 @@ export default function SendEthModal({
 
           {step === 'confirm' && (
             <div className="space-y-4">
-              <div className="p-4 bg-slate-700/30 rounded-xl border border-slate-700 space-y-3">
+              <div className="p-4 bg-canvas-lift/30 rounded-xl border border-line space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">From</span>
-                  <span className="font-mono text-slate-200">{truncate(walletAddress)}</span>
+                  <span className="text-ink-dim">From</span>
+                  <span className="font-mono text-ink">{truncate(walletAddress)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">To</span>
-                  <span className="font-mono text-slate-200">{truncate(recipientAddress)}</span>
+                  <span className="text-ink-dim">To</span>
+                  <span className="font-mono text-ink">{truncate(recipientAddress)}</span>
                 </div>
-                <div className="border-t border-slate-600 pt-3 flex justify-between">
-                  <span className="text-slate-400 text-sm">Amount</span>
-                  <span className="text-lg font-bold text-slate-100">{parseFloat(amount).toFixed(6)} {nativeSymbol}</span>
+                <div className="border-t border-line-strong pt-3 flex justify-between">
+                  <span className="text-ink-dim text-sm">Amount</span>
+                  <span className="text-lg font-bold text-ink">{parseFloat(amount).toFixed(6)} {nativeSymbol}</span>
                 </div>
               </div>
 
@@ -243,12 +243,12 @@ export default function SendEthModal({
 
               <button
                 onClick={handleSend}
-                className="w-full py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all shadow-lg"
+                className="w-full py-3 bg-gradient-to-r from-canvas-lift to-canvas-lift hover:from-canvas-lift hover:to-canvas-lift text-white font-semibold rounded-xl transition-all shadow-lg"
               >
                 Confirm & Send
               </button>
 
-              <button onClick={() => setStep('input')} className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+              <button onClick={() => setStep('input')} className="w-full py-2 text-sm text-ink-dim hover:text-ink transition-colors">
                 Cancel
               </button>
             </div>
@@ -256,13 +256,13 @@ export default function SendEthModal({
 
           {step === 'sending' && (
             <div className="text-center py-8 space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400 mx-auto" />
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto" />
               <div>
-                <p className="text-slate-100 font-semibold">Sending {nativeSymbol}...</p>
-                <p className="text-xs text-slate-400 mt-1">Please confirm in your wallet</p>
+                <p className="text-ink font-semibold">Sending {nativeSymbol}...</p>
+                <p className="text-xs text-ink-dim mt-1">Please confirm in your wallet</p>
               </div>
               {txHash && (
-                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300">
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-ember hover:text-ember">
                   View on Explorer <ExternalLink className="w-3 h-3" />
                 </a>
               )}
@@ -277,15 +277,15 @@ export default function SendEthModal({
                 </svg>
               </div>
               <div>
-                <p className="text-lg font-semibold text-slate-100">Transaction Sent!</p>
-                <p className="text-sm text-slate-400 mt-1">{parseFloat(amount).toFixed(6)} {nativeSymbol} sent to {truncate(recipientAddress)}</p>
+                <p className="text-lg font-semibold text-ink">Transaction Sent!</p>
+                <p className="text-sm text-ink-dim mt-1">{parseFloat(amount).toFixed(6)} {nativeSymbol} sent to {truncate(recipientAddress)}</p>
               </div>
               {txHash && (
-                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg border border-slate-600 transition-colors">
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-canvas-lift hover:bg-canvas-lift text-ink text-sm rounded-lg border border-line-strong transition-colors">
                   View on Explorer <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              <button onClick={onClose} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
+              <button onClick={onClose} className="w-full py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
                 Done
               </button>
             </div>
@@ -297,14 +297,14 @@ export default function SendEthModal({
                 <X className="w-8 h-8 text-red-400" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-slate-100">Transaction Failed</p>
+                <p className="text-lg font-semibold text-ink">Transaction Failed</p>
                 <p className="text-sm text-red-300 mt-1">{error}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => { setError(null); setStep('input'); }} className="flex-1 py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-400 hover:to-slate-500 text-white font-semibold rounded-xl transition-all">
+                <button onClick={() => { setError(null); setStep('input'); }} className="flex-1 py-3 bg-gradient-to-r from-canvas-lift to-canvas-lift hover:from-canvas-lift hover:to-canvas-lift text-white font-semibold rounded-xl transition-all">
                   Try Again
                 </button>
-                <button onClick={onClose} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl transition-colors border border-slate-600">
+                <button onClick={onClose} className="flex-1 py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
                   Close
                 </button>
               </div>

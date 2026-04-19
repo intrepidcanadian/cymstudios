@@ -148,7 +148,7 @@ CYM Studio is an AI studio creating commercials and video content for small busi
 
 ## Contact
 
-Email: tony.lau@cymadvisory.com
+Email: tony.lau@pulse520.ai
 
 ## License
 
