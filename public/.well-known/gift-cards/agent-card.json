@@ -1,9 +1,9 @@
 {
   "name": "CYM Rewards",
-  "description": "Redeem USDC or USDT0 tokens for gift cards from 600+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Pricing: Card value + 1.5% service fee (all currencies).",
+  "description": "Redeem USDC or USDT0 tokens for gift cards from 300+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Pricing: Card value + 1.5% service fee (all currencies).",
   "url": "https://ginsengswap-giftcard-agent.fly.dev:3001",
   "version": "0.2.1",
-  "documentationUrl": "https://cymstudio.app/docs/rewards",
+  "documentationUrl": "https://github.com/intrepidcanadian/cymstudios",
   "provider": {
     "organization": "CYM Studio",
     "url": "https://cymstudio.app"
