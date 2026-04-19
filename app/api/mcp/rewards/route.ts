@@ -278,7 +278,7 @@ async function searchGiftcards(args: Record<string, any>): Promise<string> {
   // copy product_id from. Product IDs are long integers (e.g. 14000003689)
   // and models sometimes invent short ones if they only see the JSON body.
   const summary = results
-    .map(r => `- ${r.brand} (${r.country}, ${r.currency}) — product_id=${r.product_id}`)
+    .map((r: any) => `- ${r.brand} (${r.country}, ${r.currency}) — product_id=${r.product_id}`)
     .join('\n')
 
   return [
