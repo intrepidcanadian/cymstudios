@@ -250,7 +250,8 @@ function QuoteCard({
 function humanAmount(raw: string, decimals: number): string {
   try {
     const n = BigInt(raw)
-    const divisor = BigInt(10) ** BigInt(decimals)
+    let divisor = BigInt(1)
+    for (let i = 0; i < decimals; i++) divisor *= BigInt(10)
     const whole = n / divisor
     const frac = n % divisor
     const fracStr = frac.toString().padStart(decimals, '0').slice(0, 2)
