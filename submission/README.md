@@ -365,7 +365,8 @@ npm run build && npm start
 
 ## 🎬 Demo
 
-- **Demo video**: [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo) — full walkthrough (catalogue → gasless USDT0 signature → voucher email)
+- **Demo walkthrough** (3–5 min): [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo) — full flow (catalogue → gasless USDT0 signature → voucher email)
+- **Participant intro** (30–60 sec): [youtu.be/xy3z2ZAp6aU](https://youtu.be/xy3z2ZAp6aU)
 - **Live catalogue**: [https://cymstudio.app/catalogue](https://cymstudio.app/catalogue)
 - **AI concierge**: [https://cymstudio.app/chat](https://cymstudio.app/chat)
 - **Agent docs**: [https://cymstudio.app/agents](https://cymstudio.app/agents)
