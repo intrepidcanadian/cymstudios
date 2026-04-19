@@ -47,6 +47,7 @@ export default function TopBar({ theme, onThemeChange }: TopBarProps) {
         <a href="#process">Process</a>
         <a href="#about">Studio</a>
         <Link href="/catalogue">Rewards</Link>
+        <Link href="/chat">Chat</Link>
         <a href="#contact">Contact</a>
       </nav>
 
