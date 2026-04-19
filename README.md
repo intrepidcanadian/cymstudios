@@ -8,6 +8,8 @@ Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winner
 [![USDT0](https://img.shields.io/badge/pays%20with-USDT0-green)](https://evm.confluxscan.org/address/0xaf37e8b6c9ed7f6318979f56fc287d76c30847ff)
 
 > **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
+>
+> 🎬 **Demo video** → [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo)
 
 ## 🏆 Global Hackfest 2026
 

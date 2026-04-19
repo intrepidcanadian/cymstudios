@@ -31,6 +31,8 @@ What's different:
 
 Live at [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · Chat at [cymstudio.app/chat](https://cymstudio.app/chat) · Agent docs at [cymstudio.app/agents](https://cymstudio.app/agents).
 
+🎬 **Watch the demo video** → [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo) (full walkthrough: catalogue → gasless USDT0 signature → voucher email)
+
 ## 📸 Screenshots
 
 <table>
@@ -363,11 +365,12 @@ npm run build && npm start
 
 ## 🎬 Demo
 
+- **Demo video**: [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo) — full walkthrough (catalogue → gasless USDT0 signature → voucher email)
 - **Live catalogue**: [https://cymstudio.app/catalogue](https://cymstudio.app/catalogue)
+- **AI concierge**: [https://cymstudio.app/chat](https://cymstudio.app/chat)
+- **Agent docs**: [https://cymstudio.app/agents](https://cymstudio.app/agents)
 - **Landing / portfolio**: [https://cymstudio.app](https://cymstudio.app)
-- **Demo video** (3–5 min): `demo/walkthrough.mp4` *(record before submission)*
-- **Participant intro video** (30–60 sec): `demo/intro.mp4` *(record before submission)*
-- **Screenshots**: `demo/screenshots/`
+- **Screenshots**: [`../demo/`](../demo/)
 
 ### Suggested demo script
 
