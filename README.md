@@ -9,7 +9,7 @@ Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winner
 
 > **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
 >
-> 🎬 **Demo video** → [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo)
+> 🎬 **Videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) · [Builder intro](https://youtu.be/xy3z2ZAp6aU)
 
 ## 🏆 Global Hackfest 2026
 
