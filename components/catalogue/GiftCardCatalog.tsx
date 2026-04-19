@@ -1032,8 +1032,6 @@ export default function GiftCardCatalog() {
                 <div>
                   <div className={styles.heroCrumb}>
                     <span>Tournament Prize Redemption</span>
-                    <span>·</span>
-                    <span>Season 22</span>
                   </div>
                   <h1 className={styles.heroTitle}>
                     Turn your winnings<br />into something <em>real.</em>
