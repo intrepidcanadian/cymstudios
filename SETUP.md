@@ -24,7 +24,7 @@ cp .env.example .env.local
 | `EXTERNAL_API_KEY` | xRemit partner dashboard | API key for the xRemit gift card provider |
 | `EXTERNAL_CLIENT_SECRET` | xRemit partner dashboard | Client secret for HMAC-SHA256 request signing |
 | `XREMIT_ENV` | Set to `production` or `sandbox` | Controls which xRemit API is used (`rewardsapi.xremit.io` vs `rewardsapi-sandbox.xremit.io`) |
-| `API_LAYER_KEY` | [apilayer.com](https://apilayer.com) | API key for real-time currency exchange rates (USD ↔ CAD/HKD/GBP) |
+| `API_LAYER_KEY` | [apilayer.com](https://apilayer.com) | API key for real-time currency exchange rates (USD → ~30 currencies; used to price non-USD gift cards in USDC/USDT0) |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) | Sends voucher delivery emails to customers |
 | `RESEND_FROM_EMAIL` | Your verified Resend domain | Sender address for emails (e.g. `noreply@cymstudio.com`) |
 

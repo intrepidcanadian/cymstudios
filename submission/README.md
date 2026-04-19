@@ -323,7 +323,7 @@ GET  /api/orders?address=0x...       Order history by wallet or email
 GET  /api/orders/:orderId            Single order status (with auth token)
 POST /api/email/send-otp             Request email OTP
 POST /api/email/verify-otp           Verify OTP code
-GET  /api/exchange-rate?from=CAD     FX rate (USD, CAD, HKD, GBP)
+GET  /api/exchange-rate?from=CAD     FX rate (stablecoin-supported currencies)
 GET  /api/facilitator-health         Live gas balance per network
 POST /api/webhook/xremit             xRemit voucher delivery (HMAC)
 ```

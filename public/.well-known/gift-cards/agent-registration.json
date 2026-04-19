@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "CYM Rewards",
-  "description": "Redeem USDC or USDT0 tokens for gift cards from 300+ brands across United States, Canada, Hong Kong, and United Kingdom. Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0). Supports USD, CAD, HKD, and GBP currencies with real-time FX conversion. Also offers Mastercard Prepaid cards in USD and CAD. Purchase requires an in-browser x402 signature; agents can discover brands, look up orders, and hand off to the catalogue UI for gasless checkout.",
+  "description": "Redeem USDC or USDT0 tokens for gift cards across a multi-country, multi-currency catalogue (300+ brands). Browse, search, and redeem rewards via x402 protocol on Ethereum Mainnet (USDC) or Conflux eSpace (USDT0) with real-time FX conversion to a stablecoin amount. Also offers Mastercard Prepaid cards. Current country and currency availability changes as brands are synced — call list_countries and list_currencies for the live set. Agents can discover brands, verify an email (30-day cache), lock an x402 quote, sign an EIP-3009 TransferWithAuthorization with their own wallet, and receive a voucher end-to-end.",
   "image": "https://cymstudio.app/cym.png",
   "services": [
     {
