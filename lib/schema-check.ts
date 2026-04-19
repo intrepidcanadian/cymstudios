@@ -44,7 +44,7 @@ export async function checkDatabaseSchema(): Promise<void> {
 
     if (error) {
       logger.error(`[SchemaCheck] Table "${table}" schema drift — purchases will fail:`, {
-        code: error.code,
+        pgCode: error.code,
         message: error.message,
         hint: error.hint,
         expectedColumns: expected,

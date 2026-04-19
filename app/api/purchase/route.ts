@@ -571,7 +571,7 @@ export async function POST(request: NextRequest) {
 
     if (duplicateCheckError) {
       logger.error('[Purchase] Duplicate-check query failed:', {
-        code: duplicateCheckError.code,
+        pgCode: duplicateCheckError.code,
         message: duplicateCheckError.message,
         details: duplicateCheckError.details,
         hint: duplicateCheckError.hint,
@@ -620,7 +620,7 @@ export async function POST(request: NextRequest) {
 
     if (orderError) {
       logger.error('[Purchase] Failed to create order record:', {
-        code: orderError.code,
+        pgCode: orderError.code,
         message: orderError.message,
         details: orderError.details,
         hint: orderError.hint,
