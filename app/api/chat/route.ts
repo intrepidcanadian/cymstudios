@@ -46,7 +46,7 @@ const TOOLS = [
   tool('search_giftcards', 'Search gift cards across the CYM Rewards catalogue. Filter by brand, country, currency. Returns a list of products with denominations.', {
     brand: { type: 'string', description: 'Substring match against brand name.' },
     country: { type: 'string', description: 'Country name or ISO code (US, CA, HK, GB).' },
-    currency: { type: 'string', description: 'USD | CAD | HKD | GBP' },
+    currency: { type: 'string', description: 'Currency code — call list_currencies first to see what is currently available.' },
     limit: { type: 'number', description: 'Max results (default 20, max 50).' },
   }),
   tool('get_brand_details', 'Full product detail for a single gift card: denominations, restrictions, terms, validity.', {

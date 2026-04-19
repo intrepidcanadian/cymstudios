@@ -12,7 +12,7 @@ const TOOLS = [
   ['search_giftcards', 'Filter 300+ brands by brand / country / currency.'],
   ['get_brand_details', 'Denominations, restrictions, terms, validity for one product.'],
   ['list_countries', 'Countries with available products (US, CA, HK).'],
-  ['list_currencies', 'USD, CAD, HKD, GBP.'],
+  ['list_currencies', 'Currencies with available products right now.'],
   ['search_mastercard', 'Prepaid Mastercard products (USD, CAD).'],
   ['get_mastercard_details', 'Detail for one Mastercard product.'],
   ['check_order_status', 'Poll an order by order_id + email. Returns voucher when delivered.'],
