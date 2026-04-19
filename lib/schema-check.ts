@@ -40,13 +40,24 @@ export async function checkDatabaseSchema(): Promise<void> {
   });
 
   for (const [table, expected] of Object.entries(EXPECTED_COLUMNS)) {
-    const { error } = await supabase.from(table).select(expected.join(',')).limit(0);
+    // Check each column individually so we report ALL missing columns in one
+    // boot, not just the first one PostgREST bails on.
+    const missing: { column: string; message: string; hint: string | null }[] = [];
 
-    if (error) {
+    for (const column of expected) {
+      const { error } = await supabase.from(table).select(column).limit(0);
+      if (error) {
+        missing.push({
+          column,
+          message: error.message,
+          hint: error.hint ?? null,
+        });
+      }
+    }
+
+    if (missing.length > 0) {
       logger.error(`[SchemaCheck] Table "${table}" schema drift — purchases will fail:`, {
-        pgCode: error.code,
-        message: error.message,
-        hint: error.hint,
+        missing,
         expectedColumns: expected,
       });
       continue;
