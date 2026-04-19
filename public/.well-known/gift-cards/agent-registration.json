@@ -17,7 +17,11 @@
         "search_mastercard",
         "get_mastercard_details",
         "check_order_status",
-        "redirect_to_checkout"
+        "redirect_to_checkout",
+        "verify_email_start",
+        "verify_email_complete",
+        "get_purchase_quote",
+        "submit_purchase"
       ]
     },
     {

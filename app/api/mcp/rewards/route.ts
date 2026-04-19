@@ -115,7 +115,7 @@ const TOOLS: Tool[] = [
   {
     name: 'redirect_to_checkout',
     description:
-      'Return a pre-filled checkout URL for the catalogue. The actual purchase requires an x402 gasless wallet signature, which must be performed in the browser — call this tool to hand off to the web UI.',
+      'Return a pre-filled checkout URL for the catalogue. Use this when the caller is a human-backed client that prefers to complete the purchase in a browser (e.g. MetaMask, Fluent). For agent-initiated purchases with a server-side wallet, use get_purchase_quote + submit_purchase instead.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -127,7 +127,85 @@ const TOOLS: Tool[] = [
     },
     handler: redirectToCheckout,
   },
+  {
+    name: 'verify_email_start',
+    description:
+      'Step 1 of email verification: trigger delivery of a 6-digit OTP to the email address. Required once per email address (then cached for 30 days). Voucher delivery and purchase both require a verified email.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', description: 'Email address to verify.' },
+      },
+      required: ['email'],
+    },
+    handler: verifyEmailStart,
+  },
+  {
+    name: 'verify_email_complete',
+    description: 'Step 2 of email verification: submit the 6-digit OTP that was sent to the email address. On success, the email is verified for 30 days.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string' },
+        code: { type: 'string', description: '6-digit numeric code from the verification email.' },
+      },
+      required: ['email', 'code'],
+    },
+    handler: verifyEmailComplete,
+  },
+  {
+    name: 'get_purchase_quote',
+    description:
+      'Step 1 of agent-initiated purchase: request an x402 payment quote. Server validates the product + denomination and returns a 402-style payment requirement — facilitator address, exact USDT0/USDC amount (including 1.5% service fee), chain id, EIP-712 domain, and the TransferWithAuthorization types schema needed to sign. The caller then builds and signs an EIP-3009 TransferWithAuthorization with its own wallet key and passes the result to submit_purchase.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_id: { type: 'number' },
+        denomination: { type: 'number', description: 'Face value in the brand\'s native currency (e.g. 50 for a $50 USD card).' },
+        email: { type: 'string', description: 'Email for voucher delivery (must be pre-verified via verify_email_*).' },
+        network: { type: 'string', description: '"conflux" for USDT0 on Conflux eSpace (default) or "ethereum" for USDC on Ethereum mainnet.' },
+      },
+      required: ['product_id', 'denomination', 'email'],
+    },
+    handler: getPurchaseQuote,
+  },
+  {
+    name: 'submit_purchase',
+    description:
+      'Step 2 of agent-initiated purchase: submit a signed x402 payment. The caller must have already called get_purchase_quote, built the TransferWithAuthorization message from the returned parameters, signed it with its wallet key, and base64-encoded the {x402Version, scheme, network, payload:{signature, authorization}} envelope. Server validates the signature, submits the on-chain transfer via the shared facilitator, procures the gift card from xRemit, and returns the voucher synchronously when fulfillment completes within ~60 seconds. Otherwise returns an order_id to poll with check_order_status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_id: { type: 'number' },
+        denomination: { type: 'number' },
+        email: { type: 'string' },
+        network: { type: 'string', description: '"conflux" (default) or "ethereum".' },
+        x_payment: {
+          type: 'string',
+          description:
+            'Base64-encoded x402 payment envelope. Shape: { x402Version: 1, scheme: "exact", network, payload: { signature, authorization: { from, to, value, validAfter, validBefore, nonce } } }. Value and nonce come from get_purchase_quote; validAfter/validBefore are agent-chosen (recommended: 0 and now+600s).',
+        },
+      },
+      required: ['product_id', 'denomination', 'email', 'x_payment'],
+    },
+    handler: submitPurchase,
+  },
 ]
+
+// ==========================================================================
+// EIP-3009 TransferWithAuthorization types — fixed by the EIP, agents need
+// them to construct the EIP-712 typed-data for signing.
+// ==========================================================================
+const EIP3009_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+}
 
 // ==========================================================================
 // Country normalisation (shared with /api/brands).
@@ -294,7 +372,7 @@ async function checkOrderStatus(args: Record<string, any>): Promise<string> {
 
   const { data, error } = await supabaseAdmin
     .from('orders')
-    .select('order_id, status, brand_name, country_name, currency, price, face_value, voucher_currency, created_at, completed_at, error_message, user_email')
+    .select('order_id, status, brand_name, country_name, currency, price, face_value, voucher_currency, voucher_code, voucher_pin, voucher_validity_date, vouchers, payment_tx, created_at, completed_at, error_message, user_email')
     .eq('order_id', orderId)
     .single()
 
@@ -304,22 +382,207 @@ async function checkOrderStatus(args: Record<string, any>): Promise<string> {
     return `Order ${orderId} not found.`
   }
 
+  const d = data as any
   const payload = {
-    order_id: data.order_id,
-    status: data.status,
-    brand: data.brand_name,
-    country: data.country_name,
-    currency: data.currency,
-    price: data.price,
-    face_value: data.face_value,
-    voucher_currency: data.voucher_currency,
-    created_at: data.created_at,
-    completed_at: data.completed_at,
-    error: data.error_message || undefined,
-    orderToken: generateOrderToken(data.order_id, email),
-    status_url: `https://cymstudio.app/catalogue?order=${encodeURIComponent(data.order_id)}`,
+    order_id: d.order_id,
+    status: d.status,
+    brand: d.brand_name,
+    country: d.country_name,
+    currency: d.currency,
+    price: d.price,
+    face_value: d.face_value,
+    voucher_currency: d.voucher_currency,
+    voucher: d.status === 'completed' ? {
+      code: d.voucher_code || undefined,
+      pin: d.voucher_pin || undefined,
+      validity_date: d.voucher_validity_date || undefined,
+      all: d.vouchers || undefined,
+    } : undefined,
+    payment_tx: d.payment_tx || undefined,
+    created_at: d.created_at,
+    completed_at: d.completed_at,
+    error: d.error_message || undefined,
+    orderToken: generateOrderToken(d.order_id, email),
+    status_url: `https://cymstudio.app/catalogue?order=${encodeURIComponent(d.order_id)}`,
   }
   return JSON.stringify(payload, null, 2)
+}
+
+// ==========================================================================
+// Internal-fetch helper — loops back to this Next.js instance so MCP tools
+// can reuse the existing /api/purchase + /api/email/* pipelines without
+// duplicating their security and settlement logic.
+// ==========================================================================
+
+function internalBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_INTERNAL_API_URL
+  if (envUrl) return envUrl.replace(/\/$/, '')
+  return 'http://127.0.0.1:3000'
+}
+
+async function callInternal(path: string, init: RequestInit): Promise<Response> {
+  const url = `${internalBaseUrl()}${path}`
+  return fetch(url, { ...init, redirect: 'manual' })
+}
+
+async function verifyEmailStart(args: Record<string, any>): Promise<string> {
+  const email = String(args.email || '').trim().toLowerCase()
+  if (!email) throw new Error('email is required')
+  const res = await callInternal('/api/email/send-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || body?.success === false) {
+    throw new Error(body?.error || `OTP send failed (${res.status})`)
+  }
+  return JSON.stringify({
+    ok: true,
+    email,
+    next: 'Call verify_email_complete with the 6-digit code delivered to this email.',
+  }, null, 2)
+}
+
+async function verifyEmailComplete(args: Record<string, any>): Promise<string> {
+  const email = String(args.email || '').trim().toLowerCase()
+  const code = String(args.code || '').trim()
+  if (!email || !code) throw new Error('email and code are both required')
+  const res = await callInternal('/api/email/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || body?.success === false) {
+    throw new Error(body?.error || `OTP verify failed (${res.status})`)
+  }
+  return JSON.stringify({
+    ok: true,
+    email,
+    verified_for_days: 30,
+    next: 'Email verified. You can now call get_purchase_quote for this email.',
+  }, null, 2)
+}
+
+async function getPurchaseQuote(args: Record<string, any>): Promise<string> {
+  const productId = Number(args.product_id)
+  const denomination = Number(args.denomination)
+  const email = String(args.email || '').trim().toLowerCase()
+  const network = String(args.network || 'conflux').toLowerCase()
+  if (!Number.isFinite(productId)) throw new Error('product_id must be a number')
+  if (!Number.isFinite(denomination) || denomination <= 0) throw new Error('denomination must be a positive number')
+  if (!email) throw new Error('email is required')
+
+  // POST to /api/purchase WITHOUT the x-payment header — server responds 402
+  // with the payment requirements the agent needs to sign.
+  const res = await callInternal('/api/purchase', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      productId,
+      price: denomination,
+      userEmail: email,
+      userId: email,
+    }),
+  })
+  const body = await res.json().catch(() => ({}))
+
+  if (res.status !== 402) {
+    // Not a payment-required response — it's either an error or an unexpected 200.
+    // Pass the server's message through so the agent knows what's wrong.
+    throw new Error(body?.error || `Unexpected response from purchase endpoint (${res.status})`)
+  }
+
+  // 402 with the `accepts` array. Pick the requested network.
+  const accepts = Array.isArray(body.accepts) ? body.accepts : []
+  const chosen = accepts.find((a: any) => a.network === network) || accepts[0]
+  if (!chosen) throw new Error('No payment options returned by the server')
+
+  const nowSec = Math.floor(Date.now() / 1000)
+  const validBefore = nowSec + 600 // 10-minute signing window
+  const nonceHex = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    .map(b => b.toString(16).padStart(2, '0')).join('')
+
+  return JSON.stringify({
+    correlation: {
+      product_id: productId,
+      denomination,
+      email,
+      network: chosen.network,
+    },
+    payment_requirements: {
+      scheme: 'exact',
+      x402_version: 1,
+      network: chosen.network,
+      chain_id: chosen.chainId,
+      token: chosen.asset,
+      pay_to: chosen.payTo,
+      amount: chosen.maxAmountRequired,
+      amount_note: 'Raw token units (6 decimals for USDC/USDT0). Already includes the 1.5% service fee.',
+      original_price: chosen.extra?.originalPrice,
+      original_currency: chosen.extra?.originalCurrency,
+    },
+    eip712_domain: {
+      name: chosen.extra?.name,
+      version: chosen.extra?.version,
+      chainId: chosen.chainId,
+      verifyingContract: chosen.asset,
+    },
+    eip712_types: EIP3009_TYPES,
+    suggested_authorization: {
+      from: 'YOUR_WALLET_ADDRESS',
+      to: chosen.payTo,
+      value: chosen.maxAmountRequired,
+      validAfter: 0,
+      validBefore,
+      nonce: nonceHex,
+    },
+    next: 'Build the TransferWithAuthorization message, sign it with your wallet key, base64-encode {x402Version:1, scheme:"exact", network, payload:{signature, authorization}}, then call submit_purchase with x_payment set to that base64 string.',
+  }, null, 2)
+}
+
+async function submitPurchase(args: Record<string, any>): Promise<string> {
+  const productId = Number(args.product_id)
+  const denomination = Number(args.denomination)
+  const email = String(args.email || '').trim().toLowerCase()
+  const xPayment = String(args.x_payment || '').trim()
+  if (!Number.isFinite(productId)) throw new Error('product_id must be a number')
+  if (!Number.isFinite(denomination) || denomination <= 0) throw new Error('denomination must be a positive number')
+  if (!email) throw new Error('email is required')
+  if (!xPayment) throw new Error('x_payment is required (base64-encoded x402 envelope)')
+
+  const res = await callInternal('/api/purchase', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-payment': xPayment,
+    },
+    body: JSON.stringify({
+      productId,
+      price: denomination,
+      userEmail: email,
+      userId: email,
+    }),
+  })
+
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || body?.success === false) {
+    const msg = body?.error || `Purchase failed (${res.status})`
+    return JSON.stringify({ ok: false, status: res.status, error: msg, details: body }, null, 2)
+  }
+
+  // Success. Pass the order result back. If the webhook already fired
+  // (fulfillment within the synchronous window), body includes voucher data.
+  return JSON.stringify({
+    ok: true,
+    order_id: body.orderId || body.order_id,
+    status: body.status || 'processing',
+    payment_tx: body.paymentTx || body.payment_tx,
+    voucher: body.voucher || body.vouchers || undefined,
+    next: body.voucher ? 'Voucher delivered. Store the code.' : 'Call check_order_status with this order_id and email to poll for fulfillment (~60s typical).',
+    raw: body,
+  }, null, 2)
 }
 
 async function redirectToCheckout(args: Record<string, any>): Promise<string> {
