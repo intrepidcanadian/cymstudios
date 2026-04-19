@@ -36,3 +36,6 @@ yarn-error.log*
 next-env.d.ts
 
 ginsengswap-frontend/
+
+# Supabase migrations (managed locally / via Supabase dashboard)
+supabase/migrations/
