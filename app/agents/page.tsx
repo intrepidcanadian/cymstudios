@@ -413,10 +413,6 @@ print(mcp_call("list_countries"))`}</pre>
             <li>GitHub: <a href="https://github.com/intrepidcanadian/cymstudios">intrepidcanadian/cymstudios</a></li>
             <li>Email: <a href="mailto:tony.lau@cymadvisory.com">tony.lau@cymadvisory.com</a></li>
           </ul>
-          <p>
-            Built for Global Hackfest 2026 · Best USDT0 integration category. The MCP
-            server is MIT-licensed; fork it if you want to run your own.
-          </p>
         </section>
       </main>
     </div>
