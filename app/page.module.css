@@ -217,8 +217,6 @@
 }
 
 @media (max-width: 640px) {
-  .status span:nth-of-type(3),
-  .status span:nth-of-type(4) { display: none; } /* keep dot + CET only */
   .heroMeta { grid-template-columns: 1fr 1fr; }
   .heroMeta > div:last-child { display: none; }
   .caps { grid-template-columns: 1fr; }

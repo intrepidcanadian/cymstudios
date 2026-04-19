@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import styles from '@/app/page.module.css'
 
 export type Theme = 'ember' | 'cyan' | 'lime' | 'magenta'
@@ -18,22 +17,7 @@ interface TopBarProps {
   onThemeChange: (t: Theme) => void
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
-function formatZoned(now: Date, offsetHours: number) {
-  const d = new Date(now.getTime() + offsetHours * 3600 * 1000)
-  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
-}
-
 export default function TopBar({ theme, onThemeChange }: TopBarProps) {
-  const [now, setNow] = useState<Date | null>(null)
-
-  useEffect(() => {
-    setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-
   return (
     <header className={styles.topbar}>
       <div className={styles.brand}>
@@ -54,9 +38,7 @@ export default function TopBar({ theme, onThemeChange }: TopBarProps) {
 
       <div className={styles.status}>
         <span className={styles.statusDot} aria-hidden="true" />
-        <span>CET {now ? formatZoned(now, 1) : '—'}</span>
-        <span>EST {now ? formatZoned(now, -5) : '—'}</span>
-        <span>KST {now ? formatZoned(now, 9) : '—'}</span>
+        <span>Online</span>
         <div className={styles.themeSwitcher} role="radiogroup" aria-label="Accent theme">
           {THEMES.map((t) => (
             <button
