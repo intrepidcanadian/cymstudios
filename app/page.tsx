@@ -28,6 +28,10 @@ const VIDEOS = [
   {
     id: 's-l4dQm7-uc',
     description: '2023 2v2 Shield Battery Tournament ($500 Prize Pool)'
+  },
+  {
+    id: 'B0BGMrKSYWw',
+    description: 'BSL Starleague 22 - RO32 Week 2'
   }
 ]
 

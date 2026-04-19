@@ -140,6 +140,7 @@ CYM Studio is an AI studio creating commercials and video content for small busi
 ## Featured Work
 
 - BSL Season 22 Intro
+- BSL Starleague 22 — RO32 Week 2
 - 2025 2v2 Random Starcraft Brood War Tournament ($500 prize pool)
 - Season 3 Bombastic Starleague 2v2 Tournament ($1,000 prize pool)
 - Bombastic Starleague Qualifications Season 3
