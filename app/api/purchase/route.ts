@@ -559,7 +559,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Idempotency guard: check for duplicate pending order from same wallet with same amount in last 60s
-    const { data: recentDuplicates } = await supabase
+    const { data: recentDuplicates, error: duplicateCheckError } = await supabase
       .from('orders')
       .select('order_id, status, created_at')
       .eq('payment_from', paymentFrom.toLowerCase())
@@ -568,6 +568,19 @@ export async function POST(request: NextRequest) {
       .in('status', ['pending', 'processing'])
       .gte('created_at', new Date(Date.now() - 300_000).toISOString())
       .limit(1);
+
+    if (duplicateCheckError) {
+      logger.error('[Purchase] Duplicate-check query failed:', {
+        code: duplicateCheckError.code,
+        message: duplicateCheckError.message,
+        details: duplicateCheckError.details,
+        hint: duplicateCheckError.hint,
+      });
+      return NextResponse.json(
+        { success: false, error: 'Unable to verify order state. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     if (recentDuplicates && recentDuplicates.length > 0) {
       const existingOrder = recentDuplicates[0];
@@ -606,7 +619,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError) {
-      logger.error('[Purchase] Failed to create order record');
+      logger.error('[Purchase] Failed to create order record:', {
+        code: orderError.code,
+        message: orderError.message,
+        details: orderError.details,
+        hint: orderError.hint,
+        insertedColumns: [
+          'order_id', 'product_id', 'brand_name', 'country_name', 'currency',
+          'price', 'user_id', 'user_email', 'status',
+          'payment_from', 'payment_network', 'payment_value',
+        ],
+      });
       return NextResponse.json(
         { success: false, error: 'Failed to create order' },
         { status: 500 }
