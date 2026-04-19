@@ -34,7 +34,7 @@
     },
     {
       "name": "A2A",
-      "endpoint": "https://ginsengswap-giftcard-agent.fly.dev:3001/.well-known/agent-card",
+      "endpoint": "https://cymstudio.app/.well-known/gift-cards/agent-card.json",
       "version": "0.2.1",
       "skills": [
         "gift_card_search",
