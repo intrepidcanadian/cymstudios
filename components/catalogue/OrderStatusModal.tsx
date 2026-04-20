@@ -278,7 +278,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
                           // clipboard API may fail in some contexts
                         }
                       }}
-                      className="flex items-center justify-center w-7 h-7 rounded border border-line-strong bg-canvas-lift hover:bg-canvas-lift hover:border-ember transition-colors cursor-pointer"
+                      className="flex items-center justify-center w-7 h-7 rounded border border-line-strong bg-canvas-lift hover:brightness-110 hover:border-ember transition-colors cursor-pointer"
                       title="Copy full order ID"
                       aria-label="Copy order ID to clipboard"
                     >
@@ -699,7 +699,7 @@ export default function OrderStatusModal({ orderId, orderToken, userEmail, onClo
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="w-full py-3 px-6 bg-canvas-lift hover:bg-canvas-lift rounded-lg font-medium text-ink transition-all"
+                className="w-full py-3 px-6 bg-canvas-lift hover:brightness-110 rounded-lg font-medium text-ink transition-all"
               >
                 Close
               </button>

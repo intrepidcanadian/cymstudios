@@ -84,7 +84,7 @@ function EmptySearchState({
               <button
                 key={name}
                 onClick={() => onSelectSuggestion(name)}
-                className="px-3 py-1.5 bg-ember-soft border border-ember-soft rounded-full text-sm text-ember hover:bg-ember-soft hover:text-ember transition-colors"
+                className="px-3 py-1.5 bg-ember-soft border border-ember-soft rounded-full text-sm text-ember hover:brightness-110 transition-colors"
               >
                 {name}
               </button>
@@ -94,7 +94,7 @@ function EmptySearchState({
       )}
       <button
         onClick={onClearFilters}
-        className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
+        className="px-6 py-2 bg-ember hover:brightness-110 text-white font-medium rounded-lg transition-colors"
       >
         Clear All Filters
       </button>
@@ -250,7 +250,7 @@ const ProductCard = memo(function ProductCard({
         {/* View Button */}
         <button
           onClick={() => onSelect(product)}
-          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-ember hover:bg-ember text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-ember hover:brightness-110 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
           aria-label={`View and redeem ${product.brand_name}`}
         >
           <span className="sm:hidden">View</span>
@@ -899,7 +899,7 @@ export default function GiftCardCatalog() {
             setShowFavoritesOnly(false);
             setSortOrder('default');
           }}
-          className="w-full px-5 py-3 min-h-[44px] bg-canvas-lift hover:bg-canvas-lift text-ink text-sm font-bold rounded-lg transition-colors shadow-sm"
+          className="w-full px-5 py-3 min-h-[44px] bg-canvas-lift hover:brightness-110 text-ink text-sm font-bold rounded-lg transition-colors shadow-sm"
         >
           Clear All Filters
         </button>
@@ -963,7 +963,7 @@ export default function GiftCardCatalog() {
                     )}
                     <button
                       onClick={() => open()}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-ember hover:bg-ember text-white text-sm font-semibold rounded-lg transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-ember hover:brightness-110 text-white text-sm font-semibold rounded-lg transition-colors"
                     >
                       <Wallet className="w-4 h-4" />
                       {walletTimedOut ? 'Reconnect Wallet' : 'Connect Wallet'}
@@ -1015,7 +1015,7 @@ export default function GiftCardCatalog() {
                 <div className="p-4 border-t border-line bg-canvas-soft">
                   <button
                     onClick={() => setShowMobileFilters(false)}
-                    className="w-full py-3 bg-ember hover:bg-ember text-white font-semibold rounded-lg transition-colors"
+                    className="w-full py-3 bg-ember hover:brightness-110 text-white font-semibold rounded-lg transition-colors"
                   >
                     Show {filteredProducts.length} Results
                   </button>
@@ -1172,7 +1172,7 @@ export default function GiftCardCatalog() {
                     {walletReady && !isConnected ? (
                       <button
                         onClick={() => open()}
-                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-ember hover:brightness-110 text-white font-semibold text-sm rounded-lg transition-colors"
                       >
                         <Wallet className="w-4 h-4" />
                         Connect
@@ -1180,7 +1180,7 @@ export default function GiftCardCatalog() {
                     ) : walletReady && isConnected ? (
                       <button
                         onClick={() => setShowWalletView(true)}
-                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-canvas-lift hover:bg-canvas-lift text-ink text-sm rounded-lg transition-colors border border-line-strong"
+                        className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-canvas-lift hover:brightness-110 text-ink text-sm rounded-lg transition-colors border border-line-strong"
                       >
                         <div className="w-5 h-5 rounded-full bg-ember flex items-center justify-center">
                           <Wallet className="w-2.5 h-2.5 text-white" />
@@ -1192,7 +1192,7 @@ export default function GiftCardCatalog() {
                   {activeTab === 'giftcards' && (
                     <button
                       onClick={() => setShowMobileFilters(true)}
-                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                      className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-ember hover:brightness-110 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                     >
                       <SlidersHorizontal className="w-4 h-4" />
                       Filters
@@ -1294,7 +1294,7 @@ export default function GiftCardCatalog() {
                     <p className="text-ink-dim mb-6">{mastercardFetchError}</p>
                     <button
                       onClick={fetchMastercards}
-                      className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
+                      className="px-6 py-2 bg-ember hover:brightness-110 text-white font-medium rounded-lg transition-colors"
                     >
                       Try Again
                     </button>
@@ -1336,7 +1336,7 @@ export default function GiftCardCatalog() {
 
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-4 py-2.5 min-h-[40px] bg-ember hover:bg-ember text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                            className="w-full px-4 py-2.5 min-h-[40px] bg-ember hover:brightness-110 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
                           >
                             View & Redeem
                           </button>
@@ -1370,7 +1370,7 @@ export default function GiftCardCatalog() {
                   <p className="text-ink-dim mb-6">{fetchError}</p>
                   <button
                     onClick={fetchBrands}
-                    className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
+                    className="px-6 py-2 bg-ember hover:brightness-110 text-white font-medium rounded-lg transition-colors"
                   >
                     Try Again
                   </button>
@@ -1384,7 +1384,7 @@ export default function GiftCardCatalog() {
                   <p className="text-ink-dim mb-6">Try removing country or currency filters, or browse all products to add more favorites.</p>
                   <button
                     onClick={() => setShowFavoritesOnly(false)}
-                    className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors"
+                    className="px-6 py-2 bg-ember hover:brightness-110 text-white font-medium rounded-lg transition-colors"
                   >
                     Show All Products
                   </button>
@@ -1421,7 +1421,7 @@ export default function GiftCardCatalog() {
             {showBackToTop && (
               <button
                 onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="fixed bottom-20 right-4 sm:right-8 z-30 w-10 h-10 bg-ember hover:bg-ember text-white rounded-full shadow-lg flex items-center justify-center transition-all"
+                className="fixed bottom-20 right-4 sm:right-8 z-30 w-10 h-10 bg-ember hover:brightness-110 text-white rounded-full shadow-lg flex items-center justify-center transition-all"
                 aria-label="Back to top"
               >
                 <ArrowUp className="w-5 h-5" />
@@ -1594,7 +1594,7 @@ export default function GiftCardCatalog() {
                           const maxVal = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
                           return (minVal && val < minVal) || (maxVal && val > maxVal) || false;
                         })()}
-                        className="px-5 py-2.5 min-h-[42px] bg-ember hover:bg-ember disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
+                        className="px-5 py-2.5 min-h-[42px] bg-ember hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
                       >
                         Buy with {NETWORKS[selectedNetwork]?.tokenSymbol}
                       </button>
@@ -1612,7 +1612,7 @@ export default function GiftCardCatalog() {
                     if (!purchaseInitialAmount) setPurchaseInitialAmount('');
                     setShowPurchaseModal(true);
                   }}
-                  className="w-full px-6 py-3 min-h-[48px] bg-ember hover:bg-ember text-white font-bold rounded-lg transition-colors"
+                  className="w-full px-6 py-3 min-h-[48px] bg-ember hover:brightness-110 text-white font-bold rounded-lg transition-colors"
                 >
                   Redeem with Tokens
                   <span className="block text-xs font-normal opacity-80 mt-0.5">
@@ -1783,7 +1783,7 @@ export default function GiftCardCatalog() {
               </div>
               <button
                 onClick={() => open()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-ember hover:bg-ember text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-4 py-2 bg-ember hover:brightness-110 text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
               >
                 <Wallet className="w-3.5 h-3.5" />
                 Connect Wallet

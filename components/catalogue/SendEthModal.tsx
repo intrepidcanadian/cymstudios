@@ -281,11 +281,11 @@ export default function SendEthModal({
                 <p className="text-sm text-ink-dim mt-1">{parseFloat(amount).toFixed(6)} {nativeSymbol} sent to {truncate(recipientAddress)}</p>
               </div>
               {txHash && (
-                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-canvas-lift hover:bg-canvas-lift text-ink text-sm rounded-lg border border-line-strong transition-colors">
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-canvas-lift hover:brightness-110 text-ink text-sm rounded-lg border border-line-strong transition-colors">
                   View on Explorer <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              <button onClick={onClose} className="w-full py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
+              <button onClick={onClose} className="w-full py-3 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-xl transition-colors border border-line-strong">
                 Done
               </button>
             </div>
@@ -304,7 +304,7 @@ export default function SendEthModal({
                 <button onClick={() => { setError(null); setStep('input'); }} className="flex-1 py-3 bg-gradient-to-r from-canvas-lift to-canvas-lift hover:from-canvas-lift hover:to-canvas-lift text-white font-semibold rounded-xl transition-all">
                   Try Again
                 </button>
-                <button onClick={onClose} className="flex-1 py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
+                <button onClick={onClose} className="flex-1 py-3 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-xl transition-colors border border-line-strong">
                   Close
                 </button>
               </div>

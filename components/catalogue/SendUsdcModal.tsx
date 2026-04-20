@@ -220,7 +220,7 @@ export default function SendUsdcModal({
               <button
                 onClick={handleContinue}
                 disabled={!recipientAddress || !amount}
-                className="w-full py-3 bg-gradient-to-r from-ember to-ember hover:from-ember hover:to-ember text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-gradient-to-r from-ember to-ember hover:brightness-110 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -253,7 +253,7 @@ export default function SendUsdcModal({
 
               <button
                 onClick={handleSend}
-                className="w-full py-3 bg-gradient-to-r from-ember to-ember hover:from-ember hover:to-ember text-white font-semibold rounded-xl transition-all shadow-lg"
+                className="w-full py-3 bg-gradient-to-r from-ember to-ember hover:brightness-110 text-white font-semibold rounded-xl transition-all shadow-lg"
               >
                 Confirm & Send
               </button>
@@ -296,11 +296,11 @@ export default function SendUsdcModal({
                 </p>
               </div>
               {txHash && (
-                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-canvas-lift hover:bg-canvas-lift text-ink text-sm rounded-lg border border-line-strong transition-colors">
+                <a href={`${explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 bg-canvas-lift hover:brightness-110 text-ink text-sm rounded-lg border border-line-strong transition-colors">
                   View on Explorer <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              <button onClick={onClose} className="w-full py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
+              <button onClick={onClose} className="w-full py-3 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-xl transition-colors border border-line-strong">
                 Done
               </button>
             </div>
@@ -318,11 +318,11 @@ export default function SendUsdcModal({
               <div className="flex gap-2">
                 <button
                   onClick={() => { setError(null); setStep('input'); }}
-                  className="flex-1 py-3 bg-gradient-to-r from-ember to-ember hover:from-ember hover:to-ember text-white font-semibold rounded-xl transition-all"
+                  className="flex-1 py-3 bg-gradient-to-r from-ember to-ember hover:brightness-110 text-white font-semibold rounded-xl transition-all"
                 >
                   Try Again
                 </button>
-                <button onClick={onClose} className="flex-1 py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong">
+                <button onClick={onClose} className="flex-1 py-3 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-xl transition-colors border border-line-strong">
                   Close
                 </button>
               </div>

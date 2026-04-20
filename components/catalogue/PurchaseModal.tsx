@@ -856,7 +856,7 @@ export default function PurchaseModal({
                 type="button"
                 onClick={submitOtp}
                 disabled={otpVerifying || otpCode.length !== 6}
-                className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:from-ember hover:to-ember disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 {otpVerifying ? 'Verifying...' : 'Verify & Continue'}
               </button>
@@ -1070,7 +1070,7 @@ export default function PurchaseModal({
                         key={key}
                         type="button"
                         onClick={() => { onNetworkChange(key); setError(null); setRpcFailedNetwork(null); }}
-                        className="px-3 py-1.5 bg-canvas-lift hover:bg-canvas-lift text-ink text-xs font-semibold rounded-lg transition-colors border border-line-strong"
+                        className="px-3 py-1.5 bg-canvas-lift hover:brightness-110 text-ink text-xs font-semibold rounded-lg transition-colors border border-line-strong"
                       >
                         Switch to {net.name}
                       </button>
@@ -1205,7 +1205,7 @@ export default function PurchaseModal({
                     </button>
                     <button
                       onClick={() => setShowCloseWarning(false)}
-                      className="px-4 py-1.5 bg-canvas-lift hover:bg-canvas-lift text-ink text-xs rounded-lg font-medium transition-colors"
+                      className="px-4 py-1.5 bg-canvas-lift hover:brightness-110 text-ink text-xs rounded-lg font-medium transition-colors"
                     >
                       Keep Waiting
                     </button>
@@ -1635,7 +1635,7 @@ export default function PurchaseModal({
             <button
               type="submit"
               disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation}
-              className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:from-ember hover:to-ember disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               Review & Redeem
             </button>

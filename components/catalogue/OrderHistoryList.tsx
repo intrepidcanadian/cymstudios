@@ -265,7 +265,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
         <p className="text-ink-dim mb-6">{error}</p>
         <button
           onClick={() => fetchOrders()}
-          className="px-6 py-2 bg-ember hover:bg-ember text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
+          className="px-6 py-2 bg-ember hover:brightness-110 text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           Retry
@@ -430,7 +430,7 @@ export default function OrderHistoryList({ walletAddress, onViewOrder }: OrderHi
           <button
             onClick={() => fetchOrders(orders.length)}
             disabled={loadingMore}
-            className="px-6 py-2 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-lg transition-colors inline-flex items-center gap-2 text-sm disabled:opacity-50"
+            className="px-6 py-2 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-lg transition-colors inline-flex items-center gap-2 text-sm disabled:opacity-50"
           >
             {loadingMore ? (
               <>

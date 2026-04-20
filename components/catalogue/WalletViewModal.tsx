@@ -81,7 +81,7 @@ export default function WalletViewModal({
             <span className="font-mono text-sm text-ink-dim flex-1 truncate">{truncatedAddress}</span>
             <button
               onClick={copyAddress}
-              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:bg-canvas-lift hover:border-ember transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:brightness-110 hover:border-ember transition-colors"
               title="Copy full address"
             >
               {copied ? (
@@ -94,7 +94,7 @@ export default function WalletViewModal({
               href={`${network.explorerUrl}/address/${walletAddress}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:bg-canvas-lift hover:border-ember transition-colors"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-line-strong bg-canvas-lift hover:brightness-110 hover:border-ember transition-colors"
               title={`View on ${network.name} explorer`}
             >
               <ExternalLink className="w-4 h-4 text-ink-dim" />
@@ -161,7 +161,7 @@ export default function WalletViewModal({
                 onClose();
                 onOpenSendModal('usdc');
               }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-ember to-ember hover:from-ember hover:to-ember text-white font-semibold rounded-xl transition-all shadow-lg"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-ember to-ember hover:brightness-110 text-white font-semibold rounded-xl transition-all shadow-lg"
             >
               <Send className="w-4 h-4" />
               Send {network.tokenSymbol}
@@ -180,7 +180,7 @@ export default function WalletViewModal({
 
           <button
             onClick={onExportWallet}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-canvas-lift hover:bg-canvas-lift text-ink font-medium rounded-xl transition-colors border border-line-strong"
+            className="w-full flex items-center gap-3 px-4 py-3 bg-canvas-lift hover:brightness-110 text-ink font-medium rounded-xl transition-colors border border-line-strong"
           >
             <Download className="w-4 h-4" />
             Export Wallet
