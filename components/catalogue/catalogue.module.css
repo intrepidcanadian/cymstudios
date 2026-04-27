@@ -176,9 +176,11 @@
   object-fit: cover;
   display: block;
 }
-.productCard:hover .cardArt {
-  transform: rotateX(0deg) rotateY(0deg) scale(1.02);
-  box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7);
+@media (hover: hover) {
+  .productCard:hover .cardArt {
+    transform: rotateX(0deg) rotateY(0deg) scale(1.02);
+    box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7);
+  }
 }
 @media (max-width: 640px) {
   .cardArt { transform: rotateX(3deg) rotateY(-4deg); }

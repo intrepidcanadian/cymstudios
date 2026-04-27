@@ -1683,7 +1683,7 @@ export default function GiftCardCatalog() {
             <>
               {/* Left group: balance pill + send + networks */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className={styles.balancePill}>
+                <button type="button" onClick={() => setShowWalletView(true)} className={styles.balancePill} aria-label={`View wallet — ${tokenSymbol} balance`}>
                   <div>
                     <div className={styles.balancePillLabel}>
                       <span className="hidden sm:inline">{tokenSymbol} · {NETWORKS[selectedNetwork]?.name}</span>
@@ -1697,7 +1697,7 @@ export default function GiftCardCatalog() {
                     </div>
                   </div>
                   <div className={styles.balancePillIcon}>◈</div>
-                </div>
+                </button>
                 {ethBalance !== null && ethBalance !== undefined && (
                   <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-canvas-lift/50 rounded-lg border border-line-strong flex-shrink-0">
                     <span className="text-[10px] text-ink-dim">{NETWORKS[selectedNetwork]?.nativeSymbol || 'ETH'}</span>
@@ -1756,12 +1756,12 @@ export default function GiftCardCatalog() {
                 const anyUnhealthy = Object.entries(facilitatorHealth).some(([, healthy]) => healthy === false);
                 if (!anyUnhealthy) return null;
                 return (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help" role="status" aria-label="Facilitator gas low warning">
+                  <button type="button" className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg flex-shrink-0 group relative cursor-help" role="status" aria-label="Facilitator gas low warning">
                     <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
                     <span className="hidden sm:inline text-[10px] text-amber-300 font-medium whitespace-nowrap">
                       {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network: RPC issue' : 'Facilitator: Gas low'}
                     </span>
-                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-canvas-soft border border-line-strong rounded-lg shadow-xl text-xs text-ink-dim w-64 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-canvas-soft border border-line-strong rounded-lg shadow-xl text-xs text-ink-dim w-64 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity pointer-events-none z-50">
                       <p className="font-semibold text-amber-300 mb-1">
                         {Object.values(facilitatorHealthReason).includes('rpc_unreachable') ? 'Network RPC Unreachable' : 'Facilitator Gas Low'}
                       </p>
@@ -1771,7 +1771,7 @@ export default function GiftCardCatalog() {
                           : 'The facilitator wallet that settles your gasless payments is running low on gas. Transactions may take longer to process until it is refilled.'}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 );
               })()}
             </>
