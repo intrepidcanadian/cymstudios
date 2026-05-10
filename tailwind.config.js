@@ -36,9 +36,9 @@ module.exports = {
           strong:  'oklch(0.28 0.012 260 / <alpha-value>)',
         },
         ember: {
-          DEFAULT: 'var(--cat-accent, oklch(0.74 0.18 50))',
-          soft:    'var(--cat-accent-soft, oklch(0.74 0.18 50 / 0.15))',
-          ink:     'var(--cat-accent-ink, oklch(0.22 0.06 50))',
+          DEFAULT: 'var(--cat-accent, oklch(0.55 0.18 250))',
+          soft:    'var(--cat-accent-soft, oklch(0.55 0.18 250 / 0.20))',
+          ink:     'var(--cat-accent-ink, oklch(0.90 0.06 250))',
         },
       },
     },

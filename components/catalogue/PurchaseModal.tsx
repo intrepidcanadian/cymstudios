@@ -1304,7 +1304,7 @@ export default function PurchaseModal({
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="w-full py-2.5 px-4 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-ember text-white text-sm hover:from-purple-600 hover:to-ember transition-all shadow-md"
+                  className="w-full py-2.5 px-4 rounded-xl font-semibold bg-ember-soft hover:brightness-125 text-ember text-sm transition-all"
                 >
                   Connect Wallet
                 </button>
