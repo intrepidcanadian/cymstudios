@@ -861,7 +861,7 @@ export default function PurchaseModal({
                 type="button"
                 onClick={submitOtp}
                 disabled={otpVerifying || otpCode.length !== 6}
-                className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 bg-ember-soft hover:brightness-125 text-ember px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
               >
                 {otpVerifying ? 'Verifying...' : 'Verify & Continue'}
               </button>
@@ -917,22 +917,12 @@ export default function PurchaseModal({
                 <span className="text-ink-dim">Reward Value</span>
                 <span className="text-ink font-medium">{parseFloat(amount).toFixed(2)} {product.currency}</span>
               </div>
-              {product.currency !== 'USD' && rawExchangeRate !== null && (
+              {exchangeRate !== null && (
                 <div className="flex justify-between text-sm">
                   <span className="text-ink-dim">Exchange Rate</span>
-                  <span className="text-ink font-medium">1 {product.currency} = {rawExchangeRate.toFixed(4)} USD</span>
+                  <span className="text-ink font-medium">1 {product.currency} = {exchangeRate.toFixed(4)} {networkConfig?.tokenSymbol}</span>
                 </div>
               )}
-              {product.currency === 'USD' && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-ink-dim">Exchange Rate</span>
-                  <span className="text-ink font-medium">1 USD = 1 {networkConfig?.tokenSymbol}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-ink-dim">Service Fee</span>
-                <span className="text-ink font-medium">{FX_FEE_PERCENT}%{product.currency === 'USD' ? '' : ` (${((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD)`}</span>
-              </div>
               <div className="flex justify-between text-sm pt-2 border-t border-line-strong">
                 <span className="text-ink-dim">You Pay</span>
                 <span className="text-ember font-bold">
@@ -1111,7 +1101,7 @@ export default function PurchaseModal({
                 <button
                   onClick={handleConfirmPurchase}
                   disabled={loading || chainSwitching || !termsAccepted || !facilitatorHealthy}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+                  className="flex-1 bg-ember-soft hover:brightness-125 text-ember px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
                 >
                   {!facilitatorHealthy ? 'Switch network to continue' : chainSwitching ? 'Switching network...' : loading ? paymentStep || 'Processing...' : hasFailedOnce ? 'Retry Payment' : 'Confirm & Pay'}
                 </button>
@@ -1469,28 +1459,14 @@ export default function PurchaseModal({
                     {parseFloat(amount).toFixed(2)} {product.currency}
                   </span>
                 </div>
-                {product.currency !== 'USD' && rawExchangeRate !== null && (
+                {exchangeRate !== null && (
                   <div className="flex justify-between text-ink-dim">
                     <span>Exchange Rate:</span>
                     <span className="font-mono">
-                      1 {product.currency} = {rawExchangeRate.toFixed(4)} USD
+                      1 {product.currency} = {exchangeRate.toFixed(4)} {networkConfig?.tokenSymbol}
                     </span>
                   </div>
                 )}
-                {product.currency !== 'USD' && rawExchangeRate !== null && (
-                  <div className="flex justify-between text-ink-dim">
-                    <span>USD Value:</span>
-                    <span className="font-mono">
-                      {(parseFloat(amount) * rawExchangeRate).toFixed(2)} USD
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between text-ink-dim">
-                  <span>Service Fee ({FX_FEE_PERCENT}%):</span>
-                  <span className="font-mono">
-                    +{((parseFloat(amount) * (rawExchangeRate || 1)) * (FX_FEE_PERCENT / 100)).toFixed(2)} USD
-                  </span>
-                </div>
                 <div className="flex justify-between text-ember font-semibold pt-1 border-t border-ember-soft">
                   <span>Total {networkConfig?.tokenSymbol} Tokens:</span>
                   <span className="font-mono">
@@ -1640,7 +1616,7 @@ export default function PurchaseModal({
             <button
               type="submit"
               disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation}
-              className="flex-1 bg-gradient-to-r from-ember to-ember text-white px-6 py-3 rounded-xl hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="flex-1 bg-ember-soft hover:brightness-125 text-ember px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
             >
               Review & Redeem
             </button>

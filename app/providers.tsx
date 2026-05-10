@@ -1,11 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const Web3Provider = dynamic(
-  () => import('@/components/providers/Web3Provider'),
-  { ssr: false }
-);
+import Web3Provider from '@/components/providers/Web3Provider';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (

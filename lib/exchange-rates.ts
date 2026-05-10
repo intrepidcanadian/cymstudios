@@ -34,45 +34,12 @@ const SUPPORTED_CURRENCIES = [
 interface ExchangeRateCache {
   rates: Record<string, number>; // Currency -> rate (1 USD = X currency)
   timestamp: number;
-  source: 'api' | 'database' | 'fallback';
+  source: 'api' | 'database';
 }
 
 // In-memory cache
 let memoryCache: ExchangeRateCache | null = null;
 
-// Fallback rates (approximate, updated periodically as backup)
-const FALLBACK_RATES: Record<string, number> = {
-  EUR: 0.92,
-  GBP: 0.79,
-  CAD: 1.36,
-  AUD: 1.53,
-  JPY: 149.5,
-  CHF: 0.88,
-  CNY: 7.24,
-  HKD: 7.82,
-  SGD: 1.34,
-  NZD: 1.64,
-  SEK: 10.4,
-  NOK: 10.6,
-  DKK: 6.87,
-  MXN: 17.2,
-  BRL: 4.97,
-  INR: 83.1,
-  KRW: 1320,
-  THB: 35.5,
-  PHP: 55.8,
-  MYR: 4.47,
-  IDR: 15700,
-  ZAR: 18.5,
-  AED: 3.67,
-  SAR: 3.75,
-  TRY: 32.1,
-  PLN: 3.95,
-  CZK: 23.2,
-  HUF: 355,
-  ILS: 3.65,
-  TWD: 31.5
-};
 
 /**
  * Fetch fresh exchange rates from API Layer
@@ -204,7 +171,7 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
  * 1. Check in-memory cache (valid for maxAge, default 24h)
  * 2. Check database cache (valid for maxAge)
  * 3. Fetch from API Layer
- * 4. Fall back to hardcoded rates if all else fails
+ * 4. Use stale cache if available, otherwise throw
  *
  * @param maxAge - Maximum cache age in ms (default: CACHE_DURATION_MS = 24h).
  *                 Pass FRESH_CACHE_MAX_AGE_MS (30 min) at settlement time.
@@ -254,13 +221,8 @@ async function getExchangeRates(maxAge: number = CACHE_DURATION_MS): Promise<Exc
       return memoryCache;
     }
 
-    // 4c. Use fallback rates
-    console.warn('[ExchangeRates] Using fallback rates');
-    return {
-      rates: FALLBACK_RATES,
-      timestamp: now,
-      source: 'fallback'
-    };
+    // 4c. No rates available — service is unavailable
+    throw new Error('Exchange rate service is unavailable');
   }
 }
 
@@ -278,10 +240,7 @@ export async function getExchangeRate(currency: string): Promise<number> {
   const rate = rates[currency];
 
   if (!rate) {
-    console.warn(`[ExchangeRates] Unknown currency: ${currency}, using fallback`);
-    const fallback = FALLBACK_RATES[currency];
-    if (fallback) return fallback;
-    throw new Error(`Unsupported currency: ${currency}`);
+    throw new Error(`Exchange rate unavailable for currency: ${currency}`);
   }
 
   return rate;
@@ -346,10 +305,10 @@ export async function getUsdcAmountFresh(amount: number, currency: string): Prom
   }
 
   const { rates } = await getExchangeRates(FRESH_CACHE_MAX_AGE_MS);
-  const rate = rates[currency] || FALLBACK_RATES[currency];
+  const rate = rates[currency];
 
   if (!rate) {
-    throw new Error(`Unsupported currency: ${currency}`);
+    throw new Error(`Exchange rate unavailable for currency: ${currency}`);
   }
 
   const usdAmount = amount / rate;

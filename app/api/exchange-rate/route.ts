@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Only allow supported currencies
-    const supportedCurrencies = ['USD', 'CAD', 'HKD', 'GBP'];
+    const supportedCurrencies = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'];
     if (!supportedCurrencies.includes(fromCurrency.toUpperCase())) {
       return NextResponse.json(
         { success: false, error: `Unsupported currency: ${fromCurrency}. Supported: ${supportedCurrencies.join(', ')}` },

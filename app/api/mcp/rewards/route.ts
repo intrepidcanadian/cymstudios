@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 const PROTOCOL_VERSION = '2024-11-05'
 const SERVER_NAME = 'cym-rewards'
 const SERVER_VERSION = '1.0.0'
-const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP']
+const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP', 'EUR']
 
 // ==========================================================================
 // Tool definitions — advertised via tools/list, dispatched by tools/call.
@@ -225,6 +225,33 @@ const COUNTRY_MAP: Record<string, string> = {
   uk: 'United Kingdom',
   'united kingdom': 'United Kingdom',
   'great britain': 'United Kingdom',
+  de: 'Germany',
+  germany: 'Germany',
+  fr: 'France',
+  france: 'France',
+  it: 'Italy',
+  italy: 'Italy',
+  es: 'Spain',
+  spain: 'Spain',
+  nl: 'Netherlands',
+  netherlands: 'Netherlands',
+  'the netherlands': 'Netherlands',
+  pt: 'Portugal',
+  portugal: 'Portugal',
+  ie: 'Ireland',
+  ireland: 'Ireland',
+  at: 'Austria',
+  austria: 'Austria',
+  be: 'Belgium',
+  belgium: 'Belgium',
+  pl: 'Poland',
+  poland: 'Poland',
+  se: 'Sweden',
+  sweden: 'Sweden',
+  dk: 'Denmark',
+  denmark: 'Denmark',
+  fi: 'Finland',
+  finland: 'Finland',
 }
 
 function normaliseCountry(raw?: string): string | undefined {

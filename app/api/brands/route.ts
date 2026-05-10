@@ -7,7 +7,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Only return cards in currencies we support for FX conversion to USDC
-const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP'];
+const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'];
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,6 +58,33 @@ export async function GET(req: NextRequest) {
         'hongkong': 'Hong Kong',
         'ca': 'Canada',
         'canada': 'Canada',
+        'de': 'Germany',
+        'germany': 'Germany',
+        'fr': 'France',
+        'france': 'France',
+        'it': 'Italy',
+        'italy': 'Italy',
+        'es': 'Spain',
+        'spain': 'Spain',
+        'nl': 'Netherlands',
+        'netherlands': 'Netherlands',
+        'the netherlands': 'Netherlands',
+        'pt': 'Portugal',
+        'portugal': 'Portugal',
+        'ie': 'Ireland',
+        'ireland': 'Ireland',
+        'at': 'Austria',
+        'austria': 'Austria',
+        'be': 'Belgium',
+        'belgium': 'Belgium',
+        'pl': 'Poland',
+        'poland': 'Poland',
+        'se': 'Sweden',
+        'sweden': 'Sweden',
+        'dk': 'Denmark',
+        'denmark': 'Denmark',
+        'fi': 'Finland',
+        'finland': 'Finland',
       };
 
       // Use mapped name if available, otherwise use original
