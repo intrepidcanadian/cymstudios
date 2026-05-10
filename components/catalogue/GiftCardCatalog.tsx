@@ -250,7 +250,7 @@ const ProductCard = memo(function ProductCard({
         {/* View Button */}
         <button
           onClick={() => onSelect(product)}
-          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-ember hover:brightness-110 text-white font-semibold text-xs sm:text-sm rounded-lg transition-colors shadow-sm"
+          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] bg-ember-soft hover:brightness-125 text-ember font-semibold text-xs sm:text-sm rounded-lg transition-colors"
           aria-label={`View and redeem ${product.brand_name}`}
         >
           <span className="sm:hidden">View</span>
@@ -359,6 +359,9 @@ export default function GiftCardCatalog() {
   const [brands, setBrands] = useState<BrandProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [allCountries, setAllCountries] = useState<string[]>([]);
+  const [allCurrencies, setAllCurrencies] = useState<string[]>([]);
+  const [countriesByCurrency, setCountriesByCurrency] = useState<Record<string, string[]>>({});
   const [selectedProduct, setSelectedProduct] = useState<BrandProduct | null>(null);
 
   // Tabs
@@ -440,7 +443,8 @@ export default function GiftCardCatalog() {
       .then(r => r.json())
       .then(data => {
         if (data.success && data.rate) {
-          setFxRateCache(prev => ({ ...prev, [currency]: data.rate }));
+          const fee = 1 + 0.015; // 1.5% for non-USD
+          setFxRateCache(prev => ({ ...prev, [currency]: data.rate * fee }));
         }
       })
       .catch(() => { /* display-only — silent fail */ });
@@ -455,15 +459,13 @@ export default function GiftCardCatalog() {
 
   // Helper: estimate token cost for a denomination amount
   const estimateTokenCost = useCallback((denomAmount: number, currency: string): string | null => {
-    const fee = currency === 'USD' ? 0.005 : 0.015; // 0.5% USD, 1.5% non-USD
     if (currency === 'USD') {
-      return (Math.ceil(denomAmount * (1 + fee) * 100) / 100).toFixed(2);
+      const fee = 1 + 0.005; // 0.5% for USD
+      return (Math.ceil(denomAmount * fee * 100) / 100).toFixed(2);
     }
-    const rate = fxRateCache[currency];
+    const rate = fxRateCache[currency]; // already includes 1.5% fee
     if (!rate) return null;
-    // rate is "1 fromCurrency = rate USD" (from /api/exchange-rate), so multiply
-    const usdValue = denomAmount * rate;
-    return (Math.ceil(usdValue * (1 + fee) * 100) / 100).toFixed(2);
+    return (Math.ceil(denomAmount * rate * 100) / 100).toFixed(2);
   }, [fxRateCache]);
 
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
@@ -562,6 +564,31 @@ export default function GiftCardCatalog() {
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch all filter options once on mount (unfiltered)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/brands');
+        const result = await res.json();
+        const data = Array.isArray(result.data) ? result.data : Array.isArray(result) ? result : [];
+        setAllCountries(Array.from(new Set(data.map((b: BrandProduct) => b.country_name).filter((c: string | null): c is string => !!c))).sort() as string[]);
+        setAllCurrencies(Array.from(new Set(data.map((b: BrandProduct) => b.currency).filter((c: string | null): c is string => !!c))).sort() as string[]);
+        const ccMap: Record<string, Set<string>> = {};
+        data.forEach((b: BrandProduct) => {
+          if (b.currency && b.country_name) {
+            if (!ccMap[b.currency]) ccMap[b.currency] = new Set();
+            ccMap[b.currency].add(b.country_name);
+          }
+        });
+        const ccSorted: Record<string, string[]> = {};
+        Object.keys(ccMap).sort().forEach(cur => {
+          ccSorted[cur] = Array.from(ccMap[cur]).sort();
+        });
+        setCountriesByCurrency(ccSorted);
+      } catch { /* filter options will fall back to filtered set */ }
+    })();
+  }, []);
+
   // Fetch brands
   useEffect(() => {
     fetchBrands();
@@ -636,8 +663,11 @@ export default function GiftCardCatalog() {
   const allUniqueBrands = Array.from(new Set(brandsArray.map(b => b.brand_name))).sort();
 
   // Derive filter options dynamically from fetched brands data
-  const availableCountries = Array.from(new Set(brandsArray.map(b => b.country_name).filter((c): c is string => !!c))).sort();
-  const availableCurrencies = Array.from(new Set(brandsArray.map(b => b.currency).filter((c): c is string => !!c))).sort();
+  const filteredCountries = Array.from(new Set(brandsArray.map(b => b.country_name).filter((c): c is string => !!c))).sort();
+  const filteredCurrencies = Array.from(new Set(brandsArray.map(b => b.currency).filter((c): c is string => !!c))).sort();
+  const hiddenCountries = new Set(['European Union', 'Europe']);
+  const availableCountries = (allCountries.length > 0 ? allCountries : filteredCountries).filter(c => !hiddenCountries.has(c));
+  const availableCurrencies = allCurrencies.length > 0 ? allCurrencies : filteredCurrencies;
 
   // Apply all filters — exclude Mastercard products from gift cards tab
   let filteredProducts = brandsArray.filter(b => !b.brand_name.toLowerCase().includes('mastercard'));
@@ -830,33 +860,40 @@ export default function GiftCardCatalog() {
         </div>
       )}
 
-      {/* Country Filter */}
+      {/* Country Filter (grouped by currency) */}
       <div>
-        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Country</h3>
+        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Region</h3>
         <select
           value={countryFilter}
-          onChange={(e) => setCountryFilter(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCountryFilter(val);
+            const currencyOrder = ['USD', 'CAD', 'EUR', 'GBP', 'HKD'];
+            const matchedCurrency = currencyOrder.find(cur =>
+              countriesByCurrency[cur]?.some(c => c === val)
+            );
+            if (val === 'all') {
+              setCurrencyFilter('all');
+            } else if (matchedCurrency) {
+              setCurrencyFilter(matchedCurrency);
+            }
+          }}
           className="w-full px-4 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm font-medium text-ink bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
         >
-          <option value="all">All Countries</option>
-          {availableCountries.map(country => (
-            <option key={country} value={country}>{getCountryFlag(country)} {country}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Currency Filter */}
-      <div>
-        <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b-2 border-line-strong">Currency</h3>
-        <select
-          value={currencyFilter}
-          onChange={(e) => setCurrencyFilter(e.target.value)}
-          className="w-full px-4 py-3 min-h-[44px] border-2 border-line-strong rounded-lg text-sm font-medium text-ink bg-canvas-soft focus:ring-2 focus:ring-ember focus:border-ember outline-none hover:border-line-strong transition-colors"
-        >
-          <option value="all">All Currencies</option>
-          {availableCurrencies.map(currency => (
-            <option key={currency} value={currency}>{currency}</option>
-          ))}
+          <option value="all">All Regions</option>
+          {Object.keys(countriesByCurrency).length > 0 ? (
+            ['USD', 'CAD', 'EUR', 'GBP', 'HKD'].filter(cur => countriesByCurrency[cur]).map(cur => (
+              <optgroup key={cur} label={cur}>
+                {countriesByCurrency[cur].filter(c => !hiddenCountries.has(c)).map(country => (
+                  <option key={`${cur}-${country}`} value={country}>{getCountryFlag(country)} {country}</option>
+                ))}
+              </optgroup>
+            ))
+          ) : (
+            availableCountries.map(country => (
+              <option key={country} value={country}>{getCountryFlag(country)} {country}</option>
+            ))
+          )}
         </select>
       </div>
 
@@ -1336,7 +1373,7 @@ export default function GiftCardCatalog() {
 
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="w-full px-4 py-2.5 min-h-[40px] bg-ember hover:brightness-110 text-white font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                            className="w-full px-4 py-2.5 min-h-[40px] bg-ember-soft hover:brightness-125 text-ember font-semibold text-sm rounded-lg transition-colors"
                           >
                             View & Redeem
                           </button>
@@ -1594,7 +1631,7 @@ export default function GiftCardCatalog() {
                           const maxVal = selectedProduct!.value_restrictions?.maxVal || selectedProduct!.value_restrictions?.max;
                           return (minVal && val < minVal) || (maxVal && val > maxVal) || false;
                         })()}
-                        className="px-5 py-2.5 min-h-[42px] bg-ember hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
+                        className="px-5 py-2.5 min-h-[42px] bg-ember-soft hover:brightness-125 text-ember disabled:opacity-50 disabled:cursor-not-allowed font-bold rounded-lg transition-colors text-sm whitespace-nowrap"
                       >
                         Buy with {NETWORKS[selectedNetwork]?.tokenSymbol}
                       </button>
@@ -1612,7 +1649,7 @@ export default function GiftCardCatalog() {
                     if (!purchaseInitialAmount) setPurchaseInitialAmount('');
                     setShowPurchaseModal(true);
                   }}
-                  className="w-full px-6 py-3 min-h-[48px] bg-ember hover:brightness-110 text-white font-bold rounded-lg transition-colors"
+                  className="w-full px-6 py-3 min-h-[48px] bg-ember-soft hover:brightness-125 text-ember font-bold rounded-lg transition-colors"
                 >
                   Redeem with Tokens
                   <span className="block text-xs font-normal opacity-80 mt-0.5">
