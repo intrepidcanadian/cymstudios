@@ -30,7 +30,7 @@ const nextConfig = {
               "font-src 'self' data:",
               "connect-src 'self' https:",
               "frame-src 'self' https://auth.privy.io https://*.privy.io https://www.youtube.com https://youtube.com",
-              "frame-ancestors 'self' https://ginsengswap.app https://*.ginsengswap.app http://localhost:3000",
+              "frame-ancestors 'self' https://ginsengswap.org https://*.ginsengswap.org http://localhost:3000",
             ].join('; '),
           },
           {
