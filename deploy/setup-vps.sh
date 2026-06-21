@@ -263,13 +263,27 @@ if [ "$dns_ready" = "y" ] || [ "$dns_ready" = "Y" ]; then
     echo "Full Nginx config with SSL applied."
   fi
 
-  # Auto-renew SSL
-  echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'" | crontab -
+  # Auto-renew SSL (merge-safe: preserve any existing crontab entries)
+  ( crontab -l 2>/dev/null | grep -v 'certbot renew'; \
+    echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'" ) | crontab -
   echo "SSL auto-renewal cron job added."
 else
   echo "    Skipping SSL. Run this later:"
   echo "    certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
 fi
+
+# ============================================
+# 14b. App cron jobs (catalogue sync + stuck-order resolver)
+# ============================================
+echo ""
+echo "==> Installing app cron jobs..."
+chmod +x "$APP_DIR/deploy/cron-hit.sh"
+# Merge-safe: drop our previous entries (marked with CYM-CRON) then re-add.
+( crontab -l 2>/dev/null | grep -v 'CYM-CRON'; \
+  echo "0 4 * * * $APP_DIR/deploy/cron-hit.sh /api/sync-brands >> /var/log/cym-sync-brands.log 2>&1 # CYM-CRON sync-brands"; \
+  echo "*/15 * * * * $APP_DIR/deploy/cron-hit.sh /api/cron/resolve-pending-orders >> /var/log/cym-resolve-orders.log 2>&1 # CYM-CRON resolve-orders" \
+) | crontab -
+echo "App cron jobs added: brands sync (daily 04:00), order resolver (every 15 min)."
 
 # ============================================
 # 15. Firewall
