@@ -15,9 +15,22 @@
 #   - Sets up PM2 with auto-start on reboot (as cymapp user)
 #   - Configures Nginx reverse proxy
 #   - Gets SSL certificate from Let's Encrypt
+#   - Installs app cron jobs (catalogue sync + stuck-order resolver)
 #   - Hardens SSH and enables firewall
 #
 # After setup, deploy updates with:  ./deploy/deploy.sh root@your-vps-ip
+#
+# Cron jobs (installed by step 14b, run via deploy/cron-hit.sh):
+#   - /api/sync-brands                  daily 04:00 — refreshes the catalogue
+#     from xRemit. MUST run within the rebate freshness window (48h, see
+#     getEffectiveFeePercent in lib/exchange-rates.ts) or the USD margin rebate
+#     silently disables itself for all products.
+#   - /api/cron/resolve-pending-orders  every 15 min — finalizes stuck/timed-out
+#     orders and reconciles the rebate (rebate_shortfall_percent).
+#   cron-hit.sh resolves CRON_SECRET from the app's env files at runtime, so the
+#   secret is NEVER hardcoded in the crontab. Do not add crontab lines that embed
+#   the bearer token in plaintext; if one leaks, rotate CRON_SECRET in .env.local
+#   (+ dedupe .env) and `pm2 restart cymstudio --update-env`.
 
 set -euo pipefail
 
