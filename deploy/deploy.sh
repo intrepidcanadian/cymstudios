@@ -12,14 +12,17 @@
 set -euo pipefail
 
 # Configuration — change these to match your VPS
-VPS_USER="root"
-VPS_HOST="${1:-your-vps-ip}"  # Pass as argument or edit this
+# Accepts either "host" or "user@host"; defaults the user to root when omitted.
+VPS_TARGET="${1:-your-vps-ip}"
+if [[ "$VPS_TARGET" != *@* ]]; then
+  VPS_TARGET="root@${VPS_TARGET}"
+fi
 APP_DIR="/var/www/cymstudio"
 BRANCH="main"
 
-echo "==> Deploying CYM Studio to ${VPS_USER}@${VPS_HOST}..."
+echo "==> Deploying CYM Studio to ${VPS_TARGET}..."
 
-ssh "${VPS_USER}@${VPS_HOST}" bash -s <<'REMOTE'
+ssh "${VPS_TARGET}" bash -s <<'REMOTE'
 set -euo pipefail
 
 APP_DIR="/var/www/cymstudio"
