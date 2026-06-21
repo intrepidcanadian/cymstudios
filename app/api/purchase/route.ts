@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     logger.info('[Purchase] Verifying product:', productIdNumber);
     const { data: productData, error: productError } = await supabase
       .from('brands')
-      .select('product_id, brand_name, country_name, currency, product_image, denominations, value_restrictions')
+      .select('product_id, brand_name, country_name, currency, product_image, denominations, value_restrictions, discount')
       .eq('product_id', productIdNumber)
       .single();
 
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
     if (!paymentHeader) {
       let usdcAmountFloat: number;
       try {
-        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency);
+        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency, productData.discount ?? 0);
         logger.info(`[Purchase] Estimate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC (cached rate)`);
       } catch (conversionError) {
         logger.error('[Purchase] Currency conversion failed');
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
     // Settlement path: use fresh exchange rate (max 30 min old) for accurate pricing
     let usdcAmountFloat: number;
     try {
-      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency);
+      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency, productData.discount ?? 0);
       logger.info(`[Purchase] Fresh rate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC`);
     } catch (conversionError) {
       logger.error('[Purchase] Currency conversion failed at settlement');
@@ -402,8 +402,9 @@ export async function POST(request: NextRequest) {
       logger.info(`[x402] Payment network: ${paymentNetworkConfig.name} (${paymentNetworkConfig.tokenSymbol}), strategy: ${paymentStrategy}`);
 
       const { payload } = paymentData;
-      // Settlement amount = fresh rate + 1.5% merchant fee.
-      // User signed based on the 402 estimate (24h cache + fee), so their
+      // Settlement amount = fresh rate + effective fee (0.5% USD / 1.5% non-USD,
+      // minus our 30% discount-margin rebate on USD cards).
+      // User signed based on the 402 estimate (24h cache + same fee), so their
       // signed amount will typically be >= the fresh settlement amount.
       const settlementAmount = Math.floor(usdcAmountFloat * 1000000).toString();
 

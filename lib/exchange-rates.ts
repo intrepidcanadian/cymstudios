@@ -17,6 +17,10 @@ const API_LAYER_URL = 'https://api.apilayer.com/currency_data/live';
 const FX_FEE_PERCENT = 1.5;
 const FX_FEE_PERCENT_USD = 0.5;
 
+// Our share of a product's voucher discount (the rest goes to the upstream partner).
+// For USD cards we rebate this realized margin against the service fee.
+const PARTNER_REVENUE_SHARE = 0.30;
+
 // Cache duration: 24 hours for display/estimation (~30 API calls/month)
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 
@@ -263,24 +267,45 @@ export async function convertToUsd(amount: number, currency: string): Promise<nu
 }
 
 /**
- * Get the fee percentage for a given currency.
- * USD: 0.4% (no FX risk). Non-USD: 1.5%.
+ * Get the base fee percentage for a given currency, before any margin rebate.
+ * USD: 0.5% (no FX risk). Non-USD: 1.5%.
  */
 function getFeePercent(currency: string): number {
   return (currency === 'USD' || currency === 'USDC') ? FX_FEE_PERCENT_USD : FX_FEE_PERCENT;
 }
 
 /**
+ * Effective fee percentage after rebating our share of the product's voucher discount.
+ *
+ * USD cards only: we keep 30% of the discount as margin, and apply that realized
+ * margin against the 0.5% service fee (floored at 0% — any excess margin stays profit).
+ * Non-USD fees are unaffected (FX risk is covered by the full 1.5%).
+ *
+ * @param currency - Source currency code
+ * @param discountPercent - Product voucher discount in whole percent (e.g. 2.8 = 2.8%)
+ */
+function getEffectiveFeePercent(currency: string, discountPercent: number = 0): number {
+  const baseFee = getFeePercent(currency);
+  if (currency === 'USD' || currency === 'USDC') {
+    const realizedMargin = Math.max(0, discountPercent || 0) * PARTNER_REVENUE_SHARE;
+    return Math.max(0, baseFee - realizedMargin);
+  }
+  return baseFee;
+}
+
+/**
  * Get USDC amount for a given currency amount (display/estimate).
- * Uses cached rate (up to 24h old) + merchant fee (0.4% USD, 1.5% non-USD).
+ * Uses cached rate (up to 24h old) + merchant fee (0.5% USD, 1.5% non-USD),
+ * minus our 30% discount-margin rebate on USD cards.
  *
  * @param amount - Amount in source currency (gift card value)
  * @param currency - Source currency code (e.g., 'USD', 'HKD', 'EUR')
- * @returns Estimated USDC amount with merchant fee applied
+ * @param discountPercent - Product voucher discount in whole percent (USD rebate only)
+ * @returns Estimated USDC amount with effective fee applied
  */
-export async function getUsdcAmount(amount: number, currency: string): Promise<number> {
+export async function getUsdcAmount(amount: number, currency: string, discountPercent: number = 0): Promise<number> {
   const usdAmount = await convertToUsd(amount, currency);
-  const feePct = getFeePercent(currency);
+  const feePct = getEffectiveFeePercent(currency, discountPercent);
   const usdcAmount = usdAmount * (1 + feePct / 100);
 
   console.log(`[ExchangeRates] ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (${feePct}% fee, cached rate)`);
@@ -290,14 +315,15 @@ export async function getUsdcAmount(amount: number, currency: string): Promise<n
 
 /**
  * Get USDC amount using a fresh exchange rate (max 30 min old).
- * Used at settlement time — the merchant fee is charged on the current rate.
+ * Used at settlement time — the effective fee is charged on the current rate.
  *
  * @param amount - Amount in source currency (gift card value)
  * @param currency - Source currency code
- * @returns USDC amount with merchant fee applied on fresh rate
+ * @param discountPercent - Product voucher discount in whole percent (USD rebate only)
+ * @returns USDC amount with effective fee applied on fresh rate
  */
-export async function getUsdcAmountFresh(amount: number, currency: string): Promise<number> {
-  const feePct = getFeePercent(currency);
+export async function getUsdcAmountFresh(amount: number, currency: string, discountPercent: number = 0): Promise<number> {
+  const feePct = getEffectiveFeePercent(currency, discountPercent);
   const feeMultiplier = 1 + (feePct / 100);
 
   if (currency === 'USD' || currency === 'USDC') {
