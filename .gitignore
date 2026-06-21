@@ -39,3 +39,10 @@ ginsengswap-frontend/
 
 # Supabase migrations (managed locally / via Supabase dashboard)
 supabase/migrations/
+
+# editor / tooling config
+.claude/
+.vscode/
+
+# local app config
+app.json
