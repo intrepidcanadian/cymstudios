@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
+import { getRebateShortfallPercent } from '@/lib/exchange-rates';
 import { sendVoucherEmail, sendOrderFailureAlert, sendOrderCompletedAlert } from '@/lib/email';
 import { NETWORKS, getNetwork } from '@/config/networks';
 import { logger } from '@/lib/logger';
@@ -142,7 +143,23 @@ async function resolveOrder(supabase: any, order: any): Promise<ResolutionSummar
 
   if (xremitData?.status === 'processed' && xremitData.vouchers?.length > 0) {
     // Voucher available — mark complete and email user
-    const updateData = processXremitTransaction(xremitData);
+    const updateData: Record<string, any> = processXremitTransaction(xremitData);
+
+    // Rebate reconciliation (#3): same check as the webhook path — flag when the
+    // USD fee rebate we granted exceeded the margin we actually realized.
+    const shortfall = getRebateShortfallPercent(
+      order.currency,
+      order.service_fee_percent,
+      xremitData.voucherDiscountPercent,
+      xremitData.partnerRevenueSharePercent,
+    );
+    if (shortfall !== null) {
+      updateData.rebate_shortfall_percent = shortfall;
+      if (shortfall > 0.001) {
+        logger.warn(`[CronResolve] Rebate over-grant on ${orderId}: shortfall ${shortfall.toFixed(3)}% of face value.`);
+      }
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('orders')
       .update(updateData)

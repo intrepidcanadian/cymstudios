@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendVoucherEmail, sendOrderFailureAlert } from '@/lib/email';
+import { getRebateShortfallPercent } from '@/lib/exchange-rates';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -206,6 +207,23 @@ export async function POST(request: NextRequest) {
     // Currency conversions (store as JSONB)
     if (webhookData.currencyConversions) {
       updateData.currency_conversions = webhookData.currencyConversions;
+    }
+
+    // Rebate reconciliation (#3): compare the USD fee rebate we GRANTED at
+    // purchase against the margin we actually REALIZED now that xRemit has
+    // returned the real discount + revenue-share. A positive shortfall means we
+    // waived more fee than we earned — alert ops so stale-discount leaks surface.
+    const shortfall = getRebateShortfallPercent(
+      existingOrder.currency,
+      existingOrder.service_fee_percent,
+      webhookData.voucherDiscountPercent,
+      webhookData.partnerRevenueSharePercent,
+    );
+    if (shortfall !== null) {
+      updateData.rebate_shortfall_percent = shortfall;
+      if (shortfall > 0.001) {
+        logger.warn(`[Webhook] Rebate over-grant on ${orderId}: shortfall ${shortfall.toFixed(3)}% of face value (granted rebate exceeded realized margin).`);
+      }
     }
 
     // Product information

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
-import { getUsdcAmount, getUsdcAmountFresh, convertToUsd } from '@/lib/exchange-rates';
+import { getUsdcAmount, getUsdcAmountFresh, convertToUsd, getEffectiveFeePercent } from '@/lib/exchange-rates';
 import { generateOrderToken } from '@/lib/auth-token';
 import { sendOrderDelayedEmail, sendOrderCompletedAlert } from '@/lib/email';
 import { logger } from '@/lib/logger';
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     logger.info('[Purchase] Verifying product:', productIdNumber);
     const { data: productData, error: productError } = await supabase
       .from('brands')
-      .select('product_id, brand_name, country_name, currency, product_image, denominations, value_restrictions, discount')
+      .select('product_id, brand_name, country_name, currency, product_image, denominations, value_restrictions, discount, cached_at')
       .eq('product_id', productIdNumber)
       .single();
 
@@ -210,6 +210,19 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('[Purchase] Product verified:', productData.brand_name);
+
+    // Rebate guardrail (#1): only rebate the USD fee against a FRESH catalogue
+    // discount. If the brand row hasn't been synced recently, the stored discount
+    // may no longer match what xRemit will actually grant — so fall back to no
+    // rebate (full fee) rather than risk waiving more than we earn.
+    const REBATE_MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48h
+    const discountFresh = productData.cached_at
+      ? (Date.now() - new Date(productData.cached_at).getTime()) < REBATE_MAX_AGE_MS
+      : false;
+    const rebateDiscount = discountFresh ? (productData.discount ?? 0) : 0;
+    if (!discountFresh && (productData.discount ?? 0) > 0) {
+      logger.warn(`[Purchase] Stale catalogue discount for ${productIdNumber} (cached_at=${productData.cached_at}) — applying full fee, no rebate.`);
+    }
 
     // Validate price against product denominations or value restrictions.
     // Prevents charging users (and burning facilitator gas on refunds) for amounts
@@ -309,7 +322,7 @@ export async function POST(request: NextRequest) {
     if (!paymentHeader) {
       let usdcAmountFloat: number;
       try {
-        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency, productData.discount ?? 0);
+        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency, rebateDiscount);
         logger.info(`[Purchase] Estimate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC (cached rate)`);
       } catch (conversionError) {
         logger.error('[Purchase] Currency conversion failed');
@@ -357,7 +370,7 @@ export async function POST(request: NextRequest) {
     // Settlement path: use fresh exchange rate (max 30 min old) for accurate pricing
     let usdcAmountFloat: number;
     try {
-      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency, productData.discount ?? 0);
+      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency, rebateDiscount);
       logger.info(`[Purchase] Fresh rate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC`);
     } catch (conversionError) {
       logger.error('[Purchase] Currency conversion failed at settlement');
@@ -614,7 +627,12 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         payment_from: paymentFrom.toLowerCase(),
         payment_network: paymentNetworkConfig.x402Network,
-        payment_value: paymentValue
+        payment_value: paymentValue,
+        // Rebate accounting (#2): record the effective fee we charged and the
+        // catalogue discount it was based on, so the program's cost is auditable
+        // and reconcilable against realized margin at fulfillment.
+        service_fee_percent: getEffectiveFeePercent(effectiveCurrency, rebateDiscount),
+        discount_applied: rebateDiscount,
       })
       .select()
       .single();
@@ -629,6 +647,7 @@ export async function POST(request: NextRequest) {
           'order_id', 'product_id', 'brand_name', 'country_name', 'currency',
           'price', 'user_id', 'user_email', 'status',
           'payment_from', 'payment_network', 'payment_value',
+          'service_fee_percent', 'discount_applied',
         ],
       });
       return NextResponse.json(

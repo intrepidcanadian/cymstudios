@@ -21,6 +21,11 @@ const FX_FEE_PERCENT_USD = 0.5;
 // For USD cards we rebate this realized margin against the service fee.
 const PARTNER_REVENUE_SHARE = 0.30;
 
+// Safety buffer on the rebate: we only pass through 90% of the computed margin,
+// so normal catalogue-sync drift (discount slightly stale) never makes the rebate
+// exceed what we actually realize at fulfillment.
+const REBATE_SAFETY_FACTOR = 0.90;
+
 // Cache duration: 24 hours for display/estimation (~30 API calls/month)
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 
@@ -284,13 +289,41 @@ function getFeePercent(currency: string): number {
  * @param currency - Source currency code
  * @param discountPercent - Product voucher discount in whole percent (e.g. 2.8 = 2.8%)
  */
-function getEffectiveFeePercent(currency: string, discountPercent: number = 0): number {
+export function getEffectiveFeePercent(currency: string, discountPercent: number = 0): number {
   const baseFee = getFeePercent(currency);
   if (currency === 'USD' || currency === 'USDC') {
-    const realizedMargin = Math.max(0, discountPercent || 0) * PARTNER_REVENUE_SHARE;
+    const realizedMargin = Math.max(0, discountPercent || 0) * PARTNER_REVENUE_SHARE * REBATE_SAFETY_FACTOR;
     return Math.max(0, baseFee - realizedMargin);
   }
   return baseFee;
+}
+
+/**
+ * Reconcile the rebate we GRANTED at purchase time against the margin we
+ * actually REALIZED at fulfillment (known only once xRemit returns the real
+ * discount + revenue-share). Returns the shortfall in percentage-of-face-value:
+ *   > 0  → we waived more fee than we earned in margin (a net loss on the rebate)
+ *   <= 0 → rebate fully covered by realized margin
+ * Returns null when reconciliation doesn't apply (non-USD, or missing inputs).
+ *
+ * @param currency - Order currency
+ * @param serviceFeePercent - The effective fee % we charged (stored on the order)
+ * @param voucherDiscountPercent - Actual discount xRemit applied (whole percent)
+ * @param partnerRevenueSharePercent - Our actual share of that discount (whole percent)
+ */
+export function getRebateShortfallPercent(
+  currency: string,
+  serviceFeePercent: number | null | undefined,
+  voucherDiscountPercent: number | null | undefined,
+  partnerRevenueSharePercent: number | null | undefined,
+): number | null {
+  if (currency !== 'USD' && currency !== 'USDC') return null;
+  if (serviceFeePercent == null || voucherDiscountPercent == null || partnerRevenueSharePercent == null) {
+    return null;
+  }
+  const grantedRebate = FX_FEE_PERCENT_USD - serviceFeePercent;
+  const realizedMargin = (voucherDiscountPercent * partnerRevenueSharePercent) / 100;
+  return grantedRebate - realizedMargin;
 }
 
 /**
