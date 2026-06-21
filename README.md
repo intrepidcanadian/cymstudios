@@ -9,7 +9,7 @@ Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winner
 
 > **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
 >
-> 🎬 **Videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) · [Builder intro](https://youtu.be/xy3z2ZAp6aU)
+> 🎬 **Videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) · [Builder intro](https://youtu.be/xy3z2ZAp6aU) · [BSL Non-Korean World Champions](https://youtu.be/2GBAga5YZ_k)
 >
 > 📈 **Tracked in** Electric Capital's [Open Dev Data](https://github.com/electric-capital/open-dev-data) under the Conflux ecosystem — see [PR #2836](https://github.com/electric-capital/open-dev-data/pull/2836).
 

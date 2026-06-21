@@ -31,7 +31,7 @@ What's different:
 
 Live at [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · Chat at [cymstudio.app/chat](https://cymstudio.app/chat) · Agent docs at [cymstudio.app/agents](https://cymstudio.app/agents).
 
-🎬 **Watch the videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) (what CYM Rewards is) · [Builder intro](https://youtu.be/xy3z2ZAp6aU) (who's behind it)
+🎬 **Watch the videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) (what CYM Rewards is) · [Builder intro](https://youtu.be/xy3z2ZAp6aU) (who's behind it) · [BSL Non-Korean World Champions](https://youtu.be/2GBAga5YZ_k) (June 2026)
 
 📈 **Tracked in Electric Capital's [Open Dev Data](https://github.com/electric-capital/open-dev-data)** under the Conflux ecosystem — see [PR #2836](https://github.com/electric-capital/open-dev-data/pull/2836).
 
@@ -369,6 +369,7 @@ npm run build && npm start
 
 - **Project intro**: [youtu.be/0VJXfjlGKjo](https://youtu.be/0VJXfjlGKjo) — what CYM Rewards is and how the gasless USDT0 flow works
 - **Builder intro** (30–60 sec): [youtu.be/xy3z2ZAp6aU](https://youtu.be/xy3z2ZAp6aU) — Tony's participant intro
+- **BSL Non-Korean World Champions** (June 2026): [youtu.be/2GBAga5YZ_k](https://youtu.be/2GBAga5YZ_k)
 - **Live catalogue**: [https://cymstudio.app/catalogue](https://cymstudio.app/catalogue)
 - **AI concierge**: [https://cymstudio.app/chat](https://cymstudio.app/chat)
 - **Agent docs**: [https://cymstudio.app/agents](https://cymstudio.app/agents)
