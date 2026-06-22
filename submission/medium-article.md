@@ -27,6 +27,14 @@ And the currency conversion is the sneaky part. On one transfer PayPal valued my
 
 It isn't only sending. **PayPal taxes money coming in, too**: a **$5 tip** a viewer sent me landed as **$4.51** — PayPal kept **$0.49**, about **10%**, just to receive it.
 
+> **Why the numbers come out this way — PayPal's published rates**
+> - **International personal transfer:** ~5% (with a minimum fee), **plus a 3–4% currency-conversion spread** baked into the exchange rate — where you never see it.
+> - **Receiving a commercial payment:** 2.9% + $0.30 domestic, **4.4% + $0.30 international** — yes, money coming *in* is taxed too.
+> - **Funding from a credit card** adds another **3.49% + $0.49**.
+> - Every fee carries a minimum and a fixed component, so **the smaller the prize, the bigger the bite** — which is why a $10 payout loses 26% but a $50 one "only" loses ~10%.
+>
+> *Sources: PayPal's official [Consumer](https://www.paypal.com/us/digital-wallet/paypal-consumer-fees) and [Merchant](https://www.paypal.com/us/business/paypal-business-fees) fee schedules.*
+
 Then there's the time. International withdrawals to a local bank commonly take **1–5 business days**, and payouts to new recipients can get **held for review**. Telling an excited winner "you won — now wait a week, and you'll get about 84% of it" is not the experience I wanted to run.
 
 Across a season of self-funded prize pools, the leakage was real — double-digit percentages lost to fees, FX markup, and delays before a single winner was happy.
