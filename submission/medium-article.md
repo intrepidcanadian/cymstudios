@@ -49,7 +49,11 @@ I kept thinking: there has to be a way to pay a winner *anywhere* — Istanbul i
 
 ## February in Hong Kong: x402 was everywhere
 
-> **[IMAGE — PHOTO]** A personal photo from GWDC 2026 / Cyberport — the venue, your badge, a session slide mentioning x402, or a crowd shot.
+> **[PHOTO — GWDC #1, lead image]** A wide shot that proves you were there: the GWDC 2026 stage/banner, the Cyberport venue entrance, or a crowd-during-a-talk shot. This anchors the "I was in the room" credibility.
+>
+> **[PHOTO — GWDC #2]** Your event badge/lanyard, or a session slide with "x402" visible on screen. Close-up, candid — shows the moment the idea landed.
+>
+> **[PHOTO — GWDC #3, optional]** You with other builders / at the Conflux booth, or a whiteboard/notes shot. Faces and energy do well on Medium. *(Blur or get consent for anyone else in frame.)*
 
 In **February 2026** I went to the **GWDC 2026 (Global Web3 Dev Con) Hackathon**, hosted by **Conflux** alongside Web3Labs, Tron, and Pharos, running **February 7–9, 2026 at Cyberport, Hong Kong**.
 
@@ -59,7 +63,11 @@ Standing there, my payout problem suddenly had a different shape. What if paying
 
 ## From spectator to builder — on Conflux
 
-> **[IMAGE — SCREENSHOT]** The Conflux bounty repo page, or the x402 `402` JSON response from the boilerplate.
+> **[PHOTO/SCREENSHOT — BUILD #1]** Your Hackfest workspace mid-build — editor open on the x402 settlement code, terminal showing a `402` response, or the boilerplate repo page. Signals "this was really built," not just pitched.
+>
+> **[SCREENSHOT — BUILD #2]** Your Global Hackfest 2026 submission/registration page, or the bounty PR on [11-espace-x402-boilerplate](https://github.com/conflux-fans/conflux-bounties/tree/main/bounties/11-espace-x402-boilerplate) — proof of the actual entry and bounty work.
+>
+> **[PHOTO — BUILD #3, optional]** A late-night desk/setup shot, or a screen with the first successful gasless settlement tx on a Conflux eSpace explorer. The "it works!" moment.
 
 A month later I committed. **Conflux Network hosted Global Hackfest 2026, a four-week virtual hackathon that ran from March 23 through April 20, 2026** — enough runway to ship something real.
 
