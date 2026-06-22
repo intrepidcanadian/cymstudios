@@ -18,6 +18,7 @@ So I pulled up a year of real PayPal transfers to tournament winners, all funded
 
 A few of the real ones (2025):
 
+- A **$50 prize to a winner in Bulgaria**: **$3.84** fee plus the FX markup — about **10%** all-in. A bigger prize dilutes the fixed fee, but never escapes it.
 - A **$25 prize to a player in Chile**: PayPal took **$4.41** in fees and converted my Canadian dollars at a rate well below mid-market. All-in, getting $25 to him cost me about **18%**.
 - A **$25 prize to a winner in Poland**: **$3.07** fee plus the same FX haircut — roughly **15%** gone.
 - A **$10 prize**: the fee alone was **$2.59** — that's **26%** of the prize, because a near-fixed fee devours a small payout.
