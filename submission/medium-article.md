@@ -4,15 +4,15 @@
 
 > **[PHOTO — HERO]** A wide esports/tournament shot (players at screens, or a prize-pool graphic) with the title overlaid.
 
-For the last few years I've run gaming tournaments. The fun part is the competition. The part nobody warns you about is what happens *after* someone wins: actually getting the prize into their hands.
+For the last few years I've run gaming tournaments. The fun part is the competition — the bracket, the upsets, the final where nobody in the room is breathing. The part nobody warns you about comes *after* the trophy: a player has won, everyone watched them win, and now I have to actually get the money into their hands.
 
-It sounds trivial — player wins, you send the money, done. In practice, paying winners across borders quietly became the most expensive and frustrating part of running events. This is how a hackathon in Hong Kong turned that headache into a product: **[cymstudio.app](https://cymstudio.app)**.
+It sounds like the easy part. Player wins, you send the prize, done. In practice, paying winners across borders became the most expensive and frustrating thing about running events — and, cruelly, the harder a player's country was to reach, the more it cost to pay them. This is the story of how a hackathon in Hong Kong turned that headache into a product: **[cymstudio.app](https://cymstudio.app)**.
 
 ## I went back through a year of my own payouts
 
 My players aren't in one place — and that's not a coincidence. I come out of the StarCraft: Brood War world, where the strongest non-Korean players have always clustered in Eastern Europe, Latin America, and a few other hotspots. There's a cruel irony in that: **the best non-Korean players often live exactly where PayPal works worst.**
 
-So I pulled up a year of real PayPal transfers to winners, all funded from a Canadian card. The pattern was brutally consistent.
+So one evening I did something I'd been avoiding: I pulled up a year of real PayPal transfers to winners, all funded from a Canadian card, and added up what never reached them. The pattern was brutally consistent — and worse than I'd let myself believe.
 
 > **[IMAGE — EVIDENCE GRAPHIC]** Insert `paypal-receipts-evidence.png` — four real payouts, 10–26% lost each, vs ≈0% on Conflux x402. This is the centerpiece.
 
@@ -41,7 +41,7 @@ Then there's the time: international withdrawals to a local bank commonly take *
 
 The worst case isn't a high fee — it's *no option at all.* **PayPal shut down in Turkey on June 6, 2016** and has never returned. Turkish residents can't create an account, can't send, and can't receive. As of 2026 it's still gone.
 
-So when a talented Turkish player wins, the normal rails simply don't exist — no fee would even let me pay them. And Turkey, like Poland, Bulgaria, and Chile, is a non-Korean StarCraft heartland. The places with the players are exactly the places legacy payments serve worst.
+So when a talented Turkish player wins, the normal rails simply don't exist — no fee would even let me pay them. There's no polite version of that message: *you won, fair and square, and I have no way to send you what you earned.* And Turkey, like Poland, Bulgaria, and Chile, is a non-Korean StarCraft heartland. The places with the players are exactly the places legacy payments serve worst.
 
 I kept thinking: there has to be a way to pay a winner *anywhere* — Istanbul included — instantly, for near-zero cost.
 
@@ -93,7 +93,7 @@ Winners don't always want raw crypto — sometimes they want to *spend* it. So t
 
 It lives at **[cymstudio.app](https://cymstudio.app)**.
 
-So now I can pay a winner in seconds, for near-zero cost, *anywhere* — and they can turn that prize into something they'll actually use.
+So the moment after the trophy looks different now. The match ends, the winner is still buzzing — and instead of "send me your bank details and give me a week," I can settle the prize in seconds, for near-zero cost, to anyone with a wallet, Istanbul included. They get 100% of what they earned, and they can turn it into something they'll actually use before the adrenaline wears off.
 
 ## What's next
 
