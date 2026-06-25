@@ -85,6 +85,10 @@ The deeper I got, the more **Conflux Network** looked purpose-built for this exa
 
 > **[SCREENSHOT — PRODUCT]** The **[cymstudio.app](https://cymstudio.app)** catalogue (gift-card grid) and/or the redemption flow, paired with a shot of the voucher-delivery email.
 
+> **[VIDEO — DEMO]** Walkthrough of the redemption flow end-to-end. *(On Medium, the bare URL on its own line below auto-embeds as a playable video.)*
+
+https://youtu.be/2GBAga5YZ_k
+
 Winners don't always want raw crypto — sometimes they want to *spend* it. So the product I built lets a winner holding **USDT0 on Conflux eSpace and zero gas** redeem a real gift card — Amazon, Apple, and more — paid entirely in stablecoin, with a facilitator **sponsoring the network fee**. They sign one off-chain authorization, and the voucher lands in their inbox in about a minute. No native gas token, no bridge gymnastics, no bank, no PayPal.
 
 It lives at **[cymstudio.app](https://cymstudio.app)**.
