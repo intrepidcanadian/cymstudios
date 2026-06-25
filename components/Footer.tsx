@@ -15,8 +15,8 @@ export default function Footer() {
         </nav>
         <div className={styles.scrollingText}>
           <div className={styles.scrollingTextInner}>
-            <span>Interested in creating product videos for your small business or marketing videos for social media? Reach out to tony.lau@cymadvisory.com to discuss more. • </span>
-            <span>Interested in creating product videos for your small business or marketing videos for social media? Reach out to tony.lau@cymadvisory.com to discuss more. • </span>
+            <span>Interested in AI videos for your brand, social or event? Reach out to tony.lau@cymadvisory.com to discuss more. • </span>
+            <span>Interested in AI videos for your brand, social or event? Reach out to tony.lau@cymadvisory.com to discuss more. • </span>
           </div>
         </div>
       </div>

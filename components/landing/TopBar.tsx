@@ -23,7 +23,7 @@ export default function TopBar({ theme, onThemeChange }: TopBarProps) {
       <div className={styles.brand}>
         <div className={styles.brandMark} aria-hidden="true" />
         <span>CYM STUDIO</span>
-        <span className={styles.brandKind}>/ ai ads for e-commerce</span>
+        <span className={styles.brandKind}>/ ai video studio</span>
       </div>
 
       <nav className={styles.nav}>

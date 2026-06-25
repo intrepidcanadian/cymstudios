@@ -25,8 +25,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'CYM Studio — AI ads that sell',
-  description: 'AI-native ad pipelines forged in live broadcast. We help e-commerce brands ship ad creative that converts.',
+  title: 'CYM Studio — AI video',
+  description: 'We make AI videos — a generative film pipeline built on ComfyUI with Seedance, Nano Banana, Flux and Kling, forged in live broadcast.',
 }
 
 export const viewport: Viewport = {

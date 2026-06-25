@@ -38,15 +38,16 @@ export default function Home() {
           <div>
             <div className={styles.heroEyebrow}>Showreel — 2023 / 2026</div>
             <h1 className={styles.heroTitle}>
-              AI ads <em>that sell</em>
+              AI video <em>that moves</em>
               <br />
               <span className={styles.slash}>/</span> broadcast <em>craft</em>
             </h1>
           </div>
           <div>
             <p className={styles.heroLede}>
-              We help e-commerce brands turn product into film — AI-native ad pipelines, tested against the same craft
-              we use for live tournament broadcast. Six films from the archive, with new commercial work shipping now.
+              We make AI videos — a generative film pipeline built on ComfyUI and the latest models (Seedance, Nano
+              Banana, Flux, Kling), tuned with the same craft we use for live tournament broadcast. Six films from the
+              archive, with new work shipping now.
             </p>
             <div className={styles.heroMeta}>
               <div>
@@ -55,7 +56,7 @@ export default function Home() {
               </div>
               <div>
                 <div className={styles.heroMetaK}>Focus</div>
-                <div className={styles.heroMetaV}>AI ads · e-commerce</div>
+                <div className={styles.heroMetaV}>AI video · generative film</div>
               </div>
               <div>
                 <div className={styles.heroMetaK}>Status</div>
@@ -82,18 +83,18 @@ export default function Home() {
         <section className={styles.caps}>
           <div className={styles.cap}>
             <div className={styles.capNum}>A · 01</div>
-            <div className={styles.capName}>AI ads for e-commerce</div>
+            <div className={styles.capName}>Generative film</div>
             <div className={styles.capDesc}>
-              Hero spots, UGC-style cutdowns, platform-native variants for Meta, TikTok, YouTube. Generative workflows
-              tuned for conversion, not gimmick.
+              End-to-end AI video, concept to final cut. A ComfyUI pipeline driving Seedance and Kling for motion —
+              built for craft, not gimmick.
             </div>
           </div>
           <div className={styles.cap}>
             <div className={styles.capNum}>A · 02</div>
-            <div className={styles.capName}>Product film &amp; launch</div>
+            <div className={styles.capName}>AI asset generation</div>
             <div className={styles.capDesc}>
-              Brand films and launch spots that pair AI-generated scenes with real product footage — broadcast quality
-              at indie speed.
+              Characters, environments and key art generated with Nano Banana and Flux, art-directed for a consistent
+              look across every shot.
             </div>
           </div>
           <div className={styles.cap}>
@@ -125,9 +126,9 @@ export default function Home() {
           </div>
           <div>
             <p className={styles.aboutBody}>
-              We help e-commerce brands ship <em>ad creative that converts</em> — built with an AI-native pipeline forged
-              in live broadcast. Generative tools let us move faster and take bigger swings. The cut, the hook and the
-              grade are still hand-made.
+              We make <em>AI videos</em> — built with a generative pipeline forged in live broadcast. ComfyUI, Seedance,
+              Nano Banana, Flux and Kling let us move faster and take bigger swings. The cut, the hook and the grade are
+              still hand-made.
             </p>
             <div className={styles.aboutStats}>
               <div>
@@ -165,13 +166,13 @@ export default function Home() {
         <section className={styles.contact} id="contact">
           <div className={styles.contactRow}>
             <h2 className={styles.contactTitle}>
-              Got a product?
+              Got an idea?
               <br />
               Let&apos;s make it <em>move.</em>
             </h2>
             <div>
-              <a className={styles.cta} href="mailto:tony.lau@cymadvisory.com?subject=AI%20ad%20project">
-                <span>Pitch your product</span>
+              <a className={styles.cta} href="mailto:tony.lau@cymadvisory.com?subject=AI%20video%20project">
+                <span>Pitch your idea</span>
                 <span className={styles.ctaArrow}>→</span>
               </a>
               <div className={styles.contactSub}>
