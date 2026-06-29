@@ -27,7 +27,7 @@ The currency conversion is the sneaky part. On one transfer PayPal valued my Can
 
 And it isn't only sending. **PayPal taxes money coming in, too**: a **$5 tip** a viewer sent me arrived as **$4.51** — PayPal kept **$0.49**, about **10%**, just to receive it.
 
-> **[IMAGE — RECEIVING GRAPHIC]** Insert `paypal-receiving-evidence.png` — the cost of *receiving* a tip, donation, or sponsor payment. One real receipt ($5 → $4.51); other rows use PayPal's published receiving rates. Small incoming amounts get hit hardest.
+> **[IMAGE — RECEIVING GRAPHIC]** Insert `paypal-receiving-evidence.png` — the real $5 tip ($5 → $4.51, ≈10% lost just to receive it) shown side-by-side against the same tip received on Conflux x402 at ≈0%.
 
 > **Why the numbers come out this way — PayPal's published rates**
 > - **International personal transfer:** ~5% (with a minimum fee), **plus a 3–4% currency-conversion spread** baked into the exchange rate — where you never see it.
