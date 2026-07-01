@@ -19,4 +19,5 @@ export const VIDEOS: readonly Video[] = [
   { id: '9RJzUTqOm5M', title: 'Bombastic Qualifications — Season 3', short: 'S3 Qualifiers', tag: 'Coverage', year: '2025', dur: '01:41:10', code: 'F04' },
   { id: 's-l4dQm7-uc', title: '2023 2v2 Shield Battery Tournament', short: 'Shield Battery 2v2', tag: 'Archive', year: '2023', dur: '04:12:33', code: 'F05' },
   { id: 'B0BGMrKSYWw', title: 'BSL Starleague 22 — RO32 Week 2', short: 'Starleague 22 · RO32', tag: 'Broadcast', year: '2024', dur: '05:58:01', code: 'F06' },
+  { id: '2GBAga5YZ_k', title: 'cymstudio.app — Product Demo', short: 'Product Demo', tag: 'Demo', year: '2026', dur: '01:20', code: 'F07' },
 ] as const

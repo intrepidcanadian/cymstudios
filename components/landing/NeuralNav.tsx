@@ -12,16 +12,17 @@ interface NeuralNavProps {
 // Positions along a 64×360 viewBox — matches the original mockup
 const POSITIONS: Array<[number, number]> = [
   [32, 30],
-  [18, 90],
-  [46, 150],
-  [20, 210],
-  [44, 270],
-  [32, 330],
+  [18, 80],
+  [46, 130],
+  [20, 180],
+  [44, 230],
+  [22, 280],
+  [34, 330],
 ]
 
 const LINES: Array<[number, number]> = [
-  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5],
-  [0, 2], [1, 3], [2, 4], [3, 5],
+  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6],
+  [0, 2], [1, 3], [2, 4], [3, 5], [4, 6],
 ]
 
 export default function NeuralNav({ videos, activeIndex, onSelect }: NeuralNavProps) {

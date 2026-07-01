@@ -70,7 +70,7 @@ export default function Home() {
         <div className={styles.sectionHead} id="work">
           <span className={styles.sectionIdx}>01 / WORK</span>
           <h2 className={styles.sectionTitle}>Selected films</h2>
-          <span className={styles.sectionRhs}>06 pieces &nbsp;—&nbsp; scroll ↓</span>
+          <span className={styles.sectionRhs}>07 pieces &nbsp;—&nbsp; scroll ↓</span>
         </div>
         <ShowreelGrid videos={VIDEOS} onOpen={openModal} />
 
@@ -132,7 +132,7 @@ export default function Home() {
             </p>
             <div className={styles.aboutStats}>
               <div>
-                <div className={styles.aboutStatN}>06</div>
+                <div className={styles.aboutStatN}>07</div>
                 <div className={styles.aboutStatL}>films in reel</div>
               </div>
               <div>

@@ -12,9 +12,9 @@ interface ShowreelGridProps {
 }
 
 const PRESETS: Record<GridVariant, number[]> = {
-  editorial: [7, 5, 4, 4, 4, 12],
-  equal: [6, 6, 4, 4, 4, 12],
-  hero: [12, 4, 4, 4, 6, 6],
+  editorial: [7, 5, 4, 4, 4, 6, 6],
+  equal: [6, 6, 4, 4, 4, 6, 6],
+  hero: [12, 4, 4, 4, 6, 6, 12],
 }
 
 export default function ShowreelGrid({ videos, onOpen, variant = 'editorial' }: ShowreelGridProps) {
