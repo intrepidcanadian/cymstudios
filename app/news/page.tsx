@@ -28,7 +28,6 @@ export default function NewsIndexPage() {
         <nav className={styles.headerCrumb}>
           <Link href="/">Studio</Link>
           <Link href="/catalogue">Rewards</Link>
-          <Link href="/chat">Chat</Link>
         </nav>
       </header>
 

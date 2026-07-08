@@ -101,13 +101,3 @@ export function markPaymentFailed(
     timestamp: Date.now()
   };
 }
-
-/**
- * Format payment tracking for API response
- * This can be included in API responses so the client can add it to MCP logs
- */
-export function formatPaymentTrackingForResponse(tracking: PaymentTrackingData) {
-  return {
-    x402Payment: tracking
-  };
-}

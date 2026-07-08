@@ -7,7 +7,7 @@ Gasless gift-card redemptions paid in USDT0 on Conflux eSpace. Tournament winner
 [![Hackathon](https://img.shields.io/badge/Global%20Hackfest%202026-green)](https://github.com/conflux-fans/global-hackfest-2026)
 [![USDT0](https://img.shields.io/badge/pays%20with-USDT0-green)](https://evm.confluxscan.org/address/0xaf37e8b6c9ed7f6318979f56fc287d76c30847ff)
 
-> **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue) · **Agent docs** [cymstudio.app/agents](https://cymstudio.app/agents) · **Chat** [cymstudio.app/chat](https://cymstudio.app/chat)
+> **Live at** [cymstudio.app](https://cymstudio.app) · **Rewards** [cymstudio.app/catalogue](https://cymstudio.app/catalogue)
 >
 > 🎬 **Videos** → [Project intro](https://youtu.be/0VJXfjlGKjo) · [Builder intro](https://youtu.be/xy3z2ZAp6aU) · [BSL Non-Korean World Champions](https://youtu.be/2GBAga5YZ_k)
 >
@@ -33,16 +33,12 @@ This repo is a submission for the [Conflux Global Hackfest 2026](https://github.
 
 ## What's in the repo
 
-Three user-facing surfaces, one shared x402 payment pipeline, and a native MCP server so AI agents can reach the same infrastructure programmatically.
+Two user-facing surfaces sharing one x402 payment pipeline.
 
 | Surface | Path | Purpose |
 |---|---|---|
 | Editorial showreel | `/` | AI video-production portfolio for CYM Studio — the operating entity behind the rewards program |
 | Tournament Prize Redemptions | `/catalogue` | 300+ brand catalogue with wallet-signed USDT0 / USDC checkout |
-| AI concierge | `/chat` | Natural-language chat powered by Kimi (Moonshot), tools resolved via our own MCP |
-| Agent docs | `/agents` | MCP integration guide for third-party AI agents |
-| MCP endpoint | `/api/mcp/rewards` | JSON-RPC 2.0 server — 12 tools for discovery, email verification, x402 quote + purchase |
-| ERC-8004 registration | `/.well-known/gift-cards/agent-registration.json` | Agent-registry entry (agent ID 22628, Ethereum mainnet) |
 
 ## Tour
 
@@ -75,57 +71,28 @@ The AI video-production portfolio for CYM Studio — the operating entity behind
 
 ![Completed order](demo/OrderCompletion.png)
 
-### AI concierge — [`/chat`](https://cymstudio.app/chat)
-
-Natural-language browsing powered by Kimi. Every user turn routes through the same MCP server an external agent would call — so the chat is a live demo of the agent integration.
-
-<table>
-  <tr>
-    <td width="50%"><img src="demo/MCPForX402.png" alt="Chat landing" /></td>
-    <td width="50%"><img src="demo/RedemptionEndpoint.png" alt="Chat — MCP tool call result" /></td>
-  </tr>
-</table>
-
 ## Why Conflux eSpace
 
 - **USDT0 is the default.** Native Tether on Conflux eSpace is a first-class citizen — live contract at [`0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff`](https://evm.confluxscan.org/address/0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff).
 - **Gasless by design.** EIP-3009 `transferWithAuthorization` lets a shared facilitator ([`0xc10561…a4Ee`](https://evm.confluxscan.org/address/0xc10561C1c0d718B3D362df9D510A1b4e4331a4Ee)) submit transfers on behalf of users. The facilitator pays CFX; the buyer only ever touches USDT0.
 - **Same UX, two rails.** The same checkout works on Ethereum mainnet (USDC) for users whose stablecoins live there. Conflux eSpace is the default because USDT0 + the facilitator gas sponsorship make it the cheapest and smoothest path.
-- **Agent-native.** An AI agent with its own USDT0-funded wallet can discover and buy gift cards via MCP with no human in the loop — see `get_purchase_quote` + `submit_purchase` tools.
 
 ## Architecture
 
-Three user-facing entry points (catalogue, chat, MCP) all land in the same x402 purchase pipeline. One codebase, one security model, one on-chain settlement path.
+The catalogue lands in a single x402 purchase pipeline. One codebase, one security model, one on-chain settlement path.
 
 ```
-┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
-│  /catalogue          │    │  /chat               │    │  AI agent (external) │
-│                      │    │                      │    │                      │
-│  Visual browse +     │    │  Kimi (Moonshot)     │    │  Any MCP client      │
-│  filters +           │    │  + tool-use loop     │    │  (Claude Desktop,    │
-│  PurchaseModal       │    │  /api/chat           │    │  custom agents,      │
-│                      │    │                      │    │  server wallets)     │
-└──────────┬───────────┘    └──────────┬───────────┘    └──────────┬───────────┘
-           │                           │                           │
-           │                           │ tools/call                │ tools/call
-           │                           ▼                           ▼
-           │                 ┌─────────────────────────────────────────────────┐
-           │                 │  /api/mcp/rewards — native MCP JSON-RPC 2.0     │
-           │                 │                                                 │
-           │                 │  Discovery:     search_giftcards, get_brand_... │
-           │                 │                 list_countries, list_currencies │
-           │                 │                                                 │
-           │                 │  Agent purchase (server-side wallet):           │
-           │                 │    get_purchase_quote, submit_purchase          │
-           │                 │    verify_email_start, verify_email_complete    │
-           │                 │                                                 │
-           │                 │  Order lookup:  check_order_status              │
-           │                 │                 redirect_to_checkout            │
-           │                 └─────────────────────────┬───────────────────────┘
-           │                                           │
-           │    user-wallet click-through              │ agent-wallet submit_purchase
-           │    opens PurchaseModal                    │ posts signed envelope
-           ▼                                           ▼
+           ┌──────────────────────┐
+           │  /catalogue          │
+           │                      │
+           │  Visual browse +     │
+           │  filters +           │
+           │  PurchaseModal       │
+           └──────────┬───────────┘
+                      │
+                      │ user-wallet click-through
+                      │ opens PurchaseModal
+                      ▼
            ┌─────────────────────────────────────────────────────────────────────┐
            │  /api/purchase — single x402 settlement endpoint                    │
            │                                                                     │
@@ -142,12 +109,7 @@ Three user-facing entry points (catalogue, chat, MCP) all land in the same x402 
               └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
-**Two signing models, one pipeline:**
-
-- **User-wallet flow** (catalogue + chat): browser signs EIP-3009 via Reown/wagmi → `/api/purchase` → facilitator settles. Chat adds natural-language discovery on top; the signing UX is identical to the catalogue.
-- **Agent-wallet flow** (MCP purchase tools): server-side wallet signs EIP-3009 programmatically → `submit_purchase` → `/api/purchase` → same facilitator settlement. No browser, no human.
-
-Both paths produce the same `orders` row, the same on-chain `transferWithAuthorization` event, the same xRemit voucher procurement, the same email delivery. The only divergence is who held the key that signed.
+Browser signs EIP-3009 via Reown/wagmi → `/api/purchase` → facilitator settles. Each purchase produces an `orders` row, an on-chain `transferWithAuthorization` event, xRemit voucher procurement, and email delivery.
 
 ## Tech stack
 
@@ -156,8 +118,6 @@ Both paths produce the same `orders` row, the same on-chain `transferWithAuthori
 - **Wallets** — Reown AppKit, wagmi, viem, ethers v6
 - **Payments** — x402 protocol with gasless EIP-3009 settlement
 - **Provider** — xRemit (gift-card fulfillment, HMAC-signed webhooks)
-- **AI** — Kimi (Moonshot's `kimi-k2-0711-preview`) with native tool-calling
-- **MCP** — JSON-RPC 2.0 over HTTPS at `/api/mcp/rewards` (12 tools)
 - **Backend** — Supabase (Postgres + service role), Next.js API routes
 - **Email** — Resend (OTP verification, 30-day re-verification window)
 - **Sanitization** — DOMPurify for provider HTML
@@ -186,20 +146,6 @@ Network + facilitator config lives in [`config/networks.ts`](config/networks.ts)
 - HMAC webhook signature verification on provider callbacks
 - x402 payment signature verification server-side
 
-## Agent-initiated purchases (MCP)
-
-Any AI agent with its own wallet can complete the full purchase loop via the MCP — five tool calls, zero UI.
-
-```
-1.  verify_email_start        → OTP sent
-2.  verify_email_complete     → email verified for 30 days
-3.  get_purchase_quote        → x402 payment requirements + EIP-712 domain + types
-4.  [ agent wallet signs EIP-3009 TransferWithAuthorization ]
-5.  submit_purchase           → order_id + voucher
-```
-
-Full integration guide (curl, Python, Claude Desktop config, EIP-3009 signing with `viem`): [`/agents`](https://cymstudio.app/agents) or the route source at [`app/agents/page.tsx`](app/agents/page.tsx).
-
 ## Project layout
 
 ```
@@ -207,13 +153,9 @@ app/
   page.tsx                  Editorial showreel (landing)
   page.module.css           Landing palette + sections
   catalogue/                Tournament Prize Redemptions
-  chat/                     Kimi-powered conversational concierge
-  agents/                   MCP integration docs for developers
   onramp/                   OSL Pay fiat onramp (optional)
   api/
     brands/                 Gift card catalogue sync
-    chat/                   Kimi chat/completions + MCP tool dispatch loop
-    mcp/rewards/            Native MCP JSON-RPC 2.0 server (12 tools)
     purchase/               x402 payment + order creation
     webhook/                xRemit fulfillment callback
     orders/                 Order status polling
@@ -227,7 +169,6 @@ app/
 components/
   landing/                  ParticleField, NeuralNav, ShowreelGrid, TopBar
   catalogue/                GiftCardCatalog, PurchaseModal, CatalogueRoot
-  chat/                     ChatInterface, ChatMessages, types
   onramp/                   OSL Pay integration UI
   _archive/                 Retired components kept for git history
 config/
@@ -241,9 +182,6 @@ lib/
   email.ts                  Resend email templates
   rate-limit.ts             Sliding-window rate limiter
   exchange-rates.ts         FX lookup with cache
-public/.well-known/
-  gift-cards/
-    agent-registration.json  ERC-8004 registration document
 deploy/
   setup-vps.sh              Vultr VPS provisioning
   nginx.conf                Nginx reverse-proxy config
@@ -294,10 +232,6 @@ API_LAYER_KEY=
 
 # Reown AppKit
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
-
-# Kimi (Moonshot AI) — powers /chat
-KIMI_API_KEY=
-# Optional: KIMI_BASE_URL, KIMI_MODEL
 
 # App URL (webhook callbacks)
 NEXT_PUBLIC_API_URL=https://cymstudio.app
