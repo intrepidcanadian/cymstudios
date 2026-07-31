@@ -110,10 +110,15 @@ The audit goes through PostgREST, the same path the app uses, so it also catches
 a stale schema cache — a column can exist in Postgres and still 500 the app
 until PostgREST reloads.
 
-> `supabase/migrations/` is currently gitignored, so migration files do not
-> travel with a deploy and must be applied by hand. That gap is why migrations
-> 004, 005 and 006 exist — each repairs columns that were added directly in the
-> dashboard and subsequently lost.
+Migrations are tracked in git and ship with the code, but **nothing applies them
+automatically** — `deploy.sh` does not touch the database. Applying them is a
+manual step you do first.
+
+> Until July 2026 `supabase/migrations/` was gitignored and schema changes were
+> made directly in the Supabase dashboard. That is why migrations 004, 005 and
+> part of 006 exist — each repairs columns that were added by hand and then
+> lost. Add every schema change as a numbered migration file, even when you
+> apply it through the dashboard, or the next environment will not have it.
 
 ---
 

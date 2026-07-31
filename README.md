@@ -235,6 +235,9 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 
 # App URL (webhook callbacks)
 NEXT_PUBLIC_API_URL=https://cymstudio.app
+
+# News gate — password to unlock /news articles (leave unset to keep locked)
+NEWS_PASSWORD=
 ```
 
 ## Deployment
@@ -257,7 +260,19 @@ pm2 restart cymstudio --update-env
 
 ## Database
 
-Schema is managed against the live Supabase project via the dashboard SQL editor. Migration SQL files are kept locally at `supabase/migrations/` for reference but are gitignored — apply them via Supabase dashboard → SQL Editor → Run.
+Schema lives in numbered migrations under [`supabase/migrations/`](supabase/migrations/), tracked in git. Nothing applies them automatically — apply each one before deploying code that depends on it:
+
+```bash
+npx supabase db query --linked -f supabase/migrations/<file>.sql
+```
+
+Then verify against the live schema (read-only, checks through PostgREST the way the app does):
+
+```bash
+node --env-file=.env supabase/audit_schema.mjs
+```
+
+Every schema change needs a migration file, even when applied through the dashboard — see [DEPLOYMENT.md](DEPLOYMENT.md#database-migrations) for why.
 
 ## About CYM Studio
 
