@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isQuotableCurrency } from '@/lib/exchange-rates';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const SUPPORTED_CURRENCIES = ['USD', 'CAD'];
+// Mastercard prepaid is deliberately narrower than the gift-card catalogue —
+// we only list it where there's supply. It must stay a SUBSET of the sellable
+// whitelist though: intersecting here means dropping a currency from
+// QUOTABLE_CURRENCIES also drops it from this tab, instead of leaving products
+// listed that /api/purchase would refuse at checkout.
+const MASTERCARD_CURRENCIES = ['USD', 'CAD'];
+const SUPPORTED_CURRENCIES = MASTERCARD_CURRENCIES.filter(isQuotableCurrency);
 
 const COUNTRY_ALIASES: Record<string, string> = {
   'usa': 'United States of America',
