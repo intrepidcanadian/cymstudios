@@ -40,6 +40,9 @@ ginsengswap-frontend/
 # Supabase migrations (managed locally / via Supabase dashboard)
 supabase/migrations/
 
+# Supabase CLI local state (project link, cached remote versions)
+supabase/.temp/
+
 # editor / tooling config
 .claude/
 .vscode/

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData } from './payment-tracker';
 import { NETWORKS, FACILITATOR_ADDRESS, getNetwork, type NetworkConfig } from '@/config/networks';
+import { buildDirectAuthMessage } from './x402-direct-auth';
 import { logger } from './logger';
 
 // Token ABI covering both strategies
@@ -278,19 +279,53 @@ export async function verifyX402Payment(
     }
 
     const networkConfig = resolveNetwork(paymentData, config);
-    const strategy = paymentData.strategy || networkConfig.paymentStrategy;
+    // Pinned to the network config — never taken from the payload. A
+    // client-chosen strategy lets a caller route an EIP-3009 network onto the
+    // allowance-based `direct` path and skip its replay protection.
+    const strategy = networkConfig.paymentStrategy;
 
     let settlement: SettlementResult;
     let payerAddress: string;
 
     if (strategy === 'direct') {
       // Direct strategy: user already approved, we call transferFrom
-      const { from, to, value, approvalTxHash } = payload;
-      if (!from || !to || !value || !approvalTxHash) {
+      const { from, to, value, approvalTxHash, nonce, signature } = payload;
+      if (!from || !to || !value || !approvalTxHash || !nonce || !signature) {
         return {
           verified: false,
           errorResponse: NextResponse.json(
             { success: false, error: 'Invalid direct payment payload' },
+            { status: 400 }
+          ),
+        };
+      }
+
+      // `transferFrom` spends whatever allowance `from` has granted, and nothing
+      // in the payload otherwise proves the caller controls that address. Require
+      // a signature binding this exact payment to the payer's key.
+      try {
+        const expectedMessage = buildDirectAuthMessage({
+          from, to, value,
+          chainId: networkConfig.chainId,
+          token: networkConfig.tokenAddress,
+          nonce,
+        });
+        const recovered = ethers.verifyMessage(expectedMessage, signature);
+        if (recovered.toLowerCase() !== String(from).toLowerCase()) {
+          logger.warn(`[x402] Direct auth signature mismatch: claims ${from}, signed by ${recovered}`);
+          return {
+            verified: false,
+            errorResponse: NextResponse.json(
+              { success: false, error: 'Payment authorization does not match the paying address.' },
+              { status: 400 }
+            ),
+          };
+        }
+      } catch {
+        return {
+          verified: false,
+          errorResponse: NextResponse.json(
+            { success: false, error: 'Invalid payment authorization signature.' },
             { status: 400 }
           ),
         };

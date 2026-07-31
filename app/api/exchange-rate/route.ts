@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getExchangeRateAPI } from '@/lib/exchange-rates';
+import { getExchangeRateAPI, isQuotableCurrency, QUOTABLE_CURRENCIES } from '@/lib/exchange-rates';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,11 +30,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Only allow supported currencies
-    const supportedCurrencies = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'];
-    if (!supportedCurrencies.includes(fromCurrency.toUpperCase())) {
+    // Single shared whitelist — see QUOTABLE_CURRENCIES in lib/exchange-rates
+    if (!isQuotableCurrency(fromCurrency)) {
       return NextResponse.json(
-        { success: false, error: `Unsupported currency: ${fromCurrency}. Supported: ${supportedCurrencies.join(', ')}` },
+        { success: false, error: `Unsupported currency: ${fromCurrency}. Supported: ${QUOTABLE_CURRENCIES.join(', ')}` },
         { status: 400, headers: CORS_HEADERS }
       );
     }

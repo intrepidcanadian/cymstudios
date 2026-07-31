@@ -91,10 +91,12 @@ export default function PurchaseModal({
   const [error, setError] = useState<string | null>(null);
   const [usdcAmount, setUsdcAmount] = useState<string | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  // Effective rate: USD per 1 unit of the card's currency, fee already included.
+  // Computed server-side — the client never applies the fee itself.
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [rawExchangeRate, setRawExchangeRate] = useState<number | null>(null);
   const [quoteFetchedAt, setQuoteFetchedAt] = useState<number | null>(null);
   const [quoteStale, setQuoteStale] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [step, setStep] = useState<'form' | 'verify-email' | 'confirm' | 'processing' | 'success'>('form');
   const [paymentStep, setPaymentStep] = useState<string>('');
   const [hasFailedOnce, setHasFailedOnce] = useState(false);
@@ -344,98 +346,80 @@ export default function PurchaseModal({
     }
   }, [selectedNetwork, walletReady, chainId, networkConfig, switchChain]);
 
-  // Fetch USDC quote when amount changes
-  const FX_FEE_PERCENT = product.currency === 'USD' ? 0.5 : 1.5;
+  /**
+   * Single source of price. The server owns the fee formula, the discount
+   * rebate, and the rate-freshness policy; this only renders what it returns.
+   * Returns the quoted amount, or null if the item could not be priced — in
+   * which case the purchase must not proceed.
+   */
+  const requestQuote = useCallback(async (priceValue: number): Promise<string | null> => {
+    setLoadingQuote(true);
+    try {
+      const response = await fetch(
+        `/api/quote?productId=${product.product_id}&price=${encodeURIComponent(priceValue)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.usdcAmount) {
+        setUsdcAmount(null);
+        setExchangeRate(null);
+        setQuoteError(
+          data?.code === 'CURRENCY_NOT_SUPPORTED'
+            ? `${product.currency} cards can't be purchased yet.`
+            : 'Live pricing is unavailable right now. Please try again in a moment.'
+        );
+        return null;
+      }
+
+      setUsdcAmount(data.usdcAmount);
+      setExchangeRate(data.effectiveRate);
+      setQuoteFetchedAt(Date.now());
+      setQuoteStale(false);
+      setQuoteError(null);
+      return data.usdcAmount as string;
+    } catch {
+      setUsdcAmount(null);
+      setExchangeRate(null);
+      setQuoteError('Live pricing is unavailable right now. Please try again in a moment.');
+      return null;
+    } finally {
+      setLoadingQuote(false);
+    }
+  }, [product.product_id, product.currency]);
 
   // M18: Auto-refresh quote when user switches payment network (if quote > 60s old)
   const prevNetworkRef = useRef(selectedNetwork);
   useEffect(() => {
     if (prevNetworkRef.current === selectedNetwork) return;
     prevNetworkRef.current = selectedNetwork;
-    if (!amount || product.currency === 'USD') return;
+    if (!amount) return;
     // Refresh if quote is older than 60 seconds or already stale
     const quoteAge = quoteFetchedAt ? Date.now() - quoteFetchedAt : Infinity;
     if (quoteAge < 60_000) return;
     const price = parseFloat(amount);
     if (isNaN(price) || price <= 0) return;
-    const refreshQuote = async () => {
-      setLoadingQuote(true);
-      try {
-        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
-        const data = await response.json();
-        if (data.success && data.rate) {
-          const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
-          const adjustedRate = data.rate * feeMultiplier;
-          setUsdcAmount((Math.ceil(price * adjustedRate * 100) / 100).toFixed(2));
-          setRawExchangeRate(data.rate);
-          setExchangeRate(adjustedRate);
-          setQuoteFetchedAt(Date.now());
-          setQuoteStale(false);
-        }
-      } catch { /* quote will refresh on submit as fallback */ }
-      setLoadingQuote(false);
-    };
-    refreshQuote();
-  }, [selectedNetwork, amount, product.currency, quoteFetchedAt]);
+    requestQuote(price);
+  }, [selectedNetwork, amount, quoteFetchedAt, requestQuote]);
 
   useEffect(() => {
-    const fetchUsdcQuote = async () => {
-      if (!amount) {
-        setUsdcAmount(null);
-        setExchangeRate(null);
-        return;
-      }
+    if (!amount) {
+      setUsdcAmount(null);
+      setExchangeRate(null);
+      setQuoteError(null);
+      return;
+    }
 
-      const price = parseFloat(amount);
-      if (isNaN(price) || price <= 0) {
-        setUsdcAmount(null);
-        setExchangeRate(null);
-        return;
-      }
+    const price = parseFloat(amount);
+    if (isNaN(price) || price <= 0) {
+      setUsdcAmount(null);
+      setExchangeRate(null);
+      setQuoteError(null);
+      return;
+    }
 
-      const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
-
-      // Use Math.ceil to round up to next cent — protects merchant from underpayment
-      const ceilCents = (v: number) => (Math.ceil(v * 100) / 100).toFixed(2);
-
-      if (product.currency === 'USD') {
-        setUsdcAmount(ceilCents(price * feeMultiplier));
-        setRawExchangeRate(1);
-        setExchangeRate(feeMultiplier);
-        setQuoteFetchedAt(Date.now());
-        setQuoteStale(false);
-        return;
-      }
-
-      setLoadingQuote(true);
-      try {
-        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
-        const data = await response.json();
-
-        if (data.success && data.rate) {
-          const adjustedRate = data.rate * feeMultiplier;
-          setUsdcAmount(ceilCents(price * adjustedRate));
-          setRawExchangeRate(data.rate);
-          setExchangeRate(adjustedRate);
-          setQuoteFetchedAt(Date.now());
-          setQuoteStale(false);
-        } else {
-          setUsdcAmount(null);
-          setRawExchangeRate(null);
-          setExchangeRate(null);
-        }
-      } catch {
-        setUsdcAmount(null);
-        setRawExchangeRate(null);
-        setExchangeRate(null);
-      } finally {
-        setLoadingQuote(false);
-      }
-    };
-
-    const timeoutId = setTimeout(fetchUsdcQuote, 300);
+    const timeoutId = setTimeout(() => { requestQuote(price); }, 300);
     return () => clearTimeout(timeoutId);
-  }, [amount, product.currency]);
+  }, [amount, requestQuote]);
 
   // Mark quote as stale after 2 minutes, with live countdown
   // Pause staleness timer during OTP verification to avoid quote expiring mid-verification
@@ -522,28 +506,23 @@ export default function PurchaseModal({
       return;
     }
 
-    // If quote is stale, re-fetch before showing confirmation
+    // If quote is stale, re-fetch before showing confirmation. A failed refresh
+    // now blocks rather than proceeding on the old number — we don't show a
+    // price we can't stand behind.
     setQuoteRefreshed(false);
-    if (quoteStale && product.currency !== 'USD') {
-      setLoadingQuote(true);
-      try {
-        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
-        const data = await response.json();
-        if (data.success && data.rate) {
-          const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
-          const adjustedRate = data.rate * feeMultiplier;
-          setUsdcAmount((Math.ceil(price * adjustedRate * 100) / 100).toFixed(2));
-          setRawExchangeRate(data.rate);
-          setExchangeRate(adjustedRate);
-          setQuoteFetchedAt(Date.now());
-          setQuoteStale(false);
-          setQuoteRefreshed(true);
-        }
-      } catch {
-        // Quote refresh failed — warn user they're proceeding with a stale rate
-        setError('Exchange rate could not be refreshed. Proceeding with the previous quote — the final amount may differ slightly.');
+    if (quoteStale) {
+      const refreshed = await requestQuote(price);
+      if (!refreshed) {
+        setError(quoteError || 'Pricing could not be refreshed. Please try again in a moment.');
+        return;
       }
-      setLoadingQuote(false);
+      setQuoteRefreshed(true);
+    }
+
+    // No usable quote — never let the customer sign for an amount we never showed them
+    if (!usdcAmount) {
+      setError(quoteError || 'This item could not be priced. Please try again in a moment.');
+      return;
     }
 
     // Check for recent duplicate purchase of same product/amount
@@ -612,38 +591,32 @@ export default function PurchaseModal({
       return;
     }
 
-    // Auto-refresh stale quote before payment — prevents paying with outdated exchange rate
-    if (quoteStale && product.currency !== 'USD') {
-      try {
-        const response = await fetch(`/api/exchange-rate?from=${product.currency}&to=USD`);
-        const data = await response.json();
-        if (data.success && data.rate) {
-          const price = parseFloat(amount);
-          const feeMultiplier = 1 + (FX_FEE_PERCENT / 100);
-          const adjustedRate = data.rate * feeMultiplier;
-          const newUsdcAmount = (Math.ceil(price * adjustedRate * 100) / 100).toFixed(2);
-          setUsdcAmount(newUsdcAmount);
-          setRawExchangeRate(data.rate);
-          setExchangeRate(adjustedRate);
-          setQuoteFetchedAt(Date.now());
-          setQuoteStale(false);
-          setQuoteRefreshed(true);
-          // Re-validate balance with fresh amount
-          if (usdcBalance && parseFloat(usdcBalance) < parseFloat(newUsdcAmount)) {
-            const shortfall = (parseFloat(newUsdcAmount) - parseFloat(usdcBalance)).toFixed(2);
-            setError(`Rate updated — insufficient ${networkConfig?.tokenSymbol} balance. You need ${newUsdcAmount} but have ${parseFloat(usdcBalance).toFixed(2)} (short by ${shortfall} ${networkConfig?.tokenSymbol}).`);
-            setHasFailedOnce(true);
-            return;
-          }
-          setError(null);
-          // Show updated quote and let user review before proceeding
-          setError('Exchange rate was refreshed before payment. Please review the updated amount and confirm again.');
-          return;
-        }
-      } catch {
-        setError('Exchange rate could not be refreshed. Please go back and try again.');
+    // Auto-refresh stale quote before payment — prevents paying on an outdated rate
+    if (quoteStale) {
+      const newUsdcAmount = await requestQuote(parseFloat(amount));
+      if (!newUsdcAmount) {
+        setError(quoteError || 'Pricing could not be refreshed. Please go back and try again.');
+        setHasFailedOnce(true);
         return;
       }
+      setQuoteRefreshed(true);
+      // Re-validate balance against the refreshed amount
+      if (usdcBalance && parseFloat(usdcBalance) < parseFloat(newUsdcAmount)) {
+        const shortfall = (parseFloat(newUsdcAmount) - parseFloat(usdcBalance)).toFixed(2);
+        setError(`Rate updated — insufficient ${networkConfig?.tokenSymbol} balance. You need ${newUsdcAmount} but have ${parseFloat(usdcBalance).toFixed(2)} (short by ${shortfall} ${networkConfig?.tokenSymbol}).`);
+        setHasFailedOnce(true);
+        return;
+      }
+      // Show the updated quote and make the user re-confirm the new number
+      setError('Pricing was refreshed. Please review the updated amount and confirm again.');
+      return;
+    }
+
+    // Never sign for an amount we never displayed
+    if (!usdcAmount) {
+      setError(quoteError || 'This item could not be priced. Please go back and try again.');
+      setHasFailedOnce(true);
+      return;
     }
 
     submittingRef.current = true;
@@ -1399,12 +1372,11 @@ export default function PurchaseModal({
               >
                 <option value="">Select amount...</option>
                 {product.denominations.map((denom: number) => {
-                  // Show estimated token cost for non-USD denominations when exchange rate is known
-                  const tokenHint = product.currency !== 'USD' && rawExchangeRate
-                    ? ` ≈ ${(Math.ceil(denom * rawExchangeRate * (1 + FX_FEE_PERCENT / 100) * 100) / 100).toFixed(2)} ${networkConfig?.tokenSymbol}`
-                    : product.currency === 'USD'
-                      ? ` ≈ ${(Math.ceil(denom * (1 + FX_FEE_PERCENT / 100) * 100) / 100).toFixed(2)} ${networkConfig?.tokenSymbol}`
-                      : '';
+                  // Estimated token cost. exchangeRate is the server's effective rate
+                  // (fee already applied), so this is a plain multiply — no fee math here.
+                  const tokenHint = exchangeRate
+                    ? ` ≈ ${(Math.ceil(denom * exchangeRate * 100) / 100).toFixed(2)} ${networkConfig?.tokenSymbol}`
+                    : '';
                   return (
                     <option key={denom} value={denom}>
                       {denom} {product.currency}{tokenHint}
@@ -1600,13 +1572,15 @@ export default function PurchaseModal({
 
           {/* Actions */}
           {/* Disabled reason hint */}
-          {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance || !!amountValidation) && (
+          {(!walletReady || chainSwitching || !email || !amount || !!insufficientBalance || !!amountValidation || (!!amount && !loadingQuote && !usdcAmount)) && (
             <p className="text-xs text-ink-mute pt-1">
               {!walletReady ? 'Connect your wallet to continue' :
                chainSwitching ? 'Switching network...' :
                !amount ? 'Select an amount' :
                amountValidation ? amountValidation :
                !email ? 'Enter your email address' :
+               // Unpriceable (unsupported currency or rate service down) — must not be submittable
+               (!loadingQuote && !usdcAmount) ? (quoteError || 'Pricing unavailable for this item') :
                insufficientBalance ? `Insufficient ${networkConfig?.tokenSymbol} balance` :
                (usdcAmount && parseFloat(usdcAmount) < MIN_ORDER_USD) ? `Minimum order is $${MIN_ORDER_USD} USD` : ''}
             </p>
@@ -1615,7 +1589,7 @@ export default function PurchaseModal({
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation}
+              disabled={!email || !amount || !walletReady || chainSwitching || !!insufficientBalance || !!amountValidation || loadingQuote || !usdcAmount}
               className="flex-1 bg-ember-soft hover:brightness-125 text-ember px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
             >
               Review & Redeem

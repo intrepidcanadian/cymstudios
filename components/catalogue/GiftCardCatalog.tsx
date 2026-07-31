@@ -433,40 +433,38 @@ export default function GiftCardCatalog() {
   const [purchaseInitialAmount, setPurchaseInitialAmount] = useState<string>('');
   const [hasNewOrders, setHasNewOrders] = useState(false);
 
-  // Cached exchange rates for denomination token cost previews (display only)
-  const [fxRateCache, setFxRateCache] = useState<Record<string, number>>({});
-  const fxFetchedRef = useRef<Set<string>>(new Set());
-  const fetchFxForCurrency = useCallback((currency: string) => {
-    if (currency === 'USD' || fxFetchedRef.current.has(currency)) return;
-    fxFetchedRef.current.add(currency);
-    fetch(`/api/exchange-rate?from=${currency}&to=USD`)
+  // Cached effective rates for denomination cost previews (display only).
+  // Keyed by product, not currency: the effective rate folds in the fee AND the
+  // per-product discount rebate, so two USD products can price differently.
+  // The server owns that formula — nothing here computes a fee.
+  const [rateByProduct, setRateByProduct] = useState<Record<number, number>>({});
+  const rateFetchedRef = useRef<Set<number>>(new Set());
+  const fetchRateForProduct = useCallback((productId: number) => {
+    if (!productId || rateFetchedRef.current.has(productId)) return;
+    rateFetchedRef.current.add(productId);
+    fetch(`/api/quote?productId=${productId}`)
       .then(r => r.json())
       .then(data => {
-        if (data.success && data.rate) {
-          const fee = 1 + 0.015; // 1.5% for non-USD
-          setFxRateCache(prev => ({ ...prev, [currency]: data.rate * fee }));
+        if (data.success && typeof data.effectiveRate === 'number') {
+          setRateByProduct(prev => ({ ...prev, [productId]: data.effectiveRate }));
         }
       })
-      .catch(() => { /* display-only — silent fail */ });
+      .catch(() => { /* display-only — silent fail, modal fetches the real quote */ });
   }, []);
 
-  // Fetch FX rate when product detail modal opens (for denomination cost preview)
+  // Fetch the effective rate when the product detail modal opens
   useEffect(() => {
-    if (selectedProduct && selectedProduct.currency && selectedProduct.currency !== 'USD') {
-      fetchFxForCurrency(selectedProduct.currency);
+    if (selectedProduct?.product_id) {
+      fetchRateForProduct(selectedProduct.product_id);
     }
-  }, [selectedProduct, fetchFxForCurrency]);
+  }, [selectedProduct, fetchRateForProduct]);
 
-  // Helper: estimate token cost for a denomination amount
-  const estimateTokenCost = useCallback((denomAmount: number, currency: string): string | null => {
-    if (currency === 'USD') {
-      const fee = 1 + 0.005; // 0.5% for USD
-      return (Math.ceil(denomAmount * fee * 100) / 100).toFixed(2);
-    }
-    const rate = fxRateCache[currency]; // already includes 1.5% fee
+  // Helper: estimate token cost for a denomination amount (plain multiply)
+  const estimateTokenCost = useCallback((denomAmount: number, productId: number): string | null => {
+    const rate = rateByProduct[productId];
     if (!rate) return null;
     return (Math.ceil(denomAmount * rate * 100) / 100).toFixed(2);
-  }, [fxRateCache]);
+  }, [rateByProduct]);
 
   // M11: Facilitator gas health — warn users before they attempt a purchase on a network with low gas
   const [facilitatorHealth, setFacilitatorHealth] = useState<Record<string, boolean>>({});
@@ -1512,7 +1510,7 @@ export default function GiftCardCatalog() {
                       <h3 className="text-xs sm:text-sm font-semibold text-ink-dim mb-2">Quick Buy — tap a denomination</h3>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {selectedProduct.denominations.map((denom: number, idx: number) => {
-                          const tokenEst = selectedProduct.currency ? estimateTokenCost(denom, selectedProduct.currency) : null;
+                          const tokenEst = estimateTokenCost(denom, selectedProduct.product_id);
                           return (
                             <button
                               key={idx}

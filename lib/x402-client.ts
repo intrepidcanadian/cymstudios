@@ -9,6 +9,7 @@
 'use client';
 
 import { NETWORKS, FACILITATOR_ADDRESS, type NetworkConfig } from '@/config/networks';
+import { buildDirectAuthMessage } from './x402-direct-auth';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 const log = (...args: unknown[]) => { if (DEBUG) console.log('[x402]', ...args); };
@@ -139,6 +140,21 @@ async function buildDirectPayment(
   const receipt = await approveTx.wait();
   log(`Approve confirmed, block: ${receipt.blockNumber}`);
 
+  // Prove control of `from`. An allowance alone doesn't authorize a purchase —
+  // without this, anyone could name someone else's address as the payer and
+  // spend their outstanding allowance. See lib/x402-direct-auth.ts.
+  const nonce = ethers.hexlify(ethers.randomBytes(32));
+  const authMessage = buildDirectAuthMessage({
+    from: signerAddress,
+    to: recipient,
+    value,
+    chainId: network.chainId,
+    token: assetAddress,
+    nonce,
+  });
+  const signature = await signer.signMessage(authMessage);
+  log('Direct payment authorization signed');
+
   const paymentPayload = {
     x402Version: 1,
     scheme: 'exact',
@@ -149,6 +165,8 @@ async function buildDirectPayment(
       from: signerAddress,
       to: recipient,
       value,
+      nonce,
+      signature,
     },
   };
 

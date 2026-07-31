@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
 import { getRebateShortfallPercent } from '@/lib/exchange-rates';
+import { releaseDailyRedemption } from '@/lib/redemption-cap';
 import { sendVoucherEmail, sendOrderFailureAlert, sendOrderCompletedAlert } from '@/lib/email';
 import { NETWORKS, getNetwork } from '@/config/networks';
 import { logger } from '@/lib/logger';
@@ -351,6 +352,10 @@ async function refundOrder(supabase: any, order: any): Promise<ResolutionSummary
         }),
       })
       .eq('order_id', orderId);
+
+    // Order was refunded and no voucher was issued — hand the daily redemption
+    // budget back to the day this order originally consumed it from.
+    await releaseDailyRedemption(supabase, order.cap_day, order.cap_reserved_usd, `cron refund ${orderId}`);
 
     // FYI alert — refund went through, no manual action needed but ops should know
     await sendOrderFailureAlert({

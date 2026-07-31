@@ -2,9 +2,19 @@
  * Exchange Rate Service
  *
  * Uses API Layer currency_data API for exchange rates.
- * Two-tier caching: 24h for display estimates, 30min freshness for settlement.
  *
- * A 1.5% merchant fee is applied on top of the exchange rate.
+ * ONE rate policy, everywhere: quotes and settlement both target a rate no
+ * older than FRESH_CACHE_MAX_AGE_MS (30 min). The customer is charged the
+ * amount they were quoted, and that amount is priced on the same rate the
+ * settlement check validates against — so quote and charge cannot diverge.
+ *
+ * If the provider is unreachable we fall back to the freshest cached rate up to
+ * STALE_CACHE_MAX_AGE_MS (12h), flagged as `degraded`; past that we refuse to
+ * price rather than settle on a rate we can't stand behind.
+ *
+ * Fee: 1.5% non-USD (covers FX drift), 0.5% USD. On USD cards our share of the
+ * product's voucher discount is rebated against the fee, floored at 0% — the
+ * fee is a real cost passed through, so margin may cancel it but never invert it.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -33,12 +43,79 @@ const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 // If cache is older than this, force-refresh before processing payment
 const FRESH_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 
-// Common currencies we support for gift cards
+// Absolute ceiling on how stale a cached rate may be before we refuse to price
+// an order at all. The stale-cache fallback below exists so a brief provider
+// outage doesn't take checkout down — but without a ceiling it silently turns
+// "settle on a 30-minute rate" into "settle on a week-old rate". Past this, we
+// fail the request instead of settling on a rate we can no longer defend.
+//
+// Set to 12h deliberately, to sit above the 8-hourly refresh cron that keeps us
+// inside API Layer's 100-calls/month free tier (see SETUP.md). The ceiling MUST
+// stay longer than the cron interval — otherwise a quiet period with no
+// purchases lets the cache age past it and non-USD checkout starts 503ing.
+// The trade-off is accepting settlement on rates up to 12h old during a
+// provider outage; the 1.5% non-USD fee is what absorbs that drift.
+const STALE_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+// After a failed API Layer call, don't retry for this long. Without it, every
+// request during an outage pays a full network timeout — including requests on
+// the settlement path.
+const API_FAILURE_COOLDOWN_MS = 60 * 1000;
+
+// Per-attempt timeout on the API Layer call itself
+const API_FETCH_TIMEOUT_MS = 8 * 1000;
+
+// Timestamp of the last API Layer failure (0 = no recent failure)
+let lastApiFailureAt = 0;
+
+// Currencies we pull rates for from API Layer
 const SUPPORTED_CURRENCIES = [
   'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'HKD', 'SGD', 'NZD',
   'SEK', 'NOK', 'DKK', 'MXN', 'BRL', 'INR', 'KRW', 'THB', 'PHP', 'MYR',
   'IDR', 'ZAR', 'AED', 'SAR', 'TRY', 'PLN', 'CZK', 'HUF', 'ILS', 'TWD'
 ];
+
+/**
+ * Currencies a customer may actually transact in — the single whitelist enforced
+ * by /api/quote, /api/exchange-rate, and /api/purchase, and mirrored by the
+ * client's submit gating. Anything outside this list cannot be quoted, so it
+ * must not be purchasable.
+ *
+ * Deliberately narrower than SUPPORTED_CURRENCIES: we hold rates for all 30,
+ * but only sell in the ones below. Widening is safe — add the code here and it
+ * flows to the UI, the quote endpoint, and the purchase guard at once.
+ */
+export const QUOTABLE_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'] as const;
+
+export function isQuotableCurrency(currency: string | null | undefined): boolean {
+  if (!currency) return false;
+  const c = currency.toUpperCase();
+  // USDC is the settlement asset, priced 1:1 with USD
+  if (c === 'USDC') return true;
+  return (QUOTABLE_CURRENCIES as readonly string[]).includes(c);
+}
+
+// A catalogue discount older than this is not trusted for the rebate — the
+// stored value may no longer match what xRemit grants, so we charge the full
+// fee rather than risk waiving more than we earn.
+export const REBATE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * The discount that may be rebated against the fee, given how fresh the
+ * catalogue row is. Shared by /api/quote and /api/purchase so the amount we
+ * quote is always the amount we charge.
+ *
+ * @param discountPercent - `brands.discount` (whole percent)
+ * @param cachedAt - `brands.cached_at`
+ */
+export function resolveRebateDiscount(
+  discountPercent: number | null | undefined,
+  cachedAt: string | null | undefined,
+): number {
+  if (!cachedAt) return 0;
+  const fresh = (Date.now() - new Date(cachedAt).getTime()) < REBATE_MAX_AGE_MS;
+  return fresh ? (discountPercent ?? 0) : 0;
+}
 
 interface ExchangeRateCache {
   rates: Record<string, number>; // Currency -> rate (1 USD = X currency)
@@ -65,12 +142,28 @@ async function fetchRatesFromApiLayer(): Promise<Record<string, number>> {
 
   console.log('[ExchangeRates] Fetching fresh rates from API Layer...');
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'apikey': API_LAYER_KEY
+  // Hard timeout — this call sits on the settlement path, so a hung provider
+  // must not hold a purchase request open.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': API_LAYER_KEY
+      },
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`API Layer request timed out after ${API_FETCH_TIMEOUT_MS}ms`);
     }
-  });
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -179,8 +272,10 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
  * Get exchange rates with caching strategy:
  * 1. Check in-memory cache (valid for maxAge, default 24h)
  * 2. Check database cache (valid for maxAge)
- * 3. Fetch from API Layer
- * 4. Use stale cache if available, otherwise throw
+ * 3. Fetch from API Layer (skipped while in post-failure cooldown)
+ * 4. Fall back to the freshest stale cache, but only up to
+ *    STALE_CACHE_MAX_AGE_MS — beyond that we throw rather than price an order
+ *    on a rate we can't stand behind.
  *
  * @param maxAge - Maximum cache age in ms (default: CACHE_DURATION_MS = 24h).
  *                 Pass FRESH_CACHE_MAX_AGE_MS (30 min) at settlement time.
@@ -200,7 +295,40 @@ async function getExchangeRates(maxAge: number = CACHE_DURATION_MS): Promise<Exc
     return dbCache;
   }
 
-  // 3. Fetch fresh rates from API Layer
+  // Fall back to the freshest cache we hold, subject to the hard staleness
+  // ceiling. Used when the API is unreachable or in post-failure cooldown.
+  const useStaleCache = (reason: string): ExchangeRateCache => {
+    const best = [dbCache, memoryCache]
+      .filter((c): c is ExchangeRateCache => c !== null)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+    if (!best) {
+      throw new Error('Exchange rate service is unavailable');
+    }
+
+    const ageMinutes = Math.round((now - best.timestamp) / 60000);
+
+    if ((now - best.timestamp) > STALE_CACHE_MAX_AGE_MS) {
+      console.error(
+        `[ExchangeRates] Refusing stale rates (${reason}): cache is ${ageMinutes} min old, ` +
+        `ceiling is ${STALE_CACHE_MAX_AGE_MS / 60000} min`
+      );
+      throw new Error(
+        `Exchange rate service is unavailable (cached rates are ${ageMinutes} minutes old)`
+      );
+    }
+
+    console.warn(`[ExchangeRates] Using stale ${best.source} cache (${reason}), age: ${ageMinutes} min`);
+    memoryCache = best;
+    return best;
+  };
+
+  // 3. Fetch fresh rates from API Layer — unless we just failed, in which case
+  //    skip straight to the fallback instead of eating another timeout.
+  if (lastApiFailureAt && (now - lastApiFailureAt) < API_FAILURE_COOLDOWN_MS) {
+    return useStaleCache('provider in failure cooldown');
+  }
+
   try {
     const rates = await fetchRatesFromApiLayer();
     const cache: ExchangeRateCache = {
@@ -210,28 +338,17 @@ async function getExchangeRates(maxAge: number = CACHE_DURATION_MS): Promise<Exc
     };
 
     // Save to memory and database
+    lastApiFailureAt = 0;
     memoryCache = cache;
     await saveRatesToDatabase(rates);
 
     return cache;
   } catch (err) {
+    lastApiFailureAt = now;
     console.error('[ExchangeRates] Failed to fetch from API Layer:', err);
 
-    // 4a. Use stale database cache if available
-    if (dbCache) {
-      console.warn('[ExchangeRates] Using stale database cache');
-      memoryCache = dbCache;
-      return dbCache;
-    }
-
-    // 4b. Use stale memory cache if available
-    if (memoryCache) {
-      console.warn('[ExchangeRates] Using stale memory cache');
-      return memoryCache;
-    }
-
-    // 4c. No rates available — service is unavailable
-    throw new Error('Exchange rate service is unavailable');
+    // 4. Stale fallback, bounded by STALE_CACHE_MAX_AGE_MS (throws past it)
+    return useStaleCache('provider fetch failed');
   }
 }
 
@@ -245,7 +362,9 @@ export async function getExchangeRate(currency: string): Promise<number> {
     return 1;
   }
 
-  const { rates } = await getExchangeRates();
+  // Same freshness target as pricing — a rate we publish must not differ from
+  // the rate we charge on.
+  const { rates } = await getExchangeRates(FRESH_CACHE_MAX_AGE_MS);
   const rate = rates[currency];
 
   if (!rate) {
@@ -327,55 +446,78 @@ export function getRebateShortfallPercent(
 }
 
 /**
- * Get USDC amount for a given currency amount (display/estimate).
- * Uses cached rate (up to 24h old) + merchant fee (0.5% USD, 1.5% non-USD),
- * minus our 30% discount-margin rebate on USD cards.
+ * A price quote, carrying the staleness of the rate it was priced on so the
+ * caller can decide whether to settle, flag, or refuse.
  *
- * @param amount - Amount in source currency (gift card value)
- * @param currency - Source currency code (e.g., 'USD', 'HKD', 'EUR')
- * @param discountPercent - Product voucher discount in whole percent (USD rebate only)
- * @returns Estimated USDC amount with effective fee applied
+ * There is exactly one pricing path — this one. Both the quote shown to the
+ * customer and the amount settled on-chain come from it, so a quote can never
+ * disagree with a charge.
  */
-export async function getUsdcAmount(amount: number, currency: string, discountPercent: number = 0): Promise<number> {
-  const usdAmount = await convertToUsd(amount, currency);
-  const feePct = getEffectiveFeePercent(currency, discountPercent);
-  const usdcAmount = usdAmount * (1 + feePct / 100);
-
-  console.log(`[ExchangeRates] ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (${feePct}% fee, cached rate)`);
-
-  return usdcAmount;
+export interface PriceQuote {
+  /** USDC amount with the effective fee applied */
+  amount: number;
+  /** USD per 1 unit of source currency, fee included (amount === faceValue * effectiveRate) */
+  effectiveRate: number;
+  /** Fee actually applied, after the discount-margin rebate */
+  effectiveFeePercent: number;
+  /** Age of the exchange rate used, in ms (0 for USD/USDC — no rate involved) */
+  rateAgeMs: number;
+  /** True when the rate exceeded the 30-min freshness target (still within the hard ceiling) */
+  degraded: boolean;
 }
 
 /**
- * Get USDC amount using a fresh exchange rate (max 30 min old).
- * Used at settlement time — the effective fee is charged on the current rate.
+ * Price `amount` of `currency` in USDC on a settlement-grade rate.
  *
- * @param amount - Amount in source currency (gift card value)
+ * THE single pricing entry point. Targets a rate no older than 30 min; if the
+ * provider is unreachable the quote may be priced on an older cached rate — up
+ * to STALE_CACHE_MAX_AGE_MS, past which getExchangeRates throws. The result
+ * reports `rateAgeMs`/`degraded` so callers never price blind.
+ *
+ * @param amount - Amount in source currency (gift card face value)
  * @param currency - Source currency code
  * @param discountPercent - Product voucher discount in whole percent (USD rebate only)
- * @returns USDC amount with effective fee applied on fresh rate
  */
-export async function getUsdcAmountFresh(amount: number, currency: string, discountPercent: number = 0): Promise<number> {
-  const feePct = getEffectiveFeePercent(currency, discountPercent);
-  const feeMultiplier = 1 + (feePct / 100);
+export async function getPriceQuote(
+  amount: number,
+  currency: string,
+  discountPercent: number = 0
+): Promise<PriceQuote> {
+  const effectiveFeePercent = getEffectiveFeePercent(currency, discountPercent);
+  const feeMultiplier = 1 + (effectiveFeePercent / 100);
 
+  // No FX involved — nothing can be stale.
   if (currency === 'USD' || currency === 'USDC') {
-    return amount * feeMultiplier;
+    return {
+      amount: amount * feeMultiplier,
+      effectiveRate: feeMultiplier,
+      effectiveFeePercent,
+      rateAgeMs: 0,
+      degraded: false,
+    };
   }
 
-  const { rates } = await getExchangeRates(FRESH_CACHE_MAX_AGE_MS);
-  const rate = rates[currency];
+  const cache = await getExchangeRates(FRESH_CACHE_MAX_AGE_MS);
+  const rate = cache.rates[currency];
 
   if (!rate) {
     throw new Error(`Exchange rate unavailable for currency: ${currency}`);
   }
 
-  const usdAmount = amount / rate;
-  const usdcAmount = usdAmount * feeMultiplier;
+  const rateAgeMs = Math.max(0, Date.now() - cache.timestamp);
+  const degraded = rateAgeMs > FRESH_CACHE_MAX_AGE_MS;
 
-  console.log(`[ExchangeRates] FRESH: ${amount} ${currency} -> ${usdAmount.toFixed(4)} USD -> ${usdcAmount.toFixed(4)} USDC (${feePct}% fee, fresh rate)`);
+  // `rate` is "1 USD = X currency", so USD per unit is 1/rate
+  const effectiveRate = (1 / rate) * feeMultiplier;
+  const usdcAmount = amount * effectiveRate;
 
-  return usdcAmount;
+  console.log(
+    `[ExchangeRates] QUOTE: ${amount} ${currency} -> ${(amount / rate).toFixed(4)} USD -> ` +
+    `${usdcAmount.toFixed(4)} USDC (${effectiveFeePercent}% fee, rate age ${Math.round(rateAgeMs / 60000)} min` +
+    `${degraded ? ', DEGRADED' : ''})`
+  );
+
+  return { amount: usdcAmount, effectiveRate, effectiveFeePercent, rateAgeMs, degraded };
 }
 
 /**

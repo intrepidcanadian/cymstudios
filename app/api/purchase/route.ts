@@ -3,7 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { extractPaymentTrackingData, updatePaymentWithTxHash } from '@/lib/payment-tracker';
-import { getUsdcAmount, getUsdcAmountFresh, convertToUsd, getEffectiveFeePercent } from '@/lib/exchange-rates';
+import {
+  getPriceQuote,
+  convertToUsd,
+  getEffectiveFeePercent,
+  isQuotableCurrency,
+  resolveRebateDiscount,
+  QUOTABLE_CURRENCIES,
+} from '@/lib/exchange-rates';
+import {
+  reserveDailyRedemption,
+  releaseDailyRedemption,
+  getDailyRedemptionStatus,
+  type CapReservation,
+} from '@/lib/redemption-cap';
+import { buildDirectAuthMessage } from '@/lib/x402-direct-auth';
 import { generateOrderToken } from '@/lib/auth-token';
 import { sendOrderDelayedEmail, sendOrderCompletedAlert } from '@/lib/email';
 import { logger } from '@/lib/logger';
@@ -156,36 +170,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Minimum order value guard — orders below $1 USD cost more in facilitator gas than they generate
-    if (typeof price === 'number' && price > 0 && price < 1 && (!currency || currency === 'USD')) {
-      return NextResponse.json(
-        { success: false, error: 'Minimum order value is $1 USD. Smaller orders are not economically viable due to settlement costs.' },
-        { status: 400 }
-      );
-    }
-
-    // M31: Maximum order value ceiling — limits exposure per transaction (merchant protection)
-    // Convert non-USD currencies to USD equivalent before checking cap
-    const MAX_ORDER_VALUE_USD = 5000;
-    if (typeof price === 'number') {
-      const effectiveCurr = currency || 'USD';
-      let priceInUsd = price;
-      if (effectiveCurr !== 'USD' && effectiveCurr !== 'USDC') {
-        try {
-          priceInUsd = await convertToUsd(price, effectiveCurr);
-        } catch {
-          // If conversion fails, fall back to raw price comparison (conservative)
-          priceInUsd = price;
-        }
-      }
-      if (priceInUsd > MAX_ORDER_VALUE_USD) {
-        logger.warn(`[Purchase] Order value ${price} ${effectiveCurr} (~$${priceInUsd.toFixed(0)} USD) exceeds maximum $${MAX_ORDER_VALUE_USD}`);
-        return NextResponse.json(
-          { success: false, error: `Maximum order value is $${MAX_ORDER_VALUE_USD} USD per transaction. Your order of ${price} ${effectiveCurr} exceeds this limit. Please reduce the amount or split into multiple orders.` },
-          { status: 400 }
-        );
-      }
-    }
+    // NOTE: the order-value guards below depend on the currency, which must come
+    // from our own catalogue row — never the request body. They run after the
+    // product lookup, once orderCurrency is resolved.
 
     // CRITICAL: Validate purchase will succeed BEFORE processing payment
     // This prevents charging users for failed purchases
@@ -215,13 +202,82 @@ export async function POST(request: NextRequest) {
     // discount. If the brand row hasn't been synced recently, the stored discount
     // may no longer match what xRemit will actually grant — so fall back to no
     // rebate (full fee) rather than risk waiving more than we earn.
-    const REBATE_MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48h
-    const discountFresh = productData.cached_at
-      ? (Date.now() - new Date(productData.cached_at).getTime()) < REBATE_MAX_AGE_MS
-      : false;
-    const rebateDiscount = discountFresh ? (productData.discount ?? 0) : 0;
-    if (!discountFresh && (productData.discount ?? 0) > 0) {
+    // Shared with /api/quote so the quoted price matches the charged price.
+    const rebateDiscount = resolveRebateDiscount(productData.discount, productData.cached_at);
+    if (rebateDiscount === 0 && (productData.discount ?? 0) > 0) {
       logger.warn(`[Purchase] Stale catalogue discount for ${productIdNumber} (cached_at=${productData.cached_at}) — applying full fee, no rebate.`);
+    }
+
+    // The currency we price in comes from OUR catalogue row, never the request
+    // body. Trusting the client here let a caller buy a USD 100 card while
+    // claiming currency 'HKD' and be charged 100/7.8 ≈ $13 — the denomination
+    // check passes (it validates against the product's own denominations) and
+    // every downstream fee/FX calculation then used the attacker's currency.
+    const orderCurrency = (productData.currency || 'USD').toUpperCase();
+
+    // A mismatching client-supplied currency means a stale catalogue on their
+    // side (or tampering). Reject rather than silently repricing.
+    if (currency && currency.toUpperCase() !== orderCurrency) {
+      logger.warn(`[Purchase] Currency mismatch for ${productIdNumber}: client sent ${currency}, catalogue says ${orderCurrency}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `This product is priced in ${orderCurrency}, not ${currency.toUpperCase()}. Please refresh and try again.`,
+          code: 'CURRENCY_MISMATCH',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Currency guard: refuse anything we can't quote. The client blocks these at
+    // submit, but a direct API caller must hit the same wall — we cannot price
+    // a currency outside the whitelist, so we must not accept payment for one.
+    if (!isQuotableCurrency(orderCurrency)) {
+      logger.warn(`[Purchase] Rejected unsupported currency ${orderCurrency} for product ${productIdNumber}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `${orderCurrency} is not available for purchase. Supported currencies: ${QUOTABLE_CURRENCIES.join(', ')}.`,
+          code: 'CURRENCY_NOT_SUPPORTED',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Face value in USD — the figure both the order-value guards and the daily
+    // redemption cap are measured in (inventory issued, not USDC collected).
+    let priceInUsd = Number(price);
+    if (orderCurrency !== 'USD' && orderCurrency !== 'USDC') {
+      try {
+        priceInUsd = await convertToUsd(Number(price), orderCurrency);
+      } catch {
+        // Conversion unavailable — compare on the raw figure (conservative:
+        // for every currency we sell in, 1 unit is worth <= 1 USD)
+        priceInUsd = Number(price);
+      }
+    }
+
+    // Order-value guards, evaluated in the catalogue's currency (see above — the
+    // request body's currency is not trusted, so these can't be dodged by
+    // claiming a weak currency to shrink the USD equivalent).
+    if (typeof price === 'number' && price > 0) {
+      // Minimum — below this, facilitator gas costs more than the order earns
+      if (priceInUsd < 1) {
+        return NextResponse.json(
+          { success: false, error: 'Minimum order value is $1 USD. Smaller orders are not economically viable due to settlement costs.' },
+          { status: 400 }
+        );
+      }
+
+      // M31: Maximum order value ceiling — limits exposure per transaction
+      const MAX_ORDER_VALUE_USD = 5000;
+      if (priceInUsd > MAX_ORDER_VALUE_USD) {
+        logger.warn(`[Purchase] Order value ${price} ${orderCurrency} (~$${priceInUsd.toFixed(0)} USD) exceeds maximum $${MAX_ORDER_VALUE_USD}`);
+        return NextResponse.json(
+          { success: false, error: `Maximum order value is $${MAX_ORDER_VALUE_USD} USD per transaction. Your order of ${price} ${orderCurrency} exceeds this limit. Please reduce the amount or split into multiple orders.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate price against product denominations or value restrictions.
@@ -316,14 +372,52 @@ export async function POST(request: NextRequest) {
     // NOW that we've validated the purchase will succeed, check for payment
     // Check for x402 payment header
     const paymentHeader = request.headers.get('x-payment');
-    const effectiveCurrency = currency || productData.currency;
+    const effectiveCurrency = orderCurrency;
 
-    // If no payment header, return 402 with estimated USDC amount (24h cache OK)
+    // The 402 amount is what the customer's wallet signs, and on the EIP-3009 path
+    // the signed value is exactly what moves on-chain. So it must be priced on the
+    // SAME fresh rate settlement validates against — quoting on a staler rate would
+    // mean charging a rate we'd already decided was too old to settle on.
     if (!paymentHeader) {
+      // Pre-flight the daily cap so the customer is turned away BEFORE signing,
+      // rather than after. This is advisory only — the binding, race-safe check
+      // is the atomic reservation on the settlement path below.
+      try {
+        const capStatus = await getDailyRedemptionStatus(supabase);
+        if (priceInUsd > capStatus.remainingUsd) {
+          logger.warn(
+            `[Purchase] Daily cap pre-flight refused: $${priceInUsd.toFixed(2)} requested, ` +
+            `$${capStatus.remainingUsd.toFixed(2)} left of $${capStatus.capUsd} for ${capStatus.day}`
+          );
+          return NextResponse.json(
+            {
+              success: false,
+              error: capStatus.remainingUsd <= 0
+                ? "Today's redemption limit has been reached. Please try again tomorrow."
+                : `Only $${capStatus.remainingUsd.toFixed(2)} USD of today's redemption capacity remains, and this order needs $${priceInUsd.toFixed(2)}. Please choose a smaller amount or try again tomorrow.`,
+              code: 'DAILY_CAP_REACHED',
+              remainingUsd: Number(capStatus.remainingUsd.toFixed(2)),
+            },
+            { status: 429 }
+          );
+        }
+      } catch (capError) {
+        // Fail closed — we'd rather refuse a sale than quote capacity we can't confirm
+        logger.error('[Purchase] Daily cap pre-flight failed:', capError instanceof Error ? capError.message : 'Unknown');
+        return NextResponse.json(
+          { success: false, error: 'Unable to verify redemption capacity right now. Please try again in a moment.' },
+          { status: 503 }
+        );
+      }
+
       let usdcAmountFloat: number;
       try {
-        usdcAmountFloat = await getUsdcAmount(price, effectiveCurrency, rebateDiscount);
-        logger.info(`[Purchase] Estimate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC (cached rate)`);
+        const quote = await getPriceQuote(price, effectiveCurrency, rebateDiscount);
+        usdcAmountFloat = quote.amount;
+        logger.info(
+          `[Purchase] 402 quote: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC ` +
+          `(rate age ${Math.round(quote.rateAgeMs / 60000)} min${quote.degraded ? ', DEGRADED' : ''})`
+        );
       } catch (conversionError) {
         logger.error('[Purchase] Currency conversion failed');
         return NextResponse.json(
@@ -367,11 +461,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Settlement path: use fresh exchange rate (max 30 min old) for accurate pricing
+    // Settlement path: same pricing call as the 402 above, so the amount we require
+    // is derived identically to the amount the customer signed. The quote reports how
+    // stale the rate actually is — getPriceQuote targets 30 min but degrades to older
+    // cached rates when the provider is down (and throws past the hard ceiling), so
+    // we must not assume "fresh" just because we asked for it.
     let usdcAmountFloat: number;
+    let settlementRateAgeMs = 0;
+    let settlementRateDegraded = false;
     try {
-      usdcAmountFloat = await getUsdcAmountFresh(price, effectiveCurrency, rebateDiscount);
-      logger.info(`[Purchase] Fresh rate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC`);
+      const quote = await getPriceQuote(price, effectiveCurrency, rebateDiscount);
+      usdcAmountFloat = quote.amount;
+      settlementRateAgeMs = quote.rateAgeMs;
+      settlementRateDegraded = quote.degraded;
+
+      logger.info(
+        `[Purchase] Settlement rate: ${price} ${effectiveCurrency} = ${usdcAmountFloat.toFixed(2)} USDC ` +
+        `(rate age ${Math.round(settlementRateAgeMs / 60000)} min)`
+      );
+
+      if (settlementRateDegraded) {
+        // Not fatal — within the hard staleness ceiling the FX drift is absorbed by
+        // the service fee. But it means the exchange-rate provider is failing, so
+        // make it loud and record it on the order for reconciliation.
+        logger.warn(
+          `[Purchase] DEGRADED RATE: settling ${price} ${effectiveCurrency} on a rate ` +
+          `${Math.round(settlementRateAgeMs / 60000)} min old — exchange-rate provider is not responding.`
+        );
+      }
     } catch (conversionError) {
       logger.error('[Purchase] Currency conversion failed at settlement');
       return NextResponse.json(
@@ -411,7 +528,11 @@ export async function POST(request: NextRequest) {
 
       const networkKey = paymentData.network || 'ethereum';
       paymentNetworkConfig = getNetwork(networkKey);
-      paymentStrategy = paymentData.strategy || paymentNetworkConfig.paymentStrategy;
+      // Strategy is pinned to the network config, NOT read from the payload.
+      // When the client could pick it, declaring `direct` on an EIP-3009 network
+      // skipped the used_nonces replay guard below (which only ran for eip3009)
+      // and routed settlement onto the allowance-based path.
+      paymentStrategy = paymentNetworkConfig.paymentStrategy;
       logger.info(`[x402] Payment network: ${paymentNetworkConfig.name} (${paymentNetworkConfig.tokenSymbol}), strategy: ${paymentStrategy}`);
 
       const { payload } = paymentData;
@@ -423,13 +544,47 @@ export async function POST(request: NextRequest) {
 
       if (paymentStrategy === 'direct') {
         // Direct: user already approved, we call transferFrom for the settlement amount
-        const { from, to, value, approvalTxHash } = payload;
-        if (!from || !to || !value || !approvalTxHash) {
+        const { from, to, value, approvalTxHash, nonce, signature } = payload;
+        if (!from || !to || !value || !approvalTxHash || !nonce || !signature) {
           return NextResponse.json(
             { success: false, error: 'Invalid direct payment payload' },
             { status: 400 }
           );
         }
+
+        // Proof of control over `from`. Unlike EIP-3009 — where the token
+        // contract verifies the signature on-chain and a forged payer simply
+        // reverts — `transferFrom` will happily spend ANY address's outstanding
+        // allowance. Without this check, naming someone else's address as the
+        // payer buys the attacker a gift card funded by that person's wallet.
+        try {
+          const expectedMessage = buildDirectAuthMessage({
+            from,
+            to,
+            value,
+            chainId: paymentNetworkConfig.chainId,
+            token: paymentNetworkConfig.tokenAddress,
+            nonce,
+          });
+          const recovered = ethers.verifyMessage(expectedMessage, signature);
+          if (recovered.toLowerCase() !== String(from).toLowerCase()) {
+            logger.warn(`[x402] Direct auth signature mismatch: claims ${from}, signed by ${recovered}`);
+            return NextResponse.json(
+              { success: false, error: 'Payment authorization does not match the paying address.' },
+              { status: 400 }
+            );
+          }
+        } catch (sigError) {
+          logger.warn('[x402] Direct auth signature invalid:', sigError instanceof Error ? sigError.message : 'Unknown');
+          return NextResponse.json(
+            { success: false, error: 'Invalid payment authorization signature.' },
+            { status: 400 }
+          );
+        }
+
+        // Single-use: recorded in used_nonces below, so a captured payload
+        // cannot be replayed against a still-live allowance.
+        paymentNonce = nonce;
         if (BigInt(value) < BigInt(settlementAmount)) {
           return NextResponse.json(
             { success: false, error: `Payment amount insufficient. Required ${settlementAmount}, got ${value}. The exchange rate may have changed — please try again.` },
@@ -544,7 +699,10 @@ export async function POST(request: NextRequest) {
     // The on-chain contract enforces nonce uniqueness, but only once a tx confirms.
     // Between signature submission and confirmation, the same nonce could be replayed.
     // Inserting first (with PK on (from_address, nonce)) closes this race window.
-    if (paymentStrategy === 'eip3009' && paymentNonce) {
+    // Applies to BOTH strategies: eip3009 signs a nonce into the authorization,
+    // and direct now carries a single-use nonce in its auth signature. Gating
+    // this on strategy previously meant the direct path had no replay guard.
+    if (paymentNonce) {
       const { error: nonceInsertError } = await supabase
         .from('used_nonces')
         .insert({
@@ -609,6 +767,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Binding daily-cap check: atomically reserve this order's face value against
+    // today's budget. Done in Postgres under a row lock — a read-then-write here
+    // would let two concurrent purchases both see the same remaining budget and
+    // both settle, blowing through the cap. Reserved BEFORE any money moves;
+    // released on every failure path below so a failed order doesn't strand budget.
+    let capReservation: CapReservation | null = null;
+    try {
+      capReservation = await reserveDailyRedemption(supabase, priceInUsd);
+    } catch (capError) {
+      // Fail closed — an unreachable ledger must stop sales, not uncap them
+      logger.error('[Purchase] Daily cap reservation errored:', capError instanceof Error ? capError.message : 'Unknown');
+      return NextResponse.json(
+        { success: false, error: 'Unable to verify redemption capacity right now. Please try again in a moment.' },
+        { status: 503 }
+      );
+    }
+
+    if (!capReservation.allowed) {
+      logger.warn(
+        `[Purchase] Daily cap reached: $${priceInUsd.toFixed(2)} requested, ` +
+        `$${capReservation.remainingUsd.toFixed(2)} left of $${capReservation.capUsd} for ${capReservation.day}`
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: capReservation.remainingUsd <= 0
+            ? "Today's redemption limit has been reached. Please try again tomorrow."
+            : `Only $${capReservation.remainingUsd.toFixed(2)} USD of today's redemption capacity remains, and this order needs $${priceInUsd.toFixed(2)}. Please choose a smaller amount or try again tomorrow.`,
+          code: 'DAILY_CAP_REACHED',
+          remainingUsd: Number(capReservation.remainingUsd.toFixed(2)),
+        },
+        { status: 429 }
+      );
+    }
+
+    const capDay = capReservation.day;
+    const capReservedUsd = Math.ceil(priceInUsd * 100) / 100;
+    logger.info(`[Purchase] Reserved $${capReservedUsd} of daily cap (${capReservation.usedUsd}/${capReservation.capUsd} used on ${capDay})`);
+
     // Create order record in database (pending status)
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
@@ -617,7 +814,7 @@ export async function POST(request: NextRequest) {
         product_id: productIdNumber, // Use validated/converted productId
         brand_name: brandName,
         country_name: countryName,
-        currency: currency,
+        currency: orderCurrency,
         price: price,
         user_id: userId,
         user_first_name: userFirstName,
@@ -633,6 +830,14 @@ export async function POST(request: NextRequest) {
         // and reconcilable against realized margin at fulfillment.
         service_fee_percent: getEffectiveFeePercent(effectiveCurrency, rebateDiscount),
         discount_applied: rebateDiscount,
+        // Staleness of the FX rate this order was settled on. Lets us reconcile
+        // realized FX loss against orders priced during a rate-provider outage.
+        settlement_rate_age_ms: settlementRateAgeMs,
+        settlement_rate_degraded: settlementRateDegraded,
+        // Which day's budget this consumed, so a later refund releases it back
+        // to the day it was taken from (not whatever day the refund lands on).
+        cap_day: capDay,
+        cap_reserved_usd: capReservedUsd,
       })
       .select()
       .single();
@@ -648,8 +853,12 @@ export async function POST(request: NextRequest) {
           'price', 'user_id', 'user_email', 'status',
           'payment_from', 'payment_network', 'payment_value',
           'service_fee_percent', 'discount_applied',
+          'settlement_rate_age_ms', 'settlement_rate_degraded',
+          'cap_day', 'cap_reserved_usd',
         ],
       });
+      // No order exists, so nothing was redeemed — give the budget back
+      await releaseDailyRedemption(supabase, capDay, capReservedUsd, 'order insert failed');
       return NextResponse.json(
         { success: false, error: 'Failed to create order' },
         { status: 500 }
@@ -681,6 +890,9 @@ export async function POST(request: NextRequest) {
             })
           })
           .eq('order_id', orderId);
+
+        // No payment taken, no card issued — release the reservation
+        await releaseDailyRedemption(supabase, capDay, capReservedUsd, 'facilitator gas too low');
 
         return NextResponse.json(
           {
@@ -730,7 +942,15 @@ export async function POST(request: NextRequest) {
           setTimeout(() => reject(new Error('Settlement confirmation timed out after 90s')), SETTLEMENT_TIMEOUT_MS)
         ),
       ]);
-      logger.info('[x402] Payment confirmed, block:', (receipt as any).blockNumber);
+      // Defence in depth: ethers v6 throws on a reverted transaction, so this is
+      // normally unreachable. But this line is the single point where "the customer
+      // paid" is decided — and everything after it hands over a gift card. Assert
+      // success explicitly rather than inheriting it from library behaviour.
+      const settledReceipt = receipt as any;
+      if (!settledReceipt || settledReceipt.status !== 1) {
+        throw new Error(`Payment transaction did not succeed on-chain (status: ${settledReceipt?.status ?? 'unknown'})`);
+      }
+      logger.info('[x402] Payment confirmed, block:', settledReceipt.blockNumber);
     } catch (paymentExecutionError) {
       const errorMsg = paymentExecutionError instanceof Error ? paymentExecutionError.message : 'Unknown';
       const isTimeout = errorMsg.includes('timed out');
@@ -772,6 +992,11 @@ export async function POST(request: NextRequest) {
           })
         })
         .eq('order_id', orderId);
+
+      // Payment never landed, so no card will be issued — release the reservation.
+      // (The timeout branch above deliberately does NOT release: that payment may
+      // still confirm and be fulfilled by the cron, so its budget stays consumed.)
+      await releaseDailyRedemption(supabase, capDay, capReservedUsd, 'payment execution failed');
 
       return NextResponse.json(
         {
@@ -921,6 +1146,9 @@ export async function POST(request: NextRequest) {
           })
           .eq('order_id', orderId);
 
+        // Refunded, no voucher issued — release the reservation
+        await releaseDailyRedemption(supabase, capDay, capReservedUsd, 'xRemit failed, refunded');
+
         return NextResponse.json(
           {
             success: false,
@@ -959,6 +1187,11 @@ export async function POST(request: NextRequest) {
           cardValue: price.toString(),
           currency: effectiveCurrency,
         }).catch(err => logger.error(`[Purchase] Failed to send delayed-order email for ${orderId}:`, err instanceof Error ? err.message : 'Unknown'));
+
+        // xRemit rejected the order outright, so no voucher exists regardless of
+        // the refund state — release the inventory even though the cash is still
+        // held pending a manual refund.
+        await releaseDailyRedemption(supabase, capDay, capReservedUsd, 'xRemit failed, manual refund pending');
 
         return NextResponse.json(
           {
@@ -1061,7 +1294,7 @@ export async function POST(request: NextRequest) {
         status: 'processing',
         productId: productId,
         price: price,
-        currency: currency || productData.currency,
+        currency: orderCurrency,
         usdcAmount: usdcAmountFloat.toFixed(2)
       },
       x402Payment: trackedPayment
