@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { BrandProduct } from '@/lib/types/catalogue';
 import PurchaseModal from './PurchaseModal';
+import { orderedQuotableCurrencies } from '@/config/currencies';
 import OrderStatusModal from './OrderStatusModal';
 import { SlidersHorizontal, X, Shield, Wallet, LogOut, CreditCard, Send, Clock, ArrowUp, AlertCircle, ChevronDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -866,8 +867,7 @@ export default function GiftCardCatalog() {
           onChange={(e) => {
             const val = e.target.value;
             setCountryFilter(val);
-            const currencyOrder = ['USD', 'CAD', 'EUR', 'GBP', 'HKD'];
-            const matchedCurrency = currencyOrder.find(cur =>
+            const matchedCurrency = orderedQuotableCurrencies().find(cur =>
               countriesByCurrency[cur]?.some(c => c === val)
             );
             if (val === 'all') {
@@ -880,7 +880,7 @@ export default function GiftCardCatalog() {
         >
           <option value="all">All Regions</option>
           {Object.keys(countriesByCurrency).length > 0 ? (
-            ['USD', 'CAD', 'EUR', 'GBP', 'HKD'].filter(cur => countriesByCurrency[cur]).map(cur => (
+            orderedQuotableCurrencies().filter(cur => countriesByCurrency[cur]).map(cur => (
               <optgroup key={cur} label={cur}>
                 {countriesByCurrency[cur].filter(c => !hiddenCountries.has(c)).map(country => (
                   <option key={`${cur}-${country}`} value={country}>{getCountryFlag(country)} {country}</option>

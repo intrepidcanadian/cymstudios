@@ -75,25 +75,10 @@ const SUPPORTED_CURRENCIES = [
   'IDR', 'ZAR', 'AED', 'SAR', 'TRY', 'PLN', 'CZK', 'HUF', 'ILS', 'TWD'
 ];
 
-/**
- * Currencies a customer may actually transact in — the single whitelist enforced
- * by /api/quote, /api/exchange-rate, and /api/purchase, and mirrored by the
- * client's submit gating. Anything outside this list cannot be quoted, so it
- * must not be purchasable.
- *
- * Deliberately narrower than SUPPORTED_CURRENCIES: we hold rates for all 30,
- * but only sell in the ones below. Widening is safe — add the code here and it
- * flows to the UI, the quote endpoint, and the purchase guard at once.
- */
-export const QUOTABLE_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'] as const;
-
-export function isQuotableCurrency(currency: string | null | undefined): boolean {
-  if (!currency) return false;
-  const c = currency.toUpperCase();
-  // USDC is the settlement asset, priced 1:1 with USD
-  if (c === 'USDC') return true;
-  return (QUOTABLE_CURRENCIES as readonly string[]).includes(c);
-}
+// The sellable whitelist lives in config/currencies (dependency-free, so client
+// components can import it without pulling this module into the browser bundle).
+// Re-exported here because most server code already imports it from this path.
+export { QUOTABLE_CURRENCIES, isQuotableCurrency } from '@/config/currencies';
 
 // A catalogue discount older than this is not trusted for the rebate — the
 // stored value may no longer match what xRemit grants, so we charge the full

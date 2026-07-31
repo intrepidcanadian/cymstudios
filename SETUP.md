@@ -186,7 +186,7 @@ rate, so the amount signed is the amount charged. (On the EIP-3009 path the
 signed value is what moves on-chain, so this is load-bearing, not cosmetic.)
 
 **Sellable currencies** are `QUOTABLE_CURRENCIES` in `lib/exchange-rates.ts` —
-currently `USD, CAD, HKD, GBP, EUR`. Anything outside it cannot be quoted, so
+currently `USD, CAD, HKD, EUR`. Anything outside it cannot be quoted, so
 `/api/quote`, `/api/exchange-rate`, and `/api/purchase` all reject it and the
 buy button stays disabled. We hold rates for 30 currencies; widening the list is
 just adding the code there.
