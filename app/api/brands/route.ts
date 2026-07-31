@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { QUOTABLE_CURRENCIES } from '@/lib/exchange-rates';
 
 // Use service_role key for server-side API routes
 // This bypasses RLS and gives full database access (safe because it's server-only)
@@ -7,7 +8,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Only return cards in currencies we support for FX conversion to USDC
-const SUPPORTED_CURRENCIES = ['USD', 'CAD', 'HKD', 'GBP', 'EUR'];
+// The catalogue must show exactly what we can quote and settle — no more, no
+// less. Sourced from the single whitelist in lib/exchange-rates rather than a
+// local copy: a hardcoded duplicate here would silently either surface products
+// that cannot be purchased, or hide ones that can.
+const SUPPORTED_CURRENCIES: string[] = [...QUOTABLE_CURRENCIES];
 
 export async function GET(req: NextRequest) {
   try {
