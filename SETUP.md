@@ -245,9 +245,9 @@ table. Without a scheduled refresh, that cache is only ever written as a side
 effect of a purchase — so a quiet period followed by an API Layer outage leaves
 settlement on a stale rate.
 
-`lib/exchange-rates.ts` bounds the damage: past a 12h staleness ceiling it refuses
+`lib/exchange-rates.ts` bounds the damage: past a 24h staleness ceiling it refuses
 to price an order at all (checkout returns 503) rather than settle on a rate it
-can't stand behind. Between 30 min and 12h it settles but flags the order
+can't stand behind. Between 9h and 24h it settles but flags the order
 (`settlement_rate_degraded`) and logs a `DEGRADED RATE` warning. **Refresh more
 often than the ceiling** or outages become downtime.
 
@@ -262,23 +262,30 @@ To add it to an already-provisioned server without re-running setup:
 ( crontab -l 2>/dev/null; echo "30 */8 * * * /var/www/cymstudio/deploy/cron-hit.sh /api/cron/refresh-exchange-rates >> /var/log/cym-refresh-rates.log 2>&1 # CYM-CRON refresh-rates" ) | crontab -
 ```
 
-**These two numbers are coupled — change one, change the other:**
+**This cron is the only intended caller of API Layer.** Three coupled numbers
+make that true — change one and you must change the others:
 
 | | |
 |---|---|
-| Refresh cron | every **8h** (~90 API calls/month, inside API Layer's 100/month free tier) |
-| `STALE_CACHE_MAX_AGE_MS` | **12h** — must stay *longer* than the cron interval |
+| Refresh cron | every **8h** → ~90 calls/month, inside the 100/month free tier |
+| `FRESH_CACHE_MAX_AGE_MS` | **9h** — above the cron interval, so quotes read cache and cost no quota |
+| `STALE_CACHE_MAX_AGE_MS` | **24h** — survives one missed cron run (8h → 16h) with margin |
 
-Purchases keep the cache warm on their own during trading hours, so this job
-matters most in quiet periods. If the cron fires less often than the ceiling, a
-quiet stretch lets the cache age past it and non-USD checkout starts returning
-503. At 8h and 12h there's 4h of slack, so a single failed run is survivable.
+The freshness target has to sit *above* the cron interval. When it was 30
+minutes, every non-USD quote arriving with a stale-enough cache fetched its own
+rate — on the order of 1,400 calls/month against a 100/month allowance. Raising
+it to 9h means quotes always serve from cache; only the cron calls out.
 
-The trade-off accepted here: during a provider outage we may settle non-USD
-orders on rates up to 12h old. The 1.5% non-USD fee is what absorbs that drift,
-and every such order is flagged `settlement_rate_degraded` for reconciliation.
-Tightening the ceiling means running the cron more often, which means a paid
-API Layer tier.
+Above 9h a quote will still attempt one refresh, as a self-heal for when the
+cron has failed, funded by the ~10 calls/month of headroom.
+
+The ceiling must exceed twice the cron interval, or a single failed run takes
+non-USD checkout down. Accepted trade-off: during an API Layer outage we may
+settle non-USD orders on rates up to 24h old. The 1.5% non-USD fee absorbs that
+drift, and every such order is flagged `settlement_rate_degraded`.
+
+Tighter freshness means more calls, which means a paid API Layer tier — worth it
+if non-USD stays the bulk of the catalogue.
 
 To find orders settled on a degraded rate:
 

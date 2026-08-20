@@ -28,11 +28,12 @@
 #   - /api/cron/resolve-pending-orders  every 15 min — finalizes stuck/timed-out
 #     orders and reconciles the rebate (rebate_shortfall_percent).
 #   - /api/cron/refresh-exchange-rates  every 8h — keeps the FX cache warm.
-#     MUST run more often than STALE_CACHE_MAX_AGE_MS (12h, lib/exchange-rates.ts)
-#     or a quiet period leaves the cache past the ceiling and checkout starts
-#     returning 503 on non-USD orders. 8h = ~90 calls/month, inside API Layer's
-#     100/month free tier, with 4h of slack under the ceiling for a failed run.
-#     If you change one of these two numbers, change the other.
+#     This cron is the ONLY intended caller of API Layer: 8h = ~90 calls/month,
+#     inside the 100/month free tier. lib/exchange-rates.ts holds the coupled
+#     ladder — cron 8h < FRESH_CACHE_MAX_AGE_MS 9h < STALE_CACHE_MAX_AGE_MS 24h.
+#     Quotes serve from cache below 9h, so they cost no quota; past 24h non-USD
+#     checkout refuses rather than settling on an indefensible rate.
+#     Change the interval here and you must change that ladder too.
 #   cron-hit.sh resolves CRON_SECRET from the app's env files at runtime, so the
 #   secret is NEVER hardcoded in the crontab. Do not add crontab lines that embed
 #   the bearer token in plaintext; if one leaks, rotate CRON_SECRET in .env.local

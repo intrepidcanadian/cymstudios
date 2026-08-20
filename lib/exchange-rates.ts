@@ -3,14 +3,15 @@
  *
  * Uses API Layer currency_data API for exchange rates.
  *
- * ONE rate policy, everywhere: quotes and settlement both target a rate no
- * older than FRESH_CACHE_MAX_AGE_MS (30 min). The customer is charged the
- * amount they were quoted, and that amount is priced on the same rate the
- * settlement check validates against — so quote and charge cannot diverge.
+ * ONE rate policy, everywhere: quotes and settlement read the same cache, so
+ * the customer is charged the amount they were quoted and quote and charge
+ * cannot diverge.
  *
- * If the provider is unreachable we fall back to the freshest cached rate up to
- * STALE_CACHE_MAX_AGE_MS (12h), flagged as `degraded`; past that we refuse to
- * price rather than settle on a rate we can't stand behind.
+ * The refresh cron is the only intended caller of API Layer — see the freshness
+ * ladder below. Quotes serve from cache up to FRESH_CACHE_MAX_AGE_MS (9h) and
+ * only attempt a fetch beyond that, as a self-heal when the cron has failed.
+ * Rates past STALE_CACHE_MAX_AGE_MS (24h) are refused outright rather than
+ * settled on.
  *
  * Fee: 1.5% non-USD (covers FX drift), 0.5% USD. On USD cards our share of the
  * product's voucher discount is rebated against the fee, floored at 0% — the
@@ -36,26 +37,37 @@ const PARTNER_REVENUE_SHARE = 0.30;
 // exceed what we actually realize at fulfillment.
 const REBATE_SAFETY_FACTOR = 0.90;
 
-// Cache duration: 24 hours for display/estimation (~30 API calls/month)
-const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
-
-// Fresh cache threshold: 30 minutes — used at settlement time
-// If cache is older than this, force-refresh before processing payment
-const FRESH_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
-
-// Absolute ceiling on how stale a cached rate may be before we refuse to price
-// an order at all. The stale-cache fallback below exists so a brief provider
-// outage doesn't take checkout down — but without a ceiling it silently turns
-// "settle on a 30-minute rate" into "settle on a week-old rate". Past this, we
-// fail the request instead of settling on a rate we can no longer defend.
+// ── Rate freshness ladder ───────────────────────────────────────────────────
+// The refresh cron is the ONLY thing that should call API Layer. That holds
+// only while:
 //
-// Set to 12h deliberately, to sit above the 8-hourly refresh cron that keeps us
-// inside API Layer's 100-calls/month free tier (see SETUP.md). The ceiling MUST
-// stay longer than the cron interval — otherwise a quiet period with no
-// purchases lets the cache age past it and non-USD checkout starts 503ing.
-// The trade-off is accepting settlement on rates up to 12h old during a
-// provider outage; the 1.5% non-USD fee is what absorbs that drift.
-const STALE_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+//     cron interval (8h)  <  FRESH_CACHE_MAX_AGE_MS (9h)  <  STALE_CACHE_MAX_AGE_MS (24h)
+//
+// Quota arithmetic: API Layer's free tier allows 100 calls/month. An 8-hourly
+// cron costs ~90 (3/day x 30 days). When the freshness target was 30 min, every
+// non-USD quote arriving with a >30min-old cache triggered its own fetch — on
+// the order of 1,400 calls/month, which the free tier cannot serve. Raising the
+// target above the cron interval means quotes always read cache.
+//
+// These three numbers are coupled. Change one, change the others.
+
+// Quotes and settlement serve from cache up to this age without calling out.
+// Past it, a quote attempts one refresh — a self-heal for when the cron has
+// failed, funded by the ~10 calls/month of headroom. Rates older than this are
+// also flagged `degraded` on the order for later reconciliation.
+const FRESH_CACHE_MAX_AGE_MS = 9 * 60 * 60 * 1000;
+
+// Absolute ceiling: past this we refuse to price at all rather than settle on a
+// rate we cannot defend. Without a ceiling, the stale-cache fallback silently
+// turns "settle on a recent rate" into "settle on a 45-day-old rate" — which is
+// precisely what production was doing before this existed.
+//
+// Sized to survive one missed cron run (8h -> 16h) with margin: it MUST exceed
+// twice the cron interval, or a single failed run takes non-USD checkout down.
+// Accepted trade-off: during an API Layer outage we may settle non-USD orders
+// on rates up to 24h old. The 1.5% non-USD fee absorbs that drift, and every
+// such order is flagged settlement_rate_degraded for reconciliation.
+const STALE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 // After a failed API Layer call, don't retry for this long. Without it, every
 // request during an outage pays a full network timeout — including requests on
@@ -113,8 +125,9 @@ let memoryCache: ExchangeRateCache | null = null;
 
 
 /**
- * Fetch fresh exchange rates from API Layer
- * Called at most once per day to stay within rate limits
+ * Fetch fresh exchange rates from API Layer.
+ * Should be reached only by the refresh cron, or by a quote self-healing after
+ * the cron has failed — the free tier cannot serve per-request fetches.
  */
 async function fetchRatesFromApiLayer(): Promise<Record<string, number>> {
   if (!API_LAYER_KEY) {
@@ -262,10 +275,10 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
  *    STALE_CACHE_MAX_AGE_MS — beyond that we throw rather than price an order
  *    on a rate we can't stand behind.
  *
- * @param maxAge - Maximum cache age in ms (default: CACHE_DURATION_MS = 24h).
- *                 Pass FRESH_CACHE_MAX_AGE_MS (30 min) at settlement time.
+ * @param maxAge - Maximum cache age in ms. Defaults to FRESH_CACHE_MAX_AGE_MS,
+ *                 which sits above the cron interval so callers read cache.
  */
-async function getExchangeRates(maxAge: number = CACHE_DURATION_MS): Promise<ExchangeRateCache> {
+async function getExchangeRates(maxAge: number = FRESH_CACHE_MAX_AGE_MS): Promise<ExchangeRateCache> {
   const now = Date.now();
 
   // 1. Check memory cache
@@ -454,7 +467,8 @@ export interface PriceQuote {
 /**
  * Price `amount` of `currency` in USDC on a settlement-grade rate.
  *
- * THE single pricing entry point. Targets a rate no older than 30 min; if the
+ * THE single pricing entry point. Serves from cache up to
+ * FRESH_CACHE_MAX_AGE_MS; beyond that it attempts one refresh, and if the
  * provider is unreachable the quote may be priced on an older cached rate — up
  * to STALE_CACHE_MAX_AGE_MS, past which getExchangeRates throws. The result
  * reports `rateAgeMs`/`degraded` so callers never price blind.
