@@ -170,8 +170,10 @@ function getSupabaseClient() {
     return null;
   }
 
+  // no-store: see lib/supabase-server — Next caches supabase-js GETs otherwise
   return createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: (i: any, init: any = {}) => fetch(i, { ...init, cache: 'no-store' }) },
   });
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { fetchXremitTransaction, processXremitTransaction } from '@/lib/xremit';
 import { sendVoucherEmail } from '@/lib/email';
 import { verifyOrderToken } from '@/lib/auth-token';
@@ -47,12 +47,7 @@ export async function GET(
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      }
-    });
+    const supabase = createServerSupabase();
 
     // Fetch order — token already proves ownership via signed orderId + userId
     const { data, error } = await supabase

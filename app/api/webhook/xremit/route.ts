@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { sendVoucherEmail, sendOrderFailureAlert } from '@/lib/email';
 import { getRebateShortfallPercent } from '@/lib/exchange-rates';
 import { logger } from '@/lib/logger';
@@ -137,12 +137,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      }
-    });
+    const supabase = createServerSupabase();
 
     // Find the order
     const { data: existingOrder, error: findError } = await supabase

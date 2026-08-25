@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { generateOrderToken } from '@/lib/auth-token';
 
 export const dynamic = 'force-dynamic';
@@ -75,9 +75,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = createServerSupabase();
 
     const selectFields =
       'order_id, product_id, brand_name, country_name, currency, price, status, ' +

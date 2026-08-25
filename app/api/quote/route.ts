@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase } from '@/lib/supabase-server';
 import {
   getPriceQuote,
   isQuotableCurrency,
@@ -61,9 +61,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = createServerSupabase();
 
     // Discount comes from our own catalogue row, never from the client — it
     // directly reduces what we charge.
