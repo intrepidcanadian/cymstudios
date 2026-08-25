@@ -24,7 +24,6 @@ cp .env.example .env.local
 | `EXTERNAL_API_KEY` | xRemit partner dashboard | API key for the xRemit gift card provider |
 | `EXTERNAL_CLIENT_SECRET` | xRemit partner dashboard | Client secret for HMAC-SHA256 request signing |
 | `XREMIT_ENV` | Set to `production` or `sandbox` | Controls which xRemit API is used (`rewardsapi.xremit.io` vs `rewardsapi-sandbox.xremit.io`) |
-| `API_LAYER_KEY` | [apilayer.com](https://apilayer.com) | API key for real-time currency exchange rates (USD → ~30 currencies; used to price non-USD gift cards in USDC/USDT0) |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) | Sends voucher delivery emails to customers |
 | `RESEND_FROM_EMAIL` | Your verified Resend domain | Sender address for emails (e.g. `noreply@cymstudio.com`) |
 
@@ -39,6 +38,7 @@ cp .env.example .env.local
 | `CRON_SECRET` | *(none)* | Bearer token for the cron endpoints (`/api/sync-brands`, `/api/cron/*`). If not set, use `?direct=true` for manual syncs. |
 | `FACILITATOR_MAINNET_PRIVATE_KEY` | Falls back to `FACILITATOR_PRIVATE_KEY` | Separate key for mainnet if you use a different wallet than testnet. |
 | `DAILY_REDEMPTION_CAP_USD` | `1000` | Total gift-card face value (USD) redeemable per day, across all customers. Resets noon ET. See below. |
+| `API_LAYER_KEY` | *(none)* | Optional extra FX oracle source. The oracle works without it — every other source is keyless. See below. |
 
 ---
 
@@ -162,6 +162,46 @@ User picks gift card → enters amount + email
 | `/api/sync-brands` | GET | `?direct=true` | Seed/resync the brands table from xRemit. |
 | `/api/cron/refresh-exchange-rates` | GET/POST | `CRON_SECRET` | Refresh the cached FX rates. Schedule this (see below). |
 | `/api/cron/resolve-pending-orders` | GET/POST | `CRON_SECRET` | Resolve/refund orders stuck in `pending_review`. |
+
+### FX rates: the oracle
+
+Rates are the **median across several independent providers**, not one vendor's
+word. `lib/fx-oracle.ts` queries all sources in parallel, discards outliers, and
+requires a quorum before it will price a currency at all.
+
+| Source | Key required |
+|---|---|
+| `open.er-api.com` | no |
+| `api.frankfurter.dev` (ECB) | no |
+| `fawazahmed0/currency-api` (jsdelivr) | no |
+| `floatrates.com` | no |
+| `api.fxratesapi.com` | no |
+| API Layer | yes — optional, joins the vote when `API_LAYER_KEY` is set |
+
+Why this exists: API Layer alone was a single point of both failure *and* error.
+When its free tier began returning `403`, the entire non-USD catalogue stopped
+pricing — and before that, a silently wrong provider would have been trusted
+without challenge. A median outvotes one bad source; a fallback chain cannot.
+
+Rules the oracle enforces:
+
+- **Quorum** — a currency needs at least 2 sources or it is not priced. One
+  unverified source is precisely what we moved away from.
+- **Outlier rejection** — values more than 2% from the provisional median are
+  discarded before the final median is taken, and logged.
+- **Pair agreement** — with exactly 2 sources a median cannot tell which is
+  wrong, so they must agree within 2% or the currency is skipped.
+- **Provenance** — which sources responded, which were discarded, and the spread
+  per currency are stored in `exchange_rates.sources` (migration 008).
+
+Measured agreement in production sources: EUR 0.12%, HKD 0.02%, CAD 0.37%,
+widest of all 30 currencies 0.51% (ILS) — comfortably inside the 1.5% non-USD
+fee. A full fan-out takes ~300ms.
+
+```sql
+-- which providers priced the current snapshot
+SELECT updated_at, sources FROM exchange_rates WHERE id = 'usd_rates';
+```
 
 ### Pricing: one path only
 

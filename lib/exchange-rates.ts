@@ -1,13 +1,15 @@
 /**
  * Exchange Rate Service
  *
- * Uses API Layer currency_data API for exchange rates.
+ * Rates come from the FX oracle (lib/fx-oracle.ts): the median across several
+ * independent providers, so no single provider can take pricing down or quietly
+ * price orders wrong.
  *
  * ONE rate policy, everywhere: quotes and settlement read the same cache, so
  * the customer is charged the amount they were quoted and quote and charge
  * cannot diverge.
  *
- * The refresh cron is the only intended caller of API Layer — see the freshness
+ * The refresh cron is the only intended caller of the oracle — see the freshness
  * ladder below. Quotes serve from cache up to FRESH_CACHE_MAX_AGE_MS (9h) and
  * only attempt a fetch beyond that, as a self-heal when the cron has failed.
  * Rates past STALE_CACHE_MAX_AGE_MS (24h) are refused outright rather than
@@ -19,10 +21,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { fetchOracleRates, type OracleProvenance } from './fx-oracle';
 
-// API Layer Configuration
+// API Layer is one oracle source among several, and an optional one — every
+// other source is keyless. Absent or expired, the oracle simply votes without it.
 const API_LAYER_KEY = process.env.API_LAYER_KEY;
-const API_LAYER_URL = 'https://api.apilayer.com/currency_data/live';
 
 // Merchant fee applied on top of the exchange rate
 const FX_FEE_PERCENT = 1.5;
@@ -38,16 +41,17 @@ const PARTNER_REVENUE_SHARE = 0.30;
 const REBATE_SAFETY_FACTOR = 0.90;
 
 // ── Rate freshness ladder ───────────────────────────────────────────────────
-// The refresh cron is the ONLY thing that should call API Layer. That holds
-// only while:
+// The refresh cron is the only intended caller of the oracle:
 //
 //     cron interval (8h)  <  FRESH_CACHE_MAX_AGE_MS (9h)  <  STALE_CACHE_MAX_AGE_MS (24h)
 //
-// Quota arithmetic: API Layer's free tier allows 100 calls/month. An 8-hourly
-// cron costs ~90 (3/day x 30 days). When the freshness target was 30 min, every
-// non-USD quote arriving with a >30min-old cache triggered its own fetch — on
-// the order of 1,400 calls/month, which the free tier cannot serve. Raising the
-// target above the cron interval means quotes always read cache.
+// Keeping the freshness target above the cron interval means quotes always read
+// cache instead of fetching per-request. That started as quota arithmetic — API
+// Layer's free tier allows 100 calls/month and a 30-minute target was costing
+// roughly 1,400 — and it still matters now that the oracle fans out to several
+// providers, since one quote would otherwise mean six outbound requests.
+//
+// The oracle's sources publish daily, so refreshing faster buys nothing anyway.
 //
 // These three numbers are coupled. Change one, change the others.
 
@@ -64,23 +68,20 @@ const FRESH_CACHE_MAX_AGE_MS = 9 * 60 * 60 * 1000;
 //
 // Sized to survive one missed cron run (8h -> 16h) with margin: it MUST exceed
 // twice the cron interval, or a single failed run takes non-USD checkout down.
-// Accepted trade-off: during an API Layer outage we may settle non-USD orders
+// Accepted trade-off: if every oracle source is unreachable we may settle non-USD orders
 // on rates up to 24h old. The 1.5% non-USD fee absorbs that drift, and every
 // such order is flagged settlement_rate_degraded for reconciliation.
 const STALE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-// After a failed API Layer call, don't retry for this long. Without it, every
-// request during an outage pays a full network timeout — including requests on
-// the settlement path.
+// After a failed oracle round, don't retry for this long. Without it, every
+// request during an outage pays a full fan-out of timeouts — including requests
+// on the settlement path.
 const API_FAILURE_COOLDOWN_MS = 60 * 1000;
 
-// Per-attempt timeout on the API Layer call itself
-const API_FETCH_TIMEOUT_MS = 8 * 1000;
-
-// Timestamp of the last API Layer failure (0 = no recent failure)
+// Timestamp of the last oracle failure (0 = no recent failure)
 let lastApiFailureAt = 0;
 
-// Currencies we pull rates for from API Layer
+// Currencies the oracle is asked to price
 const SUPPORTED_CURRENCIES = [
   'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'HKD', 'SGD', 'NZD',
   'SEK', 'NOK', 'DKK', 'MXN', 'BRL', 'INR', 'KRW', 'THB', 'PHP', 'MYR',
@@ -125,68 +126,37 @@ let memoryCache: ExchangeRateCache | null = null;
 
 
 /**
- * Fetch fresh exchange rates from API Layer.
+ * Fetch rates via the FX oracle — the median across several independent
+ * providers (see lib/fx-oracle.ts).
+ *
+ * API Layer is now one voice among several rather than the sole authority, so
+ * its free-tier quota is no longer a single point of failure for the whole
+ * non-USD catalogue. Every other source is keyless.
+ *
  * Should be reached only by the refresh cron, or by a quote self-healing after
- * the cron has failed — the free tier cannot serve per-request fetches.
+ * the cron has failed.
  */
-async function fetchRatesFromApiLayer(): Promise<Record<string, number>> {
-  if (!API_LAYER_KEY) {
-    console.warn('[ExchangeRates] API_LAYER_KEY not configured, using fallback rates');
-    throw new Error('API_LAYER_KEY not configured');
-  }
+async function fetchRatesFromOracle(): Promise<{ rates: Record<string, number>; provenance: OracleProvenance }> {
+  console.log('[ExchangeRates] Querying FX oracle...');
+  const { rates, provenance } = await fetchOracleRates(SUPPORTED_CURRENCIES, API_LAYER_KEY);
 
-  const symbols = SUPPORTED_CURRENCIES.join(',');
-  const url = `${API_LAYER_URL}?base=USD&symbols=${symbols}`;
+  const worst = Object.entries(provenance.perCurrency)
+    .sort((a, b) => b[1].spreadPercent - a[1].spreadPercent)[0];
 
-  console.log('[ExchangeRates] Fetching fresh rates from API Layer...');
+  console.log(
+    `[ExchangeRates] Oracle: ${Object.keys(rates).length} currencies from ` +
+    `${provenance.respondedIds.length} sources [${provenance.respondedIds.join(', ')}]` +
+    (provenance.failed.length ? ` | failed: ${provenance.failed.map((f) => `${f.id}=${f.error}`).join(', ')}` : '') +
+    (worst ? ` | widest spread ${worst[0]} ${worst[1].spreadPercent.toFixed(3)}%` : '')
+  );
 
-  // Hard timeout — this call sits on the settlement path, so a hung provider
-  // must not hold a purchase request open.
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'apikey': API_LAYER_KEY
-      },
-      signal: controller.signal
-    });
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error(`API Layer request timed out after ${API_FETCH_TIMEOUT_MS}ms`);
+  for (const [code, info] of Object.entries(provenance.perCurrency)) {
+    if (info.excluded.length) {
+      console.warn(`[ExchangeRates] ${code}: discarded outlier source(s) ${info.excluded.join(', ')}`);
     }
-    throw err;
-  } finally {
-    clearTimeout(timeout);
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[ExchangeRates] API Layer error:', response.status, errorText);
-    throw new Error(`API Layer error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.success || !data.quotes) {
-    console.error('[ExchangeRates] Invalid API response:', data);
-    throw new Error('Invalid API Layer response');
-  }
-
-  // API Layer returns rates as "USDEUR", "USDGBP", etc.
-  // Convert to simple currency codes
-  const rates: Record<string, number> = {};
-  for (const [key, value] of Object.entries(data.quotes)) {
-    // Extract currency code (e.g., "USDEUR" -> "EUR")
-    const currency = key.replace('USD', '');
-    rates[currency] = value as number;
-  }
-
-  console.log('[ExchangeRates] Fetched', Object.keys(rates).length, 'exchange rates');
-  return rates;
+  return { rates, provenance };
 }
 
 /**
@@ -243,7 +213,10 @@ async function loadRatesFromDatabase(): Promise<ExchangeRateCache | null> {
 /**
  * Save rates to database cache
  */
-async function saveRatesToDatabase(rates: Record<string, number>): Promise<void> {
+async function saveRatesToDatabase(
+  rates: Record<string, number>,
+  provenance?: OracleProvenance,
+): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
@@ -253,10 +226,26 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
       .upsert({
         id: 'usd_rates',
         rates,
+        // Which providers priced this snapshot and how far apart they were —
+        // so any order can be traced back to the sources behind its rate.
+        sources: provenance ?? null,
         updated_at: new Date().toISOString()
       });
 
     if (error) {
+      // The `sources` column arrives in migration 008. If code ships ahead of
+      // the migration, retry without provenance rather than silently losing the
+      // DB cache entirely — rates matter more than their audit trail.
+      const missingColumn = error.code === '42703' || /sources/i.test(error.message || '');
+      if (missingColumn && provenance) {
+        console.warn('[ExchangeRates] exchange_rates.sources missing (apply migration 008); saving rates without provenance');
+        const { error: retryError } = await supabase
+          .from('exchange_rates')
+          .upsert({ id: 'usd_rates', rates, updated_at: new Date().toISOString() });
+        if (retryError) console.error('[ExchangeRates] Database save error:', retryError);
+        else console.log('[ExchangeRates] Saved rates to database (without provenance)');
+        return;
+      }
       console.error('[ExchangeRates] Database save error:', error);
     } else {
       console.log('[ExchangeRates] Saved rates to database');
@@ -270,7 +259,7 @@ async function saveRatesToDatabase(rates: Record<string, number>): Promise<void>
  * Get exchange rates with caching strategy:
  * 1. Check in-memory cache (valid for maxAge, default 24h)
  * 2. Check database cache (valid for maxAge)
- * 3. Fetch from API Layer (skipped while in post-failure cooldown)
+ * 3. Query the FX oracle (skipped while in post-failure cooldown)
  * 4. Fall back to the freshest stale cache, but only up to
  *    STALE_CACHE_MAX_AGE_MS — beyond that we throw rather than price an order
  *    on a rate we can't stand behind.
@@ -321,14 +310,14 @@ async function getExchangeRates(maxAge: number = FRESH_CACHE_MAX_AGE_MS): Promis
     return best;
   };
 
-  // 3. Fetch fresh rates from API Layer — unless we just failed, in which case
+  // 3. Query the oracle for fresh rates — unless we just failed, in which case
   //    skip straight to the fallback instead of eating another timeout.
   if (lastApiFailureAt && (now - lastApiFailureAt) < API_FAILURE_COOLDOWN_MS) {
     return useStaleCache('provider in failure cooldown');
   }
 
   try {
-    const rates = await fetchRatesFromApiLayer();
+    const { rates, provenance } = await fetchRatesFromOracle();
     const cache: ExchangeRateCache = {
       rates,
       timestamp: now,
@@ -338,12 +327,12 @@ async function getExchangeRates(maxAge: number = FRESH_CACHE_MAX_AGE_MS): Promis
     // Save to memory and database
     lastApiFailureAt = 0;
     memoryCache = cache;
-    await saveRatesToDatabase(rates);
+    await saveRatesToDatabase(rates, provenance);
 
     return cache;
   } catch (err) {
     lastApiFailureAt = now;
-    console.error('[ExchangeRates] Failed to fetch from API Layer:', err);
+    console.error('[ExchangeRates] FX oracle failed:', err);
 
     // 4. Stale fallback, bounded by STALE_CACHE_MAX_AGE_MS (throws past it)
     return useStaleCache('provider fetch failed');
@@ -542,7 +531,7 @@ export async function getExchangeRateInfo(): Promise<{
  */
 export async function forceRefreshRates(): Promise<void> {
   console.log('[ExchangeRates] Force refreshing rates...');
-  const rates = await fetchRatesFromApiLayer();
+  const { rates, provenance } = await fetchRatesFromOracle();
   const now = Date.now();
 
   memoryCache = {
@@ -551,7 +540,7 @@ export async function forceRefreshRates(): Promise<void> {
     source: 'api'
   };
 
-  await saveRatesToDatabase(rates);
+  await saveRatesToDatabase(rates, provenance);
 }
 
 // Legacy exports for backwards compatibility
