@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation'
+import { NEWS_ENABLED } from '@/config/features'
 import CatalogueRoot from '@/components/catalogue/CatalogueRoot'
 
 /**
@@ -5,6 +7,8 @@ import CatalogueRoot from '@/components/catalogue/CatalogueRoot'
  * catalogue palette via CatalogueRoot so the editorial look carries.
  */
 export default function NewsLayout({ children }: { children: React.ReactNode }) {
+  if (!NEWS_ENABLED) notFound()
+
   return (
     <div className="dark">
       <CatalogueRoot>{children}</CatalogueRoot>

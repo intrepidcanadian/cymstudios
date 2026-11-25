@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { REWARDS_ENABLED } from '@/config/features'
 import styles from './news.module.css'
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function NewsIndexPage() {
         </div>
         <nav className={styles.headerCrumb}>
           <Link href="/">Studio</Link>
-          <Link href="/catalogue">Rewards</Link>
+          {REWARDS_ENABLED && <Link href="/catalogue">Rewards</Link>}
         </nav>
       </header>
 

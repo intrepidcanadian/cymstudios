@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { NEWS_ENABLED, REWARDS_ENABLED } from '@/config/features'
 import styles from '@/app/page.module.css'
 
 export type Theme = 'ember' | 'cyan' | 'lime' | 'magenta'
@@ -30,8 +31,8 @@ export default function TopBar({ theme, onThemeChange }: TopBarProps) {
         <a href="#work">Work</a>
         <a href="#process">Process</a>
         <a href="#about">Studio</a>
-        <Link href="/catalogue">Rewards</Link>
-        <Link href="/news">News</Link>
+        {REWARDS_ENABLED && <Link href="/catalogue">Rewards</Link>}
+        {NEWS_ENABLED && <Link href="/news">News</Link>}
         <a href="#contact">Contact</a>
       </nav>
 
